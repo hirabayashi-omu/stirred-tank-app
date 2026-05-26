@@ -202,10 +202,19 @@ body {
     border-radius: var(--border-radius-md);
     font-size: 0.9rem;
     font-weight: 500;
+    line-height: 1;
     cursor: pointer;
     transition: all 0.2s ease;
     border: 1px solid transparent;
     width: 100%;
+    box-sizing: border-box;
+}
+
+.btn i,
+.btn svg {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .btn-primary {
