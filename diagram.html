@@ -723,16 +723,16 @@
             document.getElementById('shaft-line').setAttribute('y2', y_bottom_impeller);
 
             // Determine staging interval (gap between impellers)
-            // If stages > 1, space them out based on liquid level height
+            // Distribute stages evenly between the clearance top (bottom of lowest impeller) and the liquid level (top of highest impeller)
             const n_stages = parseInt(config.n_stage) || 1;
             let stages_y = [];
             if (n_stages === 1) {
                 stages_y.push(y_bottom_impeller);
             } else {
                 stages_y.push(y_bottom_impeller);
-                const top_impeller_limit = y_liquid + (d_px * 0.6); // keep top impeller under liquid
-                const available_span = y_bottom_impeller - top_impeller_limit;
-                const stage_gap = Math.min(d_px * 1.2, available_span / (n_stages - 1));
+                const y_top_impeller_limit = y_liquid + b_px/2;
+                const available_span = Math.max(0, y_bottom_impeller - y_top_impeller_limit);
+                const stage_gap = available_span / (n_stages - 1);
 
                 for (let i = 1; i < n_stages; i++) {
                     stages_y.push(y_bottom_impeller - (i * stage_gap));
