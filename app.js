@@ -1431,8 +1431,9 @@ function drawVesselForPDF() {
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 1.5;
 
-        const baffle_h = Math.max(100, h_liquid_px * 1.05);
-        const baffle_y_start = Math.max(y_top - 20, y_deepest - baffle_h);
+        // Set baffle height to 95% of the straight cylinder section, independent of liquid height
+        const baffle_h = (y_cyl_bottom - y_top) * 0.95;
+        const baffle_y_start = y_cyl_bottom - baffle_h;
 
         // Left
         ctx.fillRect(lx, baffle_y_start, bw_px, y_cyl_bottom - baffle_y_start);

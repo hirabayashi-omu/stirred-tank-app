@@ -673,8 +673,9 @@
             if (config.baffleActive) {
                 const bw_px = config.Bw * scale;
                 // Draw left and right baffles (represent 2D view of baffles)
-                const baffle_h = Math.max(100, h_liquid_px * 1.05); // Baffle extends slightly above liquid
-                const baffle_y_start = Math.max(y_top + 10, y_deepest - baffle_h);
+                // Set baffle height to 95% of the straight cylinder section, independent of liquid height
+                const baffle_h = (y_cyl_bottom - y_top) * 0.95;
+                const baffle_y_start = y_cyl_bottom - baffle_h;
 
                 // Left baffle
                 const leftBaffle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
