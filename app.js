@@ -1151,6 +1151,30 @@ function exportCSV() {
         });
     });
 
+    // 3. Export Calculated Intermediate Variables
+    csvContent += '\n';
+    csvContent += '--- CALCULATED INTERMEDIATE VARIABLES ---\n';
+    csvContent += 'Variable,Definition,Value\n';
+    
+    const vars = getKameiHiraokaIntermediateVars();
+    const csvVarsRows = [
+        { name: 'beta', def: '2ln(D/d) / (D/d - d/D)', val: vars.beta },
+        { name: 'eta', def: '翼付近の循環流量比に関するパラメータ', val: vars.eta },
+        { name: 'gamma', def: '流動モデルにおけるせん断幅の係数', val: vars.gamma },
+        { name: 'X', def: '動力相関変数', val: vars.X },
+        { name: 'Ct', def: '乱流時の形状項係数', val: vars.Ct },
+        { name: 'm', def: '遷移域補正指数', val: vars.m },
+        { name: 'Cu', def: '層流渦抵抗係数', val: vars.Cu },
+        { name: 'f_infty', def: '極限摩擦係数', val: vars.f_infty },
+        { name: 'CL', def: '層流抵抗の形状係数', val: vars.CL },
+        { name: 'ReG_ratio', def: '流動モデルにおけるレイノルズ数比', val: vars.ReG_ratio },
+        { name: 'NpMax', def: '完全邪魔板条件での最大動力数(段数補正済)', val: vars.NpMax }
+    ];
+    
+    csvVarsRows.forEach(r => {
+        csvContent += `"${r.name}","${r.def}",${r.val.toFixed(5)}\n`;
+    });
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -1191,6 +1215,11 @@ function importCSV(e) {
             if (trimmed.startsWith('--- EXPERIMENTAL DATA ---')) {
                 inConfig = false;
                 inData = true;
+                return;
+            }
+            if (trimmed.startsWith('---')) {
+                inConfig = false;
+                inData = false;
                 return;
             }
 
@@ -1888,6 +1917,35 @@ function generatePDFReport() {
     
     // Clean up temporary chart instance
     pdfChart.destroy();
+
+    // 3.5 Fill PDF Calculated Intermediate Variables
+    const pdfVarsBody = document.getElementById('pdf-calculated-vars-body');
+    pdfVarsBody.innerHTML = '';
+    
+    const vars = getKameiHiraokaIntermediateVars();
+    const pdfVarsRows = [
+        { name: 'β (ベータ)', def: '2ln(D/d) / (D/d - d/D)', val: vars.beta },
+        { name: 'η (イータ)', def: '翼付近の循環流量比に関するパラメータ', val: vars.eta },
+        { name: 'γ (ガンマ)', def: '流動モデルにおけるせん断幅の係数', val: vars.gamma },
+        { name: 'X', def: '動力相関変数', val: vars.X },
+        { name: 'Ct', def: '乱流時の形状項係数', val: vars.Ct },
+        { name: 'm', def: '遷移域補正指数', val: vars.m },
+        { name: 'Cu', def: '層流渦抵抗係数', val: vars.Cu },
+        { name: 'f_∞', def: '極限摩擦係数', val: vars.f_infty },
+        { name: 'CL', def: '層流抵抗の形状係数', val: vars.CL },
+        { name: 'ReG / Re', def: '流動モデルにおけるレイノルズ数比', val: vars.ReG_ratio },
+        { name: 'NpMax (段数補正済)', def: '完全邪魔板条件での最大動力数', val: vars.NpMax }
+    ];
+
+    pdfVarsRows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="padding: 5px; border: 1px solid #e5e7eb; font-weight: 500;">${r.name}</td>
+            <td style="padding: 5px; border: 1px solid #e5e7eb; color: #4b5563; font-size: 8px;">${r.def}</td>
+            <td style="padding: 5px; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #0284c7;">${r.val.toFixed(5)}</td>
+        `;
+        pdfVarsBody.appendChild(tr);
+    });
 
     // 4. Fill Table Data (Averages of blocks)
     const tbody = document.getElementById('pdf-results-tbody');
