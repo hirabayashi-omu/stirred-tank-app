@@ -1126,11 +1126,26 @@ function exportCSV() {
 
     // 2. Export Experimental Blocks
     csvContent += '--- EXPERIMENTAL DATA ---\n';
-    csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m)\n';
+    csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m),n(1/s),P(W),Pv(W/m3),Re(-),Np(-),Fr(-)\n';
     
+    const { rho, mu, d, DT, g, H } = config;
+    const V = (Math.PI / 4) * Math.pow(DT, 2) * H; // volume m³
+
     expBlocks.forEach(b => {
         b.rows.forEach(row => {
-            csvContent += `"${b.name}",${row.time},${row.N},${row.T},${row.Tb}\n`;
+            const n = row.N / 60;
+            const T_net = row.T - row.Tb;
+            const P = 2 * Math.PI * n * T_net;
+            const Pv = P / V;
+            const Re = calculateReVal(n);
+            const Fr = calculateFrVal(n);
+            
+            let Np = 0;
+            if (n > 0 && Math.abs(T_net) > 0) {
+                Np = P / (rho * Math.pow(n, 3) * Math.pow(d, 5));
+            }
+
+            csvContent += `"${b.name}",${row.time},${row.N},${row.T},${row.Tb},${n.toFixed(3)},${P.toFixed(3)},${Pv.toFixed(1)},${Math.round(Re)},${Np.toFixed(3)},${Fr.toFixed(3)}\n`;
         });
     });
 
