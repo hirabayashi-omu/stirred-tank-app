@@ -732,8 +732,8 @@
                 stages_y.push(y_bottom_impeller);
                 const y_top_impeller_limit = y_liquid + b_px/2;
                 const available_span = y_bottom_impeller - y_top_impeller_limit;
-                // Distribute evenly, but enforce a minimum gap of b_px (blade width) to prevent overlap and bottom penetration
-                const stage_gap = Math.max(b_px, available_span / (n_stages - 1));
+                // Distribute evenly, but enforce a minimum gap of b_px * 1.3 to prevent overlap, bottom penetration, and visual merging of blades
+                const stage_gap = Math.max(b_px * 1.3, available_span / (n_stages - 1));
 
                 for (let i = 1; i < n_stages; i++) {
                     stages_y.push(y_bottom_impeller - (i * stage_gap));
