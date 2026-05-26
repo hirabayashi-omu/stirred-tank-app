@@ -208,7 +208,7 @@
                     <a href="formula.html" class="btn btn-secondary">
                         <i data-feather="book-open"></i> 推算式の説明
                     </a>
-                    <a href="diagram.html" class="btn btn-secondary" target="agitator_diagram">
+                    <a href="diagram.html" class="btn btn-secondary" target="agitator_diagram" onclick="this.href='diagram.html?t=' + Date.now()">
                         <i data-feather="image"></i> 槽模式図
                     </a>
                     <button id="export-pdf-btn" class="btn btn-primary">
@@ -408,7 +408,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260526_1945"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();
