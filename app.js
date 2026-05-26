@@ -4,11 +4,12 @@
 let config = {
     expNumber: 'EXP-001',
     expDate: '',
-    expAuthor: '攪拌 太郎',
+    expAuthor: '攻拈 太郎',
     g: 9.806,
     liquidTemp: 25,
     rho: 998,
     mu: 0.417,
+    V_act: 0,
     DT: 0.105,
     H: 0.093,
     headType: 'semi-elliptical',
@@ -83,6 +84,7 @@ function initInputs() {
     document.getElementById('liquid-temp').value = config.liquidTemp;
     document.getElementById('rho').value = config.rho;
     document.getElementById('mu').value = config.mu;
+    document.getElementById('V-act').value = config.V_act ?? 0;
     document.getElementById('DT').value = config.DT;
     document.getElementById('H').value = config.H;
     document.getElementById('head-type').value = config.headType;
@@ -112,7 +114,7 @@ function initEventListeners() {
     });
 
     const inputs = [
-        'g', 'liquid-temp', 'rho', 'mu', 'DT', 'H', 'head-type',
+        'g', 'liquid-temp', 'rho', 'mu', 'V-act', 'DT', 'H', 'head-type',
         'impeller-type', 'np', 'theta', 'd', 'b', 'clearance',
         'n_stage', 'nB', 'Bw'
     ];
@@ -121,6 +123,7 @@ function initEventListeners() {
         if (id === 'liquid-temp') return 'liquidTemp';
         if (id === 'head-type') return 'headType';
         if (id === 'impeller-type') return 'impellerType';
+        if (id === 'V-act') return 'V_act';
         return id;
     };
 
@@ -341,6 +344,16 @@ function calcLiquidVolume() {
     return V_dish + V_cyl;
 }
 
+// Return the liquid volume to use for Pv calculation:
+// If V_act (measured) > 0, use it (converted from mL to m³).
+// Otherwise, fall back to the dish-shape-corrected estimate.
+function calcLiquidVolumeForPv() {
+    if (config.V_act && config.V_act > 0) {
+        return config.V_act * 1e-6; // mL → m³
+    }
+    return calcLiquidVolume();
+}
+
 // Calculate NpMax based on impeller type and multi-stage configuration
 function getNpMax() {
     const { impellerType, np, b, d, theta, n_stage } = config;
@@ -439,10 +452,6 @@ function updateIntermediateVarsUI() {
         { name: 'NpMax (段数補正済)', def: '完全邪魔板条件での最大動力数', val: NpMax }
     ];
 
-    // Add liquid volume (separate row with different formatting)
-    const V_liquid = calcLiquidVolume();
-    const V_liquid_mL = V_liquid * 1e6; // m³ → mL
-
     const tbody = document.getElementById('calculated-vars-body');
     tbody.innerHTML = '';
 
@@ -455,16 +464,6 @@ function updateIntermediateVarsUI() {
         `;
         tbody.appendChild(tr);
     });
-
-    // Liquid volume row (special formatting)
-    const trV = document.createElement('tr');
-    const headTypeLabel = { 'flat': '平底', 'semi-elliptical': '半楕円形(2:1)', 'dish': '皿型', 'hemispherical': '全半球形' }[config.headType] || config.headType;
-    trV.innerHTML = `
-        <td><strong>V<sub>液</sub> (概算)</strong></td>
-        <td class="text-secondary" style="font-size:0.75rem;">液体積の概算値（鏡板：${headTypeLabel}）</td>
-        <td class="calculated-cell highlight-blue">${V_liquid.toExponential(4)} m³ &nbsp;(${V_liquid_mL.toFixed(1)} mL)</td>
-    `;
-    tbody.appendChild(trV);
 }
 
 // Dynamic Experimental Blocks Management
@@ -661,7 +660,8 @@ function recalculateBlock(blockId) {
     if (!block) return;
 
     const { rho, mu, d, DT, g } = config;
-    const V = calcLiquidVolume(); // liquid volume m³ (dish-shape corrected)
+    const V = calcLiquidVolumeForPv(); // use measured V_act if set, else dish-corrected estimate
+
 
     let sumN = 0;
     let sumT = 0;
@@ -1206,7 +1206,8 @@ function exportCSV() {
     csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m),n(1/s),P(W),Pv(W/m3),Re(-),Np(-),Fr(-)\n';
     
     const { rho, mu, d, DT, g, H } = config;
-    const V = calcLiquidVolume(); // liquid volume m³ (dish-shape corrected)
+    const V = calcLiquidVolumeForPv(); // use measured V_act if set, else dish-corrected estimate
+
 
     expBlocks.forEach(b => {
         b.rows.forEach(row => {

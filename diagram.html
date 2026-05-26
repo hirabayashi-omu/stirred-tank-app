@@ -476,6 +476,22 @@
                     </div>
                     <div class="dim-val" id="val-baffle" style="font-size:0.95rem;">--</div>
                 </div>
+
+                <div class="dim-item">
+                    <div class="dim-label">
+                        <span class="dim-name">V<sub>液</sub> 概算値</span>
+                        <span class="dim-desc">鏡板形状を考慮した液体積の概算</span>
+                    </div>
+                    <div class="dim-val" id="val-V-est" style="font-size:0.9rem;">-- mL</div>
+                </div>
+
+                <div class="dim-item">
+                    <div class="dim-label">
+                        <span class="dim-name">V<sub>act</sub> 実測値</span>
+                        <span class="dim-desc">P<sub>v</sub>の分母に使用する液量（0 = 概算値使用）</span>
+                    </div>
+                    <div class="dim-val" id="val-V-act" style="font-size:0.9rem;">--</div>
+                </div>
             </div>
 
             <div class="notes-section">
@@ -576,7 +592,42 @@
                 ? `${config.Bw.toFixed(4)} m × ${config.nB}枚` 
                 : 'なし';
             document.getElementById('val-baffle').textContent = baffleStr;
-            
+
+            // Liquid volume: estimated from dish shape
+            const R = config.DT / 2;
+            const H = config.H;
+            let h_dish = 0, V_dish = 0;
+            if (config.headType === 'semi-elliptical') {
+                h_dish = R / 2;
+                V_dish = Math.PI * R * R * R / 3;
+            } else if (config.headType === 'dish') {
+                h_dish = 0.1935 * config.DT;
+                V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
+            } else if (config.headType === 'hemispherical') {
+                h_dish = R;
+                V_dish = (2/3) * Math.PI * R * R * R;
+            }
+            let V_est;
+            if (H <= h_dish && h_dish > 0) {
+                if (config.headType === 'hemispherical') {
+                    V_est = Math.PI * H * H * (3 * R - H) / 3;
+                } else if (config.headType === 'semi-elliptical') {
+                    V_est = Math.PI * R * R * H * H * (h_dish/2 - H/3) / (h_dish * h_dish);
+                } else {
+                    V_est = V_dish * (H / h_dish);
+                }
+            } else {
+                const h_cyl = Math.max(0, H - h_dish);
+                V_est = V_dish + Math.PI * R * R * h_cyl;
+            }
+            document.getElementById('val-V-est').textContent = `${(V_est * 1e6).toFixed(1)} mL`;
+
+            // Actual measured liquid volume
+            const V_act = config.V_act ?? 0;
+            document.getElementById('val-V-act').textContent = V_act > 0
+                ? `${V_act.toFixed(1)} mL → Pᵥに使用`
+                : `未入力（概算値 ${(V_est * 1e6).toFixed(1)} mL を使用）`;
+
             document.getElementById('vessel-head-title').textContent = `鏡板形式: ${headTypeMap[config.headType] || config.headType} / インペラ: ${impellerMap[config.impellerType] || config.impellerType}`;
         }
 
