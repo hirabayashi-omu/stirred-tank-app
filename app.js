@@ -130,6 +130,14 @@ function initEventListeners() {
             if (e.target.type === 'number') {
                 val = parseFloat(val) || 0;
             }
+            if (id === 'np') {
+                let parsed = parseInt(val) || 2;
+                if (parsed < 2) {
+                    parsed = 2;
+                    e.target.value = 2;
+                }
+                val = parsed;
+            }
             config[getPropName(id)] = val;
             recalculateAll();
         });
