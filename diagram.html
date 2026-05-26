@@ -522,7 +522,7 @@
             Bw: 0.010,
             np: 4,
             theta: 45,
-            V_act: 0
+            V_act: 0.7295
         };
 
         // Load State from localStorage
@@ -621,13 +621,13 @@
                 const h_cyl = Math.max(0, H - h_dish);
                 V_est = V_dish + Math.PI * R * R * h_cyl;
             }
-            document.getElementById('val-V-est').textContent = `${(V_est * 1e6).toFixed(1)} mL`;
+            document.getElementById('val-V-est').textContent = `${(V_est * 1e3).toFixed(4)} L`;
 
-            // Actual measured liquid volume
+            // Actual measured liquid volume (stored in L)
             const V_act = config.V_act ?? 0;
             document.getElementById('val-V-act').textContent = V_act > 0
-                ? `${V_act.toFixed(1)} mL → Pᵥに使用`
-                : `未入力（概算値 ${(V_est * 1e6).toFixed(1)} mL を使用）`;
+                ? `${V_act.toFixed(4)} L → Pᵥに使用`
+                : `未入力（概算値 ${(V_est * 1e3).toFixed(4)} L を使用）`;
 
             document.getElementById('vessel-head-title').textContent = `鏡板形式: ${headTypeMap[config.headType] || config.headType} / インペラ: ${impellerMap[config.impellerType] || config.impellerType}`;
         }

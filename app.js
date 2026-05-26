@@ -9,7 +9,7 @@ let config = {
     liquidTemp: 25,
     rho: 998,
     mu: 0.417,
-    V_act: 0,
+    V_act: 0.7295,
     DT: 0.105,
     H: 0.093,
     headType: 'semi-elliptical',
@@ -345,11 +345,11 @@ function calcLiquidVolume() {
 }
 
 // Return the liquid volume to use for Pv calculation:
-// If V_act (measured) > 0, use it (converted from mL to m³).
+// If V_act (measured, in L) > 0, use it (converted from L to m³).
 // Otherwise, fall back to the dish-shape-corrected estimate.
 function calcLiquidVolumeForPv() {
     if (config.V_act && config.V_act > 0) {
-        return config.V_act * 1e-6; // mL → m³
+        return config.V_act * 1e-3; // L → m³
     }
     return calcLiquidVolume();
 }
