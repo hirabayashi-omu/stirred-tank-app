@@ -717,28 +717,35 @@
             const b_px = config.b * scale;
             const clearance_px = config.clearance * scale;
 
-            // Clearance C is defined from the lowest impeller's bottom edge to the vessel bottom.
-            // Thus, the hub center of the bottom impeller is offset upwards by half of the blade width.
-            const y_bottom_impeller = y_deepest - clearance_px - b_px/2;
-            document.getElementById('shaft-line').setAttribute('y2', y_bottom_impeller);
-
-            // Determine staging interval (gap between impellers)
-            // Distribute stages evenly between the clearance top (bottom of lowest impeller) and the liquid level (top of highest impeller)
+            // Determine multi-stage impeller positions
+            // RULE: The bottom impeller is always anchored at clearance C above the tank bottom.
+            //       Upper stages are stacked upward with a minimum gap of b*1.3.
+            //       If liquid level is too low to submerge all stages, upper stages may rise above
+            //       the liquid surface — but the bottom clearance is NEVER compromised.
             const n_stages = parseInt(config.n_stage) || 1;
             let stages_y = [];
+            
+            // Fixed anchor: bottom impeller hub center = tank bottom + clearance + half blade width
+            const y_bottom_target = y_deepest - clearance_px - b_px/2;
+            
             if (n_stages === 1) {
-                stages_y.push(y_bottom_impeller);
+                stages_y.push(y_bottom_target);
             } else {
-                stages_y.push(y_bottom_impeller);
-                const y_top_impeller_limit = y_liquid + b_px/2;
-                const available_span = y_bottom_impeller - y_top_impeller_limit;
-                // Distribute evenly, but enforce a minimum gap of b_px * 1.3 to prevent overlap, bottom penetration, and visual merging of blades
-                const stage_gap = Math.max(b_px * 1.3, available_span / (n_stages - 1));
-
-                for (let i = 1; i < n_stages; i++) {
-                    stages_y.push(y_bottom_impeller - (i * stage_gap));
+                // Ideal gap based on available span between clearance-top and liquid surface
+                const y_top_target = y_liquid + b_px/2;
+                const available_span = y_bottom_target - y_top_target;
+                const ideal_gap = available_span / (n_stages - 1);
+                // Enforce minimum gap to prevent visual overlap/merging of blades
+                const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+                
+                // Stack upward from the fixed bottom anchor
+                for (let i = 0; i < n_stages; i++) {
+                    stages_y.push(y_bottom_target - i * stage_gap);
                 }
             }
+
+            const y_bottom_impeller = Math.max(...stages_y);
+            document.getElementById('shaft-line').setAttribute('y2', y_bottom_impeller);
 
             // Draw each stage
             stages_y.forEach((y_imp, stageIdx) => {

@@ -1472,19 +1472,23 @@ function drawVesselForPDF() {
     ctx.restore();
 
     // 5. Draw Impellers (Stages)
-    // Distribute stages evenly between the clearance top (bottom of lowest impeller) and the liquid level (top of highest impeller)
+    // RULE: The bottom impeller is always anchored at clearance C above the tank bottom.
+    //       Upper stages are stacked upward with a minimum gap of b*1.3.
+    //       Bottom clearance is NEVER compromised.
     const n_stages = parseInt(config.n_stage) || 1;
     let stages_y = [];
     if (n_stages === 1) {
         stages_y.push(y_bottom_impeller);
     } else {
-        stages_y.push(y_bottom_impeller);
+        // Ideal gap based on available span between clearance-top and liquid surface
         const y_top_impeller_limit = y_liquid + b_px/2;
         const available_span = y_bottom_impeller - y_top_impeller_limit;
-        // Distribute evenly, but enforce a minimum gap of b_px * 1.3 to prevent overlap, bottom penetration, and visual merging of blades
-        const stage_gap = Math.max(b_px * 1.3, available_span / (n_stages - 1));
+        const ideal_gap = available_span / (n_stages - 1);
+        // Enforce minimum gap to prevent visual overlap/merging of blades
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
 
-        for (let i = 1; i < n_stages; i++) {
+        // Stack upward from the fixed bottom anchor (y_bottom_impeller)
+        for (let i = 0; i < n_stages; i++) {
             stages_y.push(y_bottom_impeller - (i * stage_gap));
         }
     }
