@@ -1450,7 +1450,7 @@ function drawVesselForPDF() {
     const d_px = config.d * scale;
     const b_px = config.b * scale;
     const clearance_px = config.clearance * scale;
-    const y_bottom_impeller = y_deepest - clearance_px;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px/2;
 
     ctx.save();
     ctx.strokeStyle = '#4b5563';
@@ -1625,9 +1625,10 @@ function drawVesselForPDF() {
 
     // C (Clearance)
     ctx.setLineDash([]);
-    drawCanvasArrow(ctx, cx + 25, y_bottom_impeller, cx + 25, y_deepest);
+    const y_c_start_pdf = y_bottom_impeller + b_px/2;
+    drawCanvasArrow(ctx, cx + 25, y_c_start_pdf, cx + 25, y_deepest);
     ctx.textAlign = 'left';
-    ctx.fillText(`C = ${config.clearance.toFixed(3)} m`, cx + 35, (y_bottom_impeller + y_deepest) / 2 + 4);
+    ctx.fillText(`C = ${config.clearance.toFixed(3)} m`, cx + 35, (y_c_start_pdf + y_deepest) / 2 + 4);
 
     // b (Blade width)
     const x_b_line = cx + d_px/2 + 25;

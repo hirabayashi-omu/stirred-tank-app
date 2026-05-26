@@ -716,7 +716,9 @@
             const b_px = config.b * scale;
             const clearance_px = config.clearance * scale;
 
-            const y_bottom_impeller = y_deepest - clearance_px;
+            // Clearance C is defined from the lowest impeller's bottom edge to the vessel bottom.
+            // Thus, the hub center of the bottom impeller is offset upwards by half of the blade width.
+            const y_bottom_impeller = y_deepest - clearance_px - b_px/2;
             document.getElementById('shaft-line').setAttribute('y2', y_bottom_impeller);
 
             // Determine staging interval (gap between impellers)
@@ -860,13 +862,14 @@
             document.getElementById('dim-d-text').setAttribute('y', y_d_line - 6);
             document.getElementById('dim-d-text').textContent = `d = ${config.d.toFixed(3)} m`;
 
-            // C (Clearance, bottom center shaft offset)
+            // C (Clearance, defined from blade bottom edge to vessel bottom)
+            const y_c_start = y_bottom_impeller + b_px/2;
             document.getElementById('dim-c-line').setAttribute('x1', cx + 25);
             document.getElementById('dim-c-line').setAttribute('x2', cx + 25);
-            document.getElementById('dim-c-line').setAttribute('y1', y_bottom_impeller);
+            document.getElementById('dim-c-line').setAttribute('y1', y_c_start);
             document.getElementById('dim-c-line').setAttribute('y2', y_deepest);
             document.getElementById('dim-c-text').setAttribute('x', cx + 35);
-            document.getElementById('dim-c-text').setAttribute('y', (y_bottom_impeller + y_deepest) / 2 + 4);
+            document.getElementById('dim-c-text').setAttribute('y', (y_c_start + y_deepest) / 2 + 4);
             document.getElementById('dim-c-text').textContent = `C = ${config.clearance.toFixed(3)} m`;
 
             // b (Blade width, draw at bottom impeller right edge)
