@@ -640,7 +640,9 @@ function recalculateBlock(blockId) {
         Re: ave_Re,
         Np: ave_Np,
         Fr: ave_Fr,
-        N: aveN
+        N: aveN,
+        P: ave_P,
+        Pv: ave_Pv
     };
 
     // Render Average Row
@@ -1893,7 +1895,7 @@ function generatePDFReport() {
 
     if (expBlocks.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="5" style="padding: 10px; color: #6b7280; border: 1px solid #e5e7eb;">実験データブロックが登録されていません。</td>`;
+        tr.innerHTML = `<td colspan="7" style="padding: 10px; color: #6b7280; border: 1px solid #e5e7eb;">実験データブロックが登録されていません。</td>`;
         tbody.appendChild(tr);
     } else {
         expBlocks.forEach(b => {
@@ -1902,10 +1904,14 @@ function generatePDFReport() {
             const npVal = b.aveCalculated ? b.aveCalculated.Np : 0;
             const frVal = b.aveCalculated ? b.aveCalculated.Fr : 0;
             const nVal = b.aveCalculated ? b.aveCalculated.N : 0;
+            const pVal = b.aveCalculated ? b.aveCalculated.P : 0;
+            const pvVal = b.aveCalculated ? b.aveCalculated.Pv : 0;
 
             tr.innerHTML = `
                 <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-weight: 500;">${b.name}</td>
                 <td style="padding: 8px; border: 1px solid #e5e7eb;">${nVal.toFixed(1)}</td>
+                <td style="padding: 8px; border: 1px solid #e5e7eb; font-family: monospace;">${pVal.toFixed(3)}</td>
+                <td style="padding: 8px; border: 1px solid #e5e7eb; font-family: monospace;">${pvVal.toFixed(1)}</td>
                 <td style="padding: 8px; border: 1px solid #e5e7eb; font-family: monospace;">${Math.round(reVal)}</td>
                 <td style="padding: 8px; border: 1px solid #e5e7eb; font-family: monospace;">${npVal.toFixed(3)}</td>
                 <td style="padding: 8px; border: 1px solid #e5e7eb; font-family: monospace;">${frVal.toFixed(3)}</td>
