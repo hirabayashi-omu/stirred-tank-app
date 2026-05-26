@@ -661,7 +661,7 @@ function recalculateBlock(blockId) {
     if (!block) return;
 
     const { rho, mu, d, DT, g } = config;
-    const V = (Math.PI / 4) * Math.pow(DT, 2) * config.H; // volume m³
+    const V = calcLiquidVolume(); // liquid volume m³ (dish-shape corrected)
 
     let sumN = 0;
     let sumT = 0;
@@ -1206,7 +1206,7 @@ function exportCSV() {
     csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m),n(1/s),P(W),Pv(W/m3),Re(-),Np(-),Fr(-)\n';
     
     const { rho, mu, d, DT, g, H } = config;
-    const V = (Math.PI / 4) * Math.pow(DT, 2) * H; // volume m³
+    const V = calcLiquidVolume(); // liquid volume m³ (dish-shape corrected)
 
     expBlocks.forEach(b => {
         b.rows.forEach(row => {
