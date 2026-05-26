@@ -288,6 +288,59 @@ function getKameiHiraokaIntermediateVars() {
     };
 }
 
+// Calculate liquid volume based on dish head shape
+// H = height from deepest point of bottom to liquid surface
+function calcLiquidVolume() {
+    const R = config.DT / 2;
+    const H = config.H;
+    const headType = config.headType;
+
+    let h_dish = 0; // depth of bottom dish
+    let V_dish = 0; // volume of bottom dish portion
+
+    if (headType === 'semi-elliptical') {
+        // 2:1 semi-ellipsoidal: depth = R/2
+        h_dish = R / 2;
+        V_dish = Math.PI * R * R * R / 3; // (2/3)*pi*R^2*(R/2)
+    } else if (headType === 'dish') {
+        // Torispherical (dish): depth ≈ 0.1935 * DT (standard ratio)
+        h_dish = 0.1935 * config.DT;
+        // Volume approximation for torispherical head: V ≈ 0.084 * pi * DT^3
+        V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
+    } else if (headType === 'hemispherical') {
+        // Full hemisphere: depth = R
+        h_dish = R;
+        V_dish = (2 / 3) * Math.PI * R * R * R;
+    } else {
+        // Flat bottom: no dish volume
+        h_dish = 0;
+        V_dish = 0;
+    }
+
+    // Cylindrical section filled with liquid
+    const h_cyl = Math.max(0, H - h_dish);
+    const V_cyl = Math.PI * R * R * h_cyl;
+
+    // If liquid height is less than dish depth, calculate partial dish fill
+    if (H <= h_dish && h_dish > 0) {
+        // Partial fill of ellipsoidal/hemispherical/dish bottom
+        // Use spheroidal cap approximation: V = pi*H^2*(3*a - H)/3 where a = h_dish
+        // For ellipsoid with semi-axes R, R, h_dish:
+        // V(z) = pi*R^2/h_dish^2 * (h_dish*H^2/2 - H^3/3)
+        //       = pi*R^2*H^2/(h_dish^2) * (h_dish/2 - H/3)
+        if (headType === 'hemispherical') {
+            return Math.PI * H * H * (3 * R - H) / 3;
+        } else if (headType === 'semi-elliptical') {
+            return Math.PI * R * R * H * H * (h_dish / 2 - H / 3) / (h_dish * h_dish);
+        } else {
+            // dish: approximate linearly
+            return V_dish * (H / h_dish);
+        }
+    }
+
+    return V_dish + V_cyl;
+}
+
 // Calculate NpMax based on impeller type and multi-stage configuration
 function getNpMax() {
     const { impellerType, np, b, d, theta, n_stage } = config;
@@ -386,6 +439,10 @@ function updateIntermediateVarsUI() {
         { name: 'NpMax (段数補正済)', def: '完全邪魔板条件での最大動力数', val: NpMax }
     ];
 
+    // Add liquid volume (separate row with different formatting)
+    const V_liquid = calcLiquidVolume();
+    const V_liquid_mL = V_liquid * 1e6; // m³ → mL
+
     const tbody = document.getElementById('calculated-vars-body');
     tbody.innerHTML = '';
 
@@ -398,6 +455,16 @@ function updateIntermediateVarsUI() {
         `;
         tbody.appendChild(tr);
     });
+
+    // Liquid volume row (special formatting)
+    const trV = document.createElement('tr');
+    const headTypeLabel = { 'flat': '平底', 'semi-elliptical': '半楕円形(2:1)', 'dish': '皿型', 'hemispherical': '全半球形' }[config.headType] || config.headType;
+    trV.innerHTML = `
+        <td><strong>V<sub>液</sub> (概算)</strong></td>
+        <td class="text-secondary" style="font-size:0.75rem;">液体積の概算値（鏡板：${headTypeLabel}）</td>
+        <td class="calculated-cell highlight-blue">${V_liquid.toExponential(4)} m³ &nbsp;(${V_liquid_mL.toFixed(1)} mL)</td>
+    `;
+    tbody.appendChild(trV);
 }
 
 // Dynamic Experimental Blocks Management
@@ -1962,6 +2029,19 @@ function generatePDFReport() {
         `;
         pdfVarsBody.appendChild(tr);
     });
+
+    // Liquid volume row in PDF
+    const V_liq = calcLiquidVolume();
+    const V_liq_mL = V_liq * 1e6;
+    const headLabelMap = { 'flat': '平底', 'semi-elliptical': '半楕円形(2:1)', 'dish': '皿型', 'hemispherical': '全半球形' };
+    const headLabelPdf = headLabelMap[config.headType] || config.headType;
+    const trVpdf = document.createElement('tr');
+    trVpdf.innerHTML = `
+        <td style="padding: 5px; border: 1px solid #e5e7eb; font-weight: 500;">V<sub>液</sub> (概算)</td>
+        <td style="padding: 5px; border: 1px solid #e5e7eb; color: #4b5563; font-size: 8px;">液体積の概算値（鏡板：${headLabelPdf}）</td>
+        <td style="padding: 5px; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #0284c7;">${V_liq.toExponential(4)} m³ &nbsp;(${V_liq_mL.toFixed(1)} mL)</td>
+    `;
+    pdfVarsBody.appendChild(trVpdf);
 
     // 4. Fill Table Data (Averages of blocks)
     const tbody = document.getElementById('pdf-results-tbody');
