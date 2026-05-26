@@ -1472,8 +1472,9 @@ function drawVesselForPDF() {
     } else {
         stages_y.push(y_bottom_impeller);
         const y_top_impeller_limit = y_liquid + b_px/2;
-        const available_span = Math.max(0, y_bottom_impeller - y_top_impeller_limit);
-        const stage_gap = available_span / (n_stages - 1);
+        const available_span = y_bottom_impeller - y_top_impeller_limit;
+        // Distribute evenly, but enforce a minimum gap of b_px (blade width) to prevent overlap and bottom penetration
+        const stage_gap = Math.max(b_px, available_span / (n_stages - 1));
 
         for (let i = 1; i < n_stages; i++) {
             stages_y.push(y_bottom_impeller - (i * stage_gap));
