@@ -418,18 +418,67 @@
                     &\quad \mu_{eff} = \frac{\tau_y}{\dot{\gamma}_{avg}} + K \cdot (\dot{\gamma}_{avg})^{n-1}
                     \end{aligned}$$
                 </div>
-
-                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">$k_s$ 定数の推算アルゴリズム</h3>
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 32px 0 12px 0;">代表的な $k_s$ 値（Metzner-Otto 定数）</h3>
                 <p>
-                    本システムでは、実験データ（回転数 $n$、正味トルク $T_{net}$）と適用するレオロジーモデルパラメータから、逆に $k_s$ を自動推算する機能を有しています。推算手順は以下の通りです：
+                    $k_s$ は撹拌翼の形状に強く依存する定数です。様々な研究者により、代表的な翼について以下の定数値が提案されています。
                 </p>
-                <ol style="color: var(--text-secondary); line-height: 1.8; margin-left: 20px; font-size: 0.95rem;">
-                    <li>実験の $n$ と $T_{net}$ から実験値の動力数 $Np_{exp}$ を計算する。</li>
-                    <li>ニュートン流体用の動力曲線推算式（亀井らの式）の逆関数を数値計算（二分法）で解き、$Np_{exp}$ に対応する有効レイノルズ数 $Re_{eff}$ を求める。</li>
-                    <li>$Re_{eff} = \rho n d^2 / \mu_{eff}$ の関係から、そのデータ点での有効粘度 $\mu_{eff}$ を逆算する。</li>
-                    <li>選択されたレオロジーモデルの粘度関数 $\mu = f(\dot{\gamma})$ を二分法で逆算し、$\mu_{eff}$ を与えるせん断速度 $\dot{\gamma}$ を求める。</li>
-                    <li>各データ点について $k_s = \dot{\gamma} / n$ を計算し、全実験データ点の平均値を採用する。</li>
-                </ol>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 24px; font-size: 0.9rem; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-primary);">
+                            <th style="padding: 12px 8px;">撹拌翼の種類</th>
+                            <th style="padding: 12px 8px;">代表的な $k_s$ 値</th>
+                            <th style="padding: 12px 8px;">主な出典・備考</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color: var(--text-secondary);">
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">平羽根タービン (Rushton)</td>
+                            <td style="padding: 12px 8px;">11.0 ～ 11.5</td>
+                            <td style="padding: 12px 8px;">Metzner & Otto (1957)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">傾斜パドル翼 (Pitched Blade)</td>
+                            <td style="padding: 12px 8px;">11.0</td>
+                            <td style="padding: 12px 8px;">一般的に 10〜13 の範囲とされる</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">プロペラ翼 / 高効率翼</td>
+                            <td style="padding: 12px 8px;">10.0</td>
+                            <td style="padding: 12px 8px;">軸流を主体とする翼</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">ファウドラー翼 / 後退翼 (Retreat Curve)</td>
+                            <td style="padding: 12px 8px;">11.0 ～ 11.5</td>
+                            <td style="padding: 12px 8px;">一般に平羽根等と同等（11.5前後）の推奨値が採用される<br><span style="font-size: 0.8em; color: var(--text-muted);">(cf. Nagata(1975), 撹拌機メーカー標準設計)</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">アンカー翼 (Anchor)</td>
+                            <td style="padding: 12px 8px;">24.0 ～ 25.0</td>
+                            <td style="padding: 12px 8px;">Calderbank & Moo-Young (1959)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 8px;">ヘリカルリボン (Helical Ribbon)</td>
+                            <td style="padding: 12px 8px;">29.0 ～ 30.0</td>
+                            <td style="padding: 12px 8px;">近接翼・高粘度用</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--card-border);">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;"><i data-feather="book-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 原著論文（参考文献）</div>
+                    <ul style="color: var(--text-secondary); margin-left: 20px; line-height: 1.6;">
+                        <li style="margin-bottom: 8px;">
+                            Metzner, A. B., & Otto, R. E. (1957). 
+                            <br>Agitation of non-Newtonian fluids. <i>AIChE Journal</i>, 3(1), 3-10. 
+                            <a href="https://doi.org/10.1002/aic.690030103" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                        </li>
+                        <li>
+                            Calderbank, P. H., & Moo-Young, M. B. (1959). 
+                            <br>The prediction of power consumption in the agitation of non-Newtonian fluids. <i>Transactions of the Institution of Chemical Engineers</i>, 37, 26-33.
+                        </li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Card 7: Cavern Models -->
