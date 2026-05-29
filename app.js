@@ -25,6 +25,14 @@ let config = {
     Bw: 0.014
 };
 
+// Rheology model state (loaded from viscometer CSV)
+let rheologyData = {
+    samples: {},         // { sampleName: [ { modelId, name, rating, r2, rmse, mae, params:{} } ] }
+    activeSample: null,
+    activeModel: 'newtonian',
+    ks: 11.5
+};
+
 let expBlocks = [];
 let chart = null;
 
@@ -103,6 +111,7 @@ function initInputs() {
 }
 
 function initEventListeners() {
+    initRheologyListeners();
     // Watch sidebar input changes
     const metaInputs = ['exp-number', 'exp-date', 'exp-author'];
     metaInputs.forEach(id => {
@@ -761,8 +770,276 @@ function recalculateExperimentalData() {
     });
 }
 
+// ============================================================
+// Rheology: effective viscosity (Metzner-Otto method)
+// ============================================================
+
+function calcEffectiveViscosity(n_rps) {
+    const m = rheologyData.activeModel;
+    const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+    const p = modelList.find(r => r.modelId === m);
+    const ks = rheologyData.ks || 11.5;
+    const gamma_dot = ks * n_rps;
+
+    if (!p || m === 'newtonian') return config.mu;
+
+    const pr = p.params;
+    switch (m) {
+        case 'powerlaw':
+            if (pr.K > 0 && pr.n > 0 && n_rps > 0)
+                return pr.K * Math.pow(gamma_dot, pr.n - 1);
+            break;
+        case 'bingham':
+            if (n_rps > 0) return pr.tau_y / gamma_dot + pr.eta_p;
+            break;
+        case 'casson':
+            if (n_rps > 0) {
+                const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gamma_dot);
+                return s * s / gamma_dot;
+            }
+            break;
+        case 'hb':
+            if (n_rps > 0)
+                return pr.tau_y / gamma_dot + pr.K * Math.pow(gamma_dot, pr.n - 1);
+            break;
+        case 'cross':
+            return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gamma_dot, pr.m));
+        case 'carreau':
+            return pr.eta_inf + (pr.eta_0 - pr.eta_inf) *
+                   Math.pow(1 + Math.pow(pr.lambda * gamma_dot, 2), (pr.n - 1) / 2);
+        default:
+            break;
+    }
+    return config.mu;
+}
+
+function calcKsMetznerOtto() {
+    const m = rheologyData.activeModel;
+    const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+    const p = modelList.find(r => r.modelId === m);
+    if (!p || m === 'newtonian') return null;
+    const pr = p.params;
+    const { rho, d } = config;
+    const ksValues = [];
+
+    function invertNpToRe(Np_exp) {
+        if (Np_exp <= 0) return null;
+        let lo = 0.01, hi = 1e7;
+        for (let i = 0; i < 80; i++) {
+            const mid = (lo + hi) / 2;
+            if (calculateNpCurve(mid) > Np_exp) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+    }
+
+    expBlocks.forEach(block => {
+        block.rows.forEach(row => {
+            const n = row.N / 60;
+            const T_net = row.T - row.Tb;
+            if (n <= 0 || T_net <= 0) return;
+            const P = 2 * Math.PI * n * T_net;
+            const Np_exp = P / (rho * Math.pow(n, 3) * Math.pow(d, 5));
+            const Re_eff = invertNpToRe(Np_exp);
+            if (!Re_eff) return;
+            const mu_eff = rho * n * d * d / Re_eff;
+            if (mu_eff <= 0) return;
+
+            function residual(gd) {
+                switch (m) {
+                    case 'powerlaw': return pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
+                    case 'bingham':  return pr.tau_y / gd + pr.eta_p - mu_eff;
+                    case 'casson': { const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gd); return s * s / gd - mu_eff; }
+                    case 'hb':       return pr.tau_y / gd + pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
+                    case 'cross':    return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gd, pr.m)) - mu_eff;
+                    case 'carreau':  return pr.eta_inf + (pr.eta_0 - pr.eta_inf) * Math.pow(1 + Math.pow(pr.lambda * gd, 2), (pr.n - 1) / 2) - mu_eff;
+                    default: return NaN;
+                }
+            }
+            const r_lo = residual(0.01), r_hi = residual(1e6);
+            if (isNaN(r_lo) || isNaN(r_hi) || r_lo * r_hi > 0) return;
+            let blo = 0.01, bhi = 1e6;
+            for (let i = 0; i < 80; i++) {
+                const mid = (blo + bhi) / 2;
+                if (residual(mid) * r_lo > 0) blo = mid; else bhi = mid;
+            }
+            const gamma_dot = (blo + bhi) / 2;
+            if (gamma_dot > 0 && n > 0) ksValues.push(gamma_dot / n);
+        });
+    });
+
+    if (ksValues.length === 0) return null;
+    const ksMean = ksValues.reduce((a, b) => a + b, 0) / ksValues.length;
+    const ksStd  = Math.sqrt(ksValues.reduce((a, b) => a + (b - ksMean) ** 2, 0) / ksValues.length);
+    return { ksValues, ksMean, ksStd };
+}
+
+// ============================================================
+// Rheology CSV import
+// ============================================================
+
+function loadRheologyCSV(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.replace(/\r/g, '').split('\n');
+        const dataLines = lines.filter(l => l.trim() && !l.startsWith('#'));
+        if (dataLines.length < 2) { showToast('CSVの形式が不正です', 'error'); return; }
+
+        const headers = dataLines[0].split(',').map(h => h.trim());
+        const idx = {};
+        headers.forEach((h, i) => { idx[h] = i; });
+
+        const MODEL_ID_MAP = {
+            'Newtonian': 'newtonian', 'Bingham': 'bingham', 'Casson': 'casson',
+            'Power-law': 'powerlaw', 'Herschel-Bulkley': 'hb', 'Cross': 'cross', 'Carreau': 'carreau'
+        };
+
+        const samples = {};
+        dataLines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            const cols = [];
+            let cur = '', inQ = false;
+            for (const ch of line) {
+                if (ch === '"') { inQ = !inQ; }
+                else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+                else cur += ch;
+            }
+            cols.push(cur);
+            const clean = cols.map(c => c.trim());
+            const sampleName = clean[idx['Sample']] || '';
+            const modelName  = clean[idx['Model']]  || '';
+            const modelId = MODEL_ID_MAP[modelName] || modelName.toLowerCase();
+            const g = key => { const x = parseFloat(clean[idx[key]]); return isNaN(x) ? undefined : x; };
+
+            const params = {};
+            if (g('eta_0_Pas')   !== undefined) params.eta_0   = g('eta_0_Pas');
+            if (g('tau_y_Pa')    !== undefined) params.tau_y   = g('tau_y_Pa');
+            if (g('eta_p_Pas')   !== undefined) params.eta_p   = g('eta_p_Pas');
+            if (g('K_Pasn')      !== undefined) params.K       = g('K_Pasn');
+            if (g('n_flow')      !== undefined) params.n       = g('n_flow');
+            if (g('lambda_s')    !== undefined) params.lambda  = g('lambda_s');
+            if (g('m_cross')     !== undefined) params.m       = g('m_cross');
+            if (g('eta_inf_Pas') !== undefined) params.eta_inf = g('eta_inf_Pas');
+
+            if (!samples[sampleName]) samples[sampleName] = [];
+            samples[sampleName].push({
+                modelId, name: modelName,
+                rating: clean[idx['Rating']] || '',
+                r2:   parseFloat(clean[idx['R2']])      || 0,
+                rmse: parseFloat(clean[idx['RMSE_Pa']]) || 0,
+                mae:  parseFloat(clean[idx['MAE_Pa']])  || 0,
+                params
+            });
+        });
+
+        if (Object.keys(samples).length === 0) { showToast('有効なデータが見つかりません', 'error'); return; }
+        rheologyData.samples = samples;
+        rheologyData.activeSample = Object.keys(samples)[0];
+        rheologyData.activeModel = 'newtonian';
+        updateRheologyUI();
+        recalculateAll();
+        showToast('レオロジーCSVを読み込みました', 'success');
+    };
+    reader.readAsText(file);
+}
+
+function updateRheologyUI() {
+    const sampleSel = document.getElementById('rheology-sample-select');
+    const modelSel  = document.getElementById('rheology-model-select');
+    const muEffDiv  = document.getElementById('mu-eff-display');
+    const ksGroup   = document.getElementById('ks-group');
+
+    const samples = Object.keys(rheologyData.samples);
+    if (samples.length === 0) {
+        sampleSel.innerHTML = '<option value="">-- CSV未読込 --</option>';
+        sampleSel.disabled = true; sampleSel.style.opacity = '0.5';
+        modelSel.innerHTML = '<option value="newtonian">Newtonian（μ = 一定）</option>';
+        muEffDiv.style.display = 'none';
+        ksGroup.style.opacity = '0.4';
+        return;
+    }
+
+    sampleSel.innerHTML = samples.map(s =>
+        `<option value="${s}"${s === rheologyData.activeSample ? ' selected' : ''}>${s}</option>`).join('');
+    sampleSel.disabled = false; sampleSel.style.opacity = '1';
+
+    const modelRows = rheologyData.samples[rheologyData.activeSample] || [];
+    const ICON = { excellent: '\u25ce', good: '\u25cb', fair: '\u25b3', poor: '\u00d7', invalid: '\u00d7', insufficient: '\u2015' };
+    let opts = `<option value="newtonian"${rheologyData.activeModel === 'newtonian' ? ' selected' : ''}>◎ Newtonian（μ = ${config.mu} Pa·s）</option>`;
+    modelRows.forEach(r => {
+        if (r.modelId === 'newtonian') {
+            opts = `<option value="newtonian"${rheologyData.activeModel === 'newtonian' ? ' selected' : ''}>${ICON[r.rating] || '-'} Newtonian μ=${r.params.eta_0 ? r.params.eta_0.toFixed(4) : config.mu} Pa·s [R²=${r.r2.toFixed(4)}]</option>`;
+            return;
+        }
+        opts += `<option value="${r.modelId}"${r.modelId === rheologyData.activeModel ? ' selected' : ''}>${ICON[r.rating] || '-'} ${r.name} [R²=${r.r2.toFixed(4)}]</option>`;
+    });
+    modelSel.innerHTML = opts;
+
+    const isNewt = rheologyData.activeModel === 'newtonian';
+    const ksCalcGroup = document.getElementById('ks-calc-group');
+    const muEffContainer = document.getElementById('mu-eff-container');
+
+    let allN = [];
+    expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
+    const n_rep = allN.length > 0 ? allN.reduce((a, b) => a + b, 0) / allN.length : 100 / 60;
+    const mu_eff = calcEffectiveViscosity(n_rep);
+
+    if (isNewt) {
+        ksGroup.style.display = 'none';
+        if (ksCalcGroup) ksCalcGroup.style.display = 'none';
+        if (muEffContainer) muEffContainer.style.display = 'none';
+    } else {
+        ksGroup.style.display = 'block';
+        if (ksCalcGroup) ksCalcGroup.style.display = 'flex';
+        if (muEffContainer) {
+            muEffContainer.style.display = 'flex';
+            muEffContainer.style.flexDirection = 'column';
+            muEffDiv.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
+        }
+    }
+}
+
+function initRheologyListeners() {
+    document.getElementById('rheology-csv-input').addEventListener('change', e => {
+        if (e.target.files[0]) loadRheologyCSV(e.target.files[0]);
+        e.target.value = '';
+    });
+    document.getElementById('rheology-sample-select').addEventListener('change', e => {
+        rheologyData.activeSample = e.target.value;
+        rheologyData.activeModel = 'newtonian';
+        updateRheologyUI();
+        recalculateAll();
+    });
+    document.getElementById('rheology-model-select').addEventListener('change', e => {
+        rheologyData.activeModel = e.target.value;
+        updateRheologyUI();
+        recalculateAll();
+    });
+    document.getElementById('ks-input').addEventListener('input', e => {
+        rheologyData.ks = parseFloat(e.target.value) || 11.5;
+        updateRheologyUI();
+        recalculateAll();
+    });
+    document.getElementById('calc-ks-btn').addEventListener('click', () => {
+        if (rheologyData.activeModel === 'newtonian') {
+            showToast('Newtonian 以外のモデルを選択してください', 'warning');
+            return;
+        }
+        const result = calcKsMetznerOtto();
+        if (!result) {
+            showToast('実験データまたはモデルパラメータが不足しています', 'error');
+            return;
+        }
+        document.getElementById('ks-input').value = result.ksMean.toFixed(3);
+        rheologyData.ks = result.ksMean;
+        updateRheologyUI();
+        recalculateAll();
+        showToast(`kₛ 推算完了: 平均 ${result.ksMean.toFixed(3)} ± ${result.ksStd.toFixed(3)} (n=${result.ksValues.length}点)`, 'success');
+    });
+}
+
 function calculateReVal(n) {
-    return (config.rho * n * Math.pow(config.d, 2)) / config.mu;
+    return (config.rho * n * Math.pow(config.d, 2)) / calcEffectiveViscosity(n);
 }
 
 function calculateFrVal(n) {
@@ -1008,16 +1285,50 @@ function updateChart() {
         chart.options.scales.y.max = ymax;
     }
 
-    // 1. Generate Prediction Curves
+    // 1. Generate Experimental Dots & Find Re Range
+    let minRe = 0.1;
+    let maxRe = 100000;
+    const expDots = [];
+    const expDotsBase = [];
+    const isNewt = (rheologyData.activeModel === 'newtonian' || !rheologyData.activeModel);
+
+    expBlocks.forEach(b => {
+        if (b.aveCalculated && b.aveCalculated.Re > 0 && b.aveCalculated.Np > 0) {
+            expDots.push({
+                x: b.aveCalculated.Re,
+                y: b.aveCalculated.Np,
+                N: b.aveCalculated.N
+            });
+            if (b.aveCalculated.Re < minRe) minRe = b.aveCalculated.Re;
+            if (b.aveCalculated.Re > maxRe) maxRe = b.aveCalculated.Re;
+
+            if (!isNewt) {
+                const n_rps = b.aveCalculated.N / 60;
+                const Re_base = (config.rho * n_rps * Math.pow(config.d, 2)) / config.mu;
+                if (Re_base > 0) {
+                    expDotsBase.push({
+                        x: Re_base,
+                        y: b.aveCalculated.Np,
+                        N: b.aveCalculated.N
+                    });
+                    if (Re_base < minRe) minRe = Re_base;
+                    if (Re_base > maxRe) maxRe = Re_base;
+                }
+            }
+        }
+    });
+
+    // 動的にグラフのX軸範囲（Log）を決定（最低限 -1 〜 5 は確保）
+    const startLog = Math.min(-1, Math.floor(Math.log10(minRe)));
+    const endLog = Math.max(5, Math.ceil(Math.log10(maxRe)));
+    chart.options.scales.x.min = Math.pow(10, startLog);
+    chart.options.scales.x.max = Math.pow(10, endLog);
+
+    // 2. Generate Prediction Curves
     const unbaffledData = [];
     const baffledData = [];
     const maxData = [];
-    
-    // Logarithmic sampling from Re = 0.1 to 100,000
-    const startLog = -1;
-    const endLog = 5;
     const stepsPerDecade = 25;
-    
     const vars = getKameiHiraokaIntermediateVars();
     const NpMax = vars.NpMax;
 
@@ -1030,20 +1341,8 @@ function updateChart() {
         if (NpMax > 0) maxData.push({ x: Re, y: NpMax });
     }
 
-    // 2. Generate Experimental Dots
-    const expDots = [];
-    expBlocks.forEach(b => {
-        if (b.aveCalculated && b.aveCalculated.Re > 0 && b.aveCalculated.Np > 0) {
-            expDots.push({
-                x: b.aveCalculated.Re,
-                y: b.aveCalculated.Np,
-                N: b.aveCalculated.N
-            });
-        }
-    });
-
     // Replace Datasets
-    chart.data.datasets = [
+    const datasets = [
         {
             label: '完全邪魔板推算値 (NpMax)',
             data: maxData,
@@ -1072,19 +1371,36 @@ function updateChart() {
             borderWidth: 3,
             pointRadius: 0,
             fill: false
-        },
-        {
-            label: '実験データ (実測値)',
-            data: expDots,
+        }
+    ];
+
+    if (!isNewt) {
+        datasets.push({
+            label: '実測値 (ベース液粘度)',
+            data: expDotsBase,
             showLine: false,
-            backgroundColor: '#10b981',
-            borderColor: '#f3f4f6',
-            borderWidth: 1.5,
+            backgroundColor: 'transparent',
+            borderColor: '#10b981',
+            borderWidth: 2,
             pointRadius: 6,
             pointHoverRadius: 8,
             pointStyle: 'circle'
-        }
-    ];
+        });
+    }
+
+    datasets.push({
+        label: isNewt ? '実験データ (実測値)' : '実測値 (代表粘度・非ニュートン)',
+        data: expDots,
+        showLine: false,
+        backgroundColor: '#10b981',
+        borderColor: '#f3f4f6',
+        borderWidth: 1.5,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointStyle: 'circle'
+    });
+
+    chart.data.datasets = datasets;
 
     chart.update();
 }
@@ -2043,6 +2359,64 @@ function generatePDFReport() {
         <td style="padding: 5px; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #0284c7;">${V_liq.toExponential(4)} m³ &nbsp;(${V_liq_mL.toFixed(1)} mL)</td>
     `;
     pdfVarsBody.appendChild(trVpdf);
+
+    // 3.5 Non-Newtonian Information
+    const pdfNonNewtSection = document.getElementById('pdf-non-newtonian-section');
+    const pdfNonNewtContent = document.getElementById('pdf-non-newtonian-content');
+    
+    if (rheologyData.activeModel && rheologyData.activeModel !== 'newtonian') {
+        const models = rheologyData.samples[rheologyData.activeSample] || [];
+        const modelInfo = models.find(m => m.modelId === rheologyData.activeModel);
+        
+        if (modelInfo) {
+            let formulaStr = '';
+            let paramStr = '';
+            const p = modelInfo.params;
+            
+            if (rheologyData.activeModel === 'bingham') {
+                formulaStr = `τ = τ<sub>y</sub> + η<sub>p</sub> D`;
+                paramStr = `降伏値 τ<sub>y</sub> = ${p.tau_y ? p.tau_y.toFixed(4) : 0} Pa, 塑性粘度 η<sub>p</sub> = ${p.eta_p ? p.eta_p.toFixed(4) : 0} Pa·s`;
+            } else if (rheologyData.activeModel === 'casson') {
+                formulaStr = `√τ = √τ<sub>y</sub> + √η<sub>c</sub> √D`;
+                paramStr = `Casson降伏値 τ<sub>y</sub> = ${p.tau_y ? p.tau_y.toFixed(4) : 0} Pa, Casson粘度 η<sub>c</sub> = ${p.eta_p ? p.eta_p.toFixed(4) : 0} Pa·s`;
+            } else if (rheologyData.activeModel === 'powerlaw') {
+                formulaStr = `τ = K D<sup>n</sup>`;
+                paramStr = `粘性係数 K = ${p.K ? p.K.toFixed(4) : 0} Pa·s<sup>n</sup>, 流動指数 n = ${p.n ? p.n.toFixed(4) : 0}`;
+            } else if (rheologyData.activeModel === 'hb') {
+                formulaStr = `τ = τ<sub>y</sub> + K D<sup>n</sup>`;
+                paramStr = `降伏値 τ<sub>y</sub> = ${p.tau_y ? p.tau_y.toFixed(4) : 0} Pa, 粘性係数 K = ${p.K ? p.K.toFixed(4) : 0} Pa·s<sup>n</sup>, 流動指数 n = ${p.n ? p.n.toFixed(4) : 0}`;
+            }
+            
+            let allN_pdf = [];
+            expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN_pdf.push(r.N / 60); }));
+            const n_rep_pdf = allN_pdf.length > 0 ? allN_pdf.reduce((a, b) => a + b, 0) / allN_pdf.length : 100 / 60;
+            const mu_eff_rep = calcEffectiveViscosity(n_rep_pdf);
+            
+            pdfNonNewtContent.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <div><strong style="color:#0f172a;">適合モデル:</strong> ${modelInfo.name}</div>
+                    <div><strong style="color:#0f172a;">適合度 R²:</strong> ${modelInfo.r2 ? modelInfo.r2.toFixed(4) : '-'}</div>
+                </div>
+                <div style="margin-bottom:8px; font-family: monospace; font-size:11px; background:#e2e8f0; padding:6px; border-radius:4px;">
+                    <strong>適用式:</strong> ${formulaStr}
+                </div>
+                <div style="margin-bottom:12px; color:#475569;">[パラメータ] ${paramStr}</div>
+                <div style="border-top: 1px dashed #cbd5e1; padding-top: 8px;">
+                    <div style="margin-bottom:4px;"><strong style="color:#0f172a;">Metzner-Otto法 定数と代表値</strong></div>
+                    <ul style="margin:0; padding-left:16px; color:#334155;">
+                        <li>装置定数 k<sub>s</sub> = ${rheologyData.ks.toFixed(2)}</li>
+                        <li>有効せん断速度式: &gamma;<sub>eff</sub> = k<sub>s</sub> × N</li>
+                        <li>代表有効粘度 (N ≈ ${(n_rep_pdf*60).toFixed(0)} rpm時): &mu;<sub>eff</sub> ≈ ${mu_eff_rep.toFixed(4)} Pa·s</li>
+                    </ul>
+                </div>
+            `;
+            pdfNonNewtSection.style.display = 'block';
+        } else {
+            pdfNonNewtSection.style.display = 'none';
+        }
+    } else {
+        pdfNonNewtSection.style.display = 'none';
+    }
 
     // 4. Fill Table Data (Averages of blocks)
     const tbody = document.getElementById('pdf-results-tbody');

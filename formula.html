@@ -368,6 +368,54 @@
                 </p>
             </div>
 
+            <!-- Card 6: Metzner-Otto Method -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="repeat"></i>
+                    <span>6. 非ニュートン流体の取り扱い（Metzner–Otto 法）</span>
+                </div>
+                <p>
+                    非ニュートン流体（擬塑性流体、ビンガム流体など）では、せん断速度によって見かけの粘度 $\mu_{eff}$ が変化します。攪拌槽内のせん断速度は場所によって大きく異なりますが、Metzner と Otto は、インペラ近傍の「平均的なせん断速度」 $\dot{\gamma}_{avg}$ がインペラの回転速度 $n$ (または $N$ rpm) に比例すると仮定しました。
+                </p>
+
+                <div class="formula-block">
+                    $$\dot{\gamma}_{avg} = k_s \cdot n$$
+                </div>
+                
+                <p>
+                    ここで $k_s$ はインペラの幾何学的形状に依存する無次元定数（Metzner–Otto 定数）です。この平均せん断速度における見かけ粘度 $\mu_{eff}$ を用いることで、非ニュートン流体でもニュートン流体と同じ動力曲線（Np-Re曲線）を適用できるとしました。
+                </p>
+                <div class="formula-block">
+                    $$\text{有効レイノルズ数 } Re_{eff} = \frac{\rho \, n \, d^2}{\mu_{eff}}$$
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">各レオロジーモデルにおける $\mu_{eff}$ の計算</h3>
+                <p>本シミュレーターでは、E型粘度計アプリの解析結果（モデルとパラメータ）を読み込み、以下の式で $\mu_{eff}$ を算出します。</p>
+
+                <div class="formula-block">
+                    $$\begin{aligned}
+                    &\text{・Power-law (べき乗則) モデル:} \\
+                    &\quad \mu_{eff} = K \cdot (\dot{\gamma}_{avg})^{n-1} \\
+                    &\text{・Bingham モデル:} \\
+                    &\quad \mu_{eff} = \frac{\tau_y}{\dot{\gamma}_{avg}} + \eta_p \\
+                    &\text{・Herschel-Bulkley モデル:} \\
+                    &\quad \mu_{eff} = \frac{\tau_y}{\dot{\gamma}_{avg}} + K \cdot (\dot{\gamma}_{avg})^{n-1}
+                    \end{aligned}$$
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">$k_s$ 定数の推算アルゴリズム</h3>
+                <p>
+                    本システムでは、実験データ（回転数 $n$、正味トルク $T_{net}$）と適用するレオロジーモデルパラメータから、逆に $k_s$ を自動推算する機能を有しています。推算手順は以下の通りです：
+                </p>
+                <ol style="color: var(--text-secondary); line-height: 1.8; margin-left: 20px; font-size: 0.95rem;">
+                    <li>実験の $n$ と $T_{net}$ から実験値の動力数 $Np_{exp}$ を計算する。</li>
+                    <li>ニュートン流体用の動力曲線推算式（亀井らの式）の逆関数を数値計算（二分法）で解き、$Np_{exp}$ に対応する有効レイノルズ数 $Re_{eff}$ を求める。</li>
+                    <li>$Re_{eff} = \rho n d^2 / \mu_{eff}$ の関係から、そのデータ点での有効粘度 $\mu_{eff}$ を逆算する。</li>
+                    <li>選択されたレオロジーモデルの粘度関数 $\mu = f(\dot{\gamma})$ を二分法で逆算し、$\mu_{eff}$ を与えるせん断速度 $\dot{\gamma}$ を求める。</li>
+                    <li>各データ点について $k_s = \dot{\gamma} / n$ を計算し、全実験データ点の平均値を採用する。</li>
+                </ol>
+            </div>
+
             <div style="text-align: center; margin-bottom: 40px;">
                 <a href="index.html" class="btn btn-secondary" style="width: auto; display: inline-flex;">
                     <i data-feather="arrow-left"></i> シミュレーターへ戻る
