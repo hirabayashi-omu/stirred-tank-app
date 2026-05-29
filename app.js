@@ -1538,6 +1538,12 @@ function exportCSV() {
     });
     csvContent += '\n';
 
+    // 1.5 Export Rheology Data
+    csvContent += '--- RHEOLOGY DATA ---\n';
+    csvContent += 'Key,Value\n';
+    csvContent += `rheologyDataJson,"${JSON.stringify(rheologyData).replace(/"/g, '""')}"\n`;
+    csvContent += '\n';
+
     // 2. Export Experimental Blocks
     csvContent += '--- EXPERIMENTAL DATA ---\n';
     csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m),n(1/s),P(W),Pv(W/m3),Re(-),Np(-),Fr(-)\n';
@@ -1612,53 +1618,67 @@ function importCSV(e) {
         
         let inConfig = false;
         let inData = false;
+        let inRheology = false;
         
         let importedConfig = {};
         let importedBlocksMap = {};
+        let importedRheology = null;
 
         lines.forEach(line => {
             const trimmed = line.trim();
             if (!trimmed) return;
 
             if (trimmed.startsWith('--- CONFIGURATION ---')) {
-                inConfig = true;
-                inData = false;
-                return;
+                inConfig = true; inData = false; inRheology = false; return;
+            }
+            if (trimmed.startsWith('--- RHEOLOGY DATA ---')) {
+                inConfig = false; inData = false; inRheology = true; return;
             }
             if (trimmed.startsWith('--- EXPERIMENTAL DATA ---')) {
-                inConfig = false;
-                inData = true;
-                return;
+                inConfig = false; inData = true; inRheology = false; return;
             }
             if (trimmed.startsWith('---')) {
-                inConfig = false;
-                inData = false;
-                return;
+                inConfig = false; inData = false; inRheology = false; return;
             }
 
-            const parts = trimmed.split(',');
-            if (inConfig && parts.length >= 2) {
-                const key = parts[0].trim();
-                let val = parts[1].trim();
-                if (val === 'true') val = true;
-                else if (val === 'false') val = false;
-                else if (!isNaN(val)) val = parseFloat(val);
-                importedConfig[key] = val;
-            }
+            if (inConfig || inRheology) {
+                const firstComma = trimmed.indexOf(',');
+                if (firstComma > 0) {
+                    const key = trimmed.substring(0, firstComma).trim();
+                    let val = trimmed.substring(firstComma + 1).trim();
+                    
+                    if (val.startsWith('"') && val.endsWith('"')) {
+                        val = val.substring(1, val.length - 1).replace(/""/g, '"');
+                    } else {
+                        if (val === 'true') val = true;
+                        else if (val === 'false') val = false;
+                        else if (!isNaN(val) && val !== '') val = parseFloat(val);
+                    }
 
-            if (inData && parts.length >= 5) {
-                const blockName = parts[0].replace(/^"|"$/g, '').trim();
-                if (blockName === 'BlockName') return; // Header skip
-
-                const time = parseFloat(parts[1]) || 0;
-                const N = parseFloat(parts[2]) || 0;
-                const T = parseFloat(parts[3]) || 0;
-                const Tb = parseFloat(parts[4]) || 0;
-
-                if (!importedBlocksMap[blockName]) {
-                    importedBlocksMap[blockName] = [];
+                    if (inConfig) {
+                        importedConfig[key] = val;
+                    } else if (inRheology && key === 'rheologyDataJson') {
+                        try {
+                            importedRheology = JSON.parse(val);
+                        } catch(e) { console.warn("Failed to parse rheology JSON", e); }
+                    }
                 }
-                importedBlocksMap[blockName].push({ time, N, T, Tb });
+            } else if (inData) {
+                const parts = trimmed.split(',');
+                if (parts.length >= 5) {
+                    const blockName = parts[0].replace(/^"|"$/g, '').trim();
+                    if (blockName === 'BlockName') return; // Header skip
+
+                    const time = parseFloat(parts[1]) || 0;
+                    const N = parseFloat(parts[2]) || 0;
+                    const T = parseFloat(parts[3]) || 0;
+                    const Tb = parseFloat(parts[4]) || 0;
+
+                    if (!importedBlocksMap[blockName]) {
+                        importedBlocksMap[blockName] = [];
+                    }
+                    importedBlocksMap[blockName].push({ time, N, T, Tb });
+                }
             }
         });
 
@@ -1666,6 +1686,12 @@ function importCSV(e) {
         if (Object.keys(importedConfig).length > 0) {
             config = { ...config, ...importedConfig };
             initInputs();
+        }
+
+        // Apply rheology
+        if (importedRheology) {
+            rheologyData = importedRheology;
+            updateRheologyUI();
         }
 
         // Apply blocks
