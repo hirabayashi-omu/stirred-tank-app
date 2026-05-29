@@ -151,6 +151,25 @@ function initEventListeners() {
                 val = parsed;
             }
             config[getPropName(id)] = val;
+            
+            // インペラ種類変更時にks値を自動セット
+            if (id === 'impeller-type') {
+                const presetMap = {
+                    'pitched-paddle': 8.5,
+                    'flat-paddle': 11.0,
+                    'flat-turbine': 11.5,
+                    'propeller': 10.0,
+                    'faudler': 11.5
+                };
+                if (presetMap[val]) {
+                    rheologyData.ks = presetMap[val];
+                    const ksInput = document.getElementById('ks-input');
+                    if (ksInput) ksInput.value = presetMap[val].toFixed(1);
+                    if (typeof updateRheologyUI === 'function') updateRheologyUI();
+                    showToast(`インペラ種類に合わせて kₛ を ${presetMap[val].toFixed(1)} に設定しました`, 'info');
+                }
+            }
+            
             recalculateAll();
         });
     });
@@ -948,13 +967,14 @@ function updateRheologyUI() {
     const modelSel  = document.getElementById('rheology-model-select');
     const muEffDiv  = document.getElementById('mu-eff-display');
     const ksGroup   = document.getElementById('ks-group');
+    const muEffContainer = document.getElementById('mu-eff-container');
 
     const samples = Object.keys(rheologyData.samples);
     if (samples.length === 0) {
         sampleSel.innerHTML = '<option value="">-- CSV未読込 --</option>';
         sampleSel.disabled = true; sampleSel.style.opacity = '0.5';
         modelSel.innerHTML = '<option value="newtonian">Newtonian（μ = 一定）</option>';
-        muEffDiv.style.display = 'none';
+        if (muEffContainer) muEffContainer.style.display = 'none';
         ksGroup.style.opacity = '0.4';
         return;
     }
@@ -964,7 +984,7 @@ function updateRheologyUI() {
     sampleSel.disabled = false; sampleSel.style.opacity = '1';
 
     const modelRows = rheologyData.samples[rheologyData.activeSample] || [];
-    const ICON = { excellent: '\u25ce', good: '\u25cb', fair: '\u25b3', poor: '\u00d7', invalid: '\u00d7', insufficient: '\u2015' };
+    const ICON = { excellent: '◎', good: '○', fair: '△', poor: '×', invalid: '×', insufficient: '―' };
     let opts = `<option value="newtonian"${rheologyData.activeModel === 'newtonian' ? ' selected' : ''}>◎ Newtonian（μ = ${config.mu} Pa·s）</option>`;
     modelRows.forEach(r => {
         if (r.modelId === 'newtonian') {
@@ -976,8 +996,6 @@ function updateRheologyUI() {
     modelSel.innerHTML = opts;
 
     const isNewt = rheologyData.activeModel === 'newtonian';
-    const ksCalcGroup = document.getElementById('ks-calc-group');
-    const muEffContainer = document.getElementById('mu-eff-container');
 
     let allN = [];
     expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
@@ -986,15 +1004,16 @@ function updateRheologyUI() {
 
     if (isNewt) {
         ksGroup.style.display = 'none';
-        if (ksCalcGroup) ksCalcGroup.style.display = 'none';
         if (muEffContainer) muEffContainer.style.display = 'none';
     } else {
         ksGroup.style.display = 'block';
-        if (ksCalcGroup) ksCalcGroup.style.display = 'flex';
         if (muEffContainer) {
             muEffContainer.style.display = 'flex';
             muEffContainer.style.flexDirection = 'column';
-            muEffDiv.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
+            if (muEffDiv) {
+                muEffDiv.style.display = 'block';
+                muEffDiv.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
+            }
         }
     }
 }
@@ -1019,22 +1038,6 @@ function initRheologyListeners() {
         rheologyData.ks = parseFloat(e.target.value) || 11.5;
         updateRheologyUI();
         recalculateAll();
-    });
-    document.getElementById('calc-ks-btn').addEventListener('click', () => {
-        if (rheologyData.activeModel === 'newtonian') {
-            showToast('Newtonian 以外のモデルを選択してください', 'warning');
-            return;
-        }
-        const result = calcKsMetznerOtto();
-        if (!result) {
-            showToast('実験データまたはモデルパラメータが不足しています', 'error');
-            return;
-        }
-        document.getElementById('ks-input').value = result.ksMean.toFixed(3);
-        rheologyData.ks = result.ksMean;
-        updateRheologyUI();
-        recalculateAll();
-        showToast(`kₛ 推算完了: 平均 ${result.ksMean.toFixed(3)} ± ${result.ksStd.toFixed(3)} (n=${result.ksValues.length}点)`, 'success');
     });
 }
 
