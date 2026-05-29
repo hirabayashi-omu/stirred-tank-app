@@ -363,6 +363,9 @@
                     <!-- Baffles (if active) -->
                     <g id="baffles-group"></g>
 
+                    <!-- Cavern Visualization Group -->
+                    <g id="caverns-group"></g>
+
                     <!-- Impeller Shaft (Center) -->
                     <line id="shaft-line" x1="250" y1="80" x2="250" y2="350" class="svg-shaft" />
 
@@ -410,6 +413,35 @@
         <div class="card info-card">
             <div class="info-header">
                 <h2><i data-feather="sliders"></i> 槽構造・寸法パラメータ</h2>
+            </div>
+            
+            <div id="cavern-control-panel" style="margin-bottom: 20px; padding: 16px; background: rgba(236, 72, 153, 0.05); border: 1px solid rgba(236, 72, 153, 0.2); border-radius: 8px; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <label style="font-weight: 600; color: var(--pink-accent); display: flex; align-items: center; gap: 8px;">
+                        <i data-feather="target" style="width: 18px; height: 18px;"></i> キャバーン（流動領域）の可視化
+                    </label>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <select id="cavern-model-select" onchange="document.getElementById('cavern-slider-container').style.display = this.value === 'none' ? 'none' : 'flex'; drawVessel();" style="padding: 8px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--card-border);">
+                        <option value="none">表示しない (None)</option>
+                        <option value="spherical">Elson 球形モデル (Spherical)</option>
+                        <option value="cylindrical">Elson 円筒形モデル (Cylindrical)</option>
+                    </select>
+                    
+                    <div id="cavern-slider-container" style="display: none; flex-direction: column; gap: 8px; margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; align-items: center;">
+                            <label for="cavern-n-slider" style="color: var(--text-secondary);">シミュレーション回転数 N :</label>
+                            <span style="color: var(--pink-accent); font-weight: bold;"><span id="cavern-n-val">650</span> rpm</span>
+                        </div>
+                        <input type="range" id="cavern-n-slider" min="10" max="1500" step="10" value="650" oninput="document.getElementById('cavern-n-val').textContent=this.value; drawVessel();" style="width: 100%; accent-color: var(--pink-accent);">
+                    </div>
+
+                    <div id="cavern-info-text" style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 6px; border-left: 3px solid var(--pink-accent);">
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">※ キャバーン（死水域）とは</div>
+                        降伏応力を持つ流体を撹拌する際、インペラ周辺の剪断応力が降伏値を上回る領域（ピンク色の枠内）だけが流動し、その外側は固まったままになります。<br>
+                        <span style="color: var(--text-primary); font-weight: 500;">この領域が槽壁まで到達していない場合、未混合領域（デッドスペース）が生じている</span>ことを意味します。
+                    </div>
+                </div>
             </div>
 
             <div class="dim-grid">
@@ -525,6 +557,9 @@
             V_act: 0.7295
         };
 
+        let expBlocks = [];
+        let rheologyData = null;
+
         // Load State from localStorage
         function loadState() {
             const savedState = localStorage.getItem('agitator_current_state');
@@ -533,6 +568,9 @@
                     const parsed = JSON.parse(savedState);
                     if (parsed.config) {
                         config = { ...config, ...parsed.config };
+                        if (parsed.expBlocks) expBlocks = parsed.expBlocks;
+                        if (parsed.rheologyData) rheologyData = parsed.rheologyData;
+                        
                         document.getElementById('sync-status').className = 'sync-badge';
                         document.getElementById('sync-status').innerHTML = '<i data-feather="refresh-cw" style="width:14px; height:14px; animation: spin 2s linear infinite;"></i><span>メイン画面とリアルタイム同期中</span>';
                         feather.replace();
@@ -540,16 +578,23 @@
                 } catch (e) {
                     console.error("Failed to parse state", e);
                 }
-            } else {
-                // If no localStorage, try to read from window.opener
-                if (window.opener && window.opener.config) {
-                    config = { ...config, ...window.opener.config };
-                } else {
-                    document.getElementById('sync-status').className = 'sync-badge offline';
-                    document.getElementById('sync-status').innerHTML = '<i data-feather="alert-circle" style="width:14px; height:14px;"></i><span>オフライン表示モード</span>';
-                    feather.replace();
-                }
             }
+            
+            // Check if Cavern UI should be shown (Yield stress fluid active)
+            let showCavernUI = false;
+            if (rheologyData && ['bingham', 'casson', 'hb'].includes(rheologyData.activeModel)) {
+                showCavernUI = true;
+            }
+            
+            const cavernPanel = document.getElementById('cavern-control-panel');
+            if (showCavernUI) {
+                cavernPanel.style.display = 'block';
+            } else {
+                cavernPanel.style.display = 'none';
+                document.getElementById('cavern-model-select').value = 'none';
+                document.getElementById('cavern-slider-container').style.display = 'none';
+            }
+
             updateUI();
             drawVessel();
         }
@@ -893,6 +938,116 @@
 
                 impellersGroup.appendChild(stageG);
             });
+
+            // 5.5 Draw Cavern (if enabled)
+            const cavernGroup = document.getElementById('caverns-group');
+            cavernGroup.innerHTML = '';
+            
+            const cavernSelect = document.getElementById('cavern-model-select');
+            const cavernPanel = document.getElementById('cavern-control-panel');
+            
+            if (cavernSelect && cavernSelect.value !== 'none' && cavernPanel && cavernPanel.style.display !== 'none') {
+                const model = cavernSelect.value;
+                let tau_y = 0;
+                if (rheologyData && ['bingham', 'casson', 'hb'].includes(rheologyData.activeModel)) {
+                    const sample = rheologyData.samples[rheologyData.activeSample];
+                    if (sample) {
+                        const activeRow = sample.find(r => r.modelId === rheologyData.activeModel);
+                        if (activeRow && activeRow.params && activeRow.params.tau_y !== undefined) {
+                            tau_y = activeRow.params.tau_y;
+                        }
+                    }
+                }
+                
+                if (tau_y > 0) {
+                    let N_rpm = 100;
+                    const slider = document.getElementById('cavern-n-slider');
+                    if (slider) {
+                        N_rpm = parseFloat(slider.value) || 100;
+                    }
+                    
+                    let rho = 1000;
+                    // Default empirical Np
+                    let Np = { 'pitched-paddle': 1.6, 'flat-paddle': 2.5, 'flat-turbine': 5.0, 'propeller': 0.5, 'anchor': 0.4, 'faudler': 1.0 }[config.impellerType] || 2.0;
+                    
+                    if (expBlocks && expBlocks.length > 0 && expBlocks[0].rows && expBlocks[0].rows.length > 0) {
+                        const r = expBlocks[0].rows[0];
+                        rho = r.rho || 1000;
+                        if (r.Tnet > 0 && r.N > 0) {
+                            const ref_n = r.N / 60;
+                            Np = (r.Tnet * 2 * Math.PI) / (rho * ref_n * ref_n * Math.pow(config.d, 5));
+                        }
+                    }
+                    if (!isFinite(Np) || Np <= 0) {
+                        Np = { 'pitched-paddle': 1.6, 'flat-paddle': 2.5, 'flat-turbine': 5.0, 'propeller': 0.5, 'anchor': 0.4, 'faudler': 1.0 }[config.impellerType] || 2.0;
+                    }
+                    
+                    const n_rps = N_rpm / 60;
+                    
+                    let ratio_cubed = 0;
+                    if (model === 'spherical') {
+                        ratio_cubed = (4 * Np) / Math.pow(Math.PI, 3) * (rho * n_rps * n_rps * config.d * config.d / tau_y);
+                    } else if (model === 'cylindrical') {
+                        ratio_cubed = (1.36 * Np) / Math.pow(Math.PI, 2) * (rho * n_rps * n_rps * config.d * config.d / tau_y);
+                    }
+                    
+                    if (!isFinite(ratio_cubed) || ratio_cubed <= 0) return;
+                    
+                    const ratio = Math.pow(ratio_cubed, 1/3);
+                    const Dc = config.d * ratio;
+                    if (!isFinite(Dc)) return;
+                    
+                    // 異常に大きい場合は描画が破綻しないよう視覚的に制限する (最大で槽径の1.5倍まで)
+                    const visualDc = Math.min(Dc, config.DT * 1.5);
+                    const Dc_px = visualDc * scale;
+                    
+                    stages_y.forEach((y_center, stageIdx) => {
+                        const shape = document.createElementNS('http://www.w3.org/2000/svg', model === 'spherical' ? 'circle' : 'rect');
+                        if (model === 'spherical') {
+                            shape.setAttribute('cx', cx);
+                            shape.setAttribute('cy', y_center);
+                            shape.setAttribute('r', Dc_px / 2);
+                        } else {
+                            // Cylindrical: Hc ≈ 0.4 Dc
+                            const Hc_px = Dc_px * 0.4;
+                            shape.setAttribute('x', cx - Dc_px / 2);
+                            shape.setAttribute('y', y_center - Hc_px / 2);
+                            shape.setAttribute('width', Dc_px);
+                            shape.setAttribute('height', Hc_px);
+                            shape.setAttribute('rx', 15);
+                        }
+                        
+                        shape.setAttribute('fill', 'rgba(236, 72, 153, 0.15)');
+                        shape.setAttribute('stroke', 'rgba(236, 72, 153, 0.8)');
+                        shape.setAttribute('stroke-width', '2');
+                        shape.setAttribute('stroke-dasharray', '6,4');
+                        cavernGroup.appendChild(shape);
+                        
+                        // テキストラベルは最下段(stageIdx === 0)のみに表示して見やすくする
+                        if (stageIdx === 0) {
+                            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                            label.setAttribute('x', cx);
+                            let labelY = model === 'spherical' ? y_center - Dc_px/2 - 10 : y_center - (Dc_px * 0.4)/2 - 10;
+                            // ラベルが画面外（上部）に消えないように制限
+                            if (labelY < 20) labelY = 20;
+                            label.setAttribute('y', labelY);
+                            label.setAttribute('text-anchor', 'middle');
+                            label.setAttribute('fill', '#ec4899');
+                            label.setAttribute('font-size', '12px');
+                            label.setAttribute('font-weight', 'bold');
+                            // Add background for text to be readable
+                            label.setAttribute('paint-order', 'stroke');
+                            label.setAttribute('stroke', 'var(--bg-primary)');
+                            label.setAttribute('stroke-width', '4');
+                            label.setAttribute('stroke-linecap', 'round');
+                            label.setAttribute('stroke-linejoin', 'round');
+                            
+                            label.textContent = `Dc = ${Dc.toFixed(3)} m (N=${N_rpm} rpm)`;
+                            cavernGroup.appendChild(label);
+                        }
+                    });
+                }
+            }
 
             // 6. Update Dimension Guides and Arrows
             // DT

@@ -49,7 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parsed.config) {
                 config = { ...config, ...parsed.config };
             }
+            
+            if (parsed.rheologyData) {
+                rheologyData = parsed.rheologyData;
+            }
+
             initInputs();
+            updateRheologyUI();
             
             if (parsed.expBlocks && parsed.expBlocks.length > 0) {
                 expBlocks = [];
@@ -968,9 +974,11 @@ function updateRheologyUI() {
     const muEffDiv  = document.getElementById('mu-eff-display');
     const ksGroup   = document.getElementById('ks-group');
     const muEffContainer = document.getElementById('mu-eff-container');
+    const clearBtn = document.getElementById('btn-clear-rheology');
 
     const samples = Object.keys(rheologyData.samples);
     if (samples.length === 0) {
+        if (clearBtn) clearBtn.style.display = 'none';
         sampleSel.innerHTML = '<option value="">-- CSV未読込 --</option>';
         sampleSel.disabled = true; sampleSel.style.opacity = '0.5';
         modelSel.innerHTML = '<option value="newtonian">Newtonian（μ = 一定）</option>';
@@ -979,6 +987,7 @@ function updateRheologyUI() {
         return;
     }
 
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
     sampleSel.innerHTML = samples.map(s =>
         `<option value="${s}"${s === rheologyData.activeSample ? ' selected' : ''}>${s}</option>`).join('');
     sampleSel.disabled = false; sampleSel.style.opacity = '1';
@@ -1023,6 +1032,15 @@ function initRheologyListeners() {
         if (e.target.files[0]) loadRheologyCSV(e.target.files[0]);
         e.target.value = '';
     });
+    const clearBtn = document.getElementById('btn-clear-rheology');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            rheologyData = { samples: {}, activeSample: null, activeModel: 'newtonian', ks: 11.5 };
+            updateRheologyUI();
+            recalculateAll();
+            showToast('レオロジーデータをクリアしました', 'info');
+        });
+    }
     document.getElementById('rheology-sample-select').addEventListener('change', e => {
         rheologyData.activeSample = e.target.value;
         rheologyData.activeModel = 'newtonian';
@@ -2596,7 +2614,8 @@ function saveCurrentState() {
     try {
         const state = {
             config: config,
-            expBlocks: expBlocks
+            expBlocks: expBlocks,
+            rheologyData: rheologyData
         };
         localStorage.setItem('agitator_current_state', JSON.stringify(state));
     } catch (e) {

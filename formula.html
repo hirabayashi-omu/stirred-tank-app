@@ -366,6 +366,22 @@
                 <p>
                     すなわち、邪魔板ありとして計算された $Np_{baffled}$ が、邪魔板なしの動力数 $Np_0$ よりも小さくなった場合は、強制的に下限値として <span class="highlight-text">$Np = Np_0$</span> を採用します。これにより、層流域において $Np$ 曲線が $Np_0$（Re数の増加に対して右肩下がりの対数直線）と完全に一致し、物理的に正しい挙動になります。
                 </p>
+
+                <div style="margin-top: 32px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--card-border);">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;"><i data-feather="book-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 原著論文（参考文献）</div>
+                    <ul style="color: var(--text-secondary); margin-left: 20px; line-height: 1.6;">
+                        <li style="margin-bottom: 8px;">
+                            亀井 登, 平岡 節郎, 加藤 禎人, ら (1995). 
+                            <br>球形および円筒槽におけるパドル翼の撹拌所要動力の相関 (Power Correlation for Paddle Impellers in Spherical and Cylindrical Agitated Vessels). <i>化学工学論文集 (Kagaku Kogaku Ronbunshu)</i>, 21(1), 41-48. 
+                            <a href="https://doi.org/10.1252/kakoronbunshu.21.41" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                        </li>
+                        <li>
+                            平岡 節郎, 亀井 登, 加藤 禎人, ら (1997). 
+                            <br>邪魔板なし円筒槽における傾斜パドル翼の撹拌所要動力 (Power Consumption of Pitched Paddle Impellers in an Unbaffled Cylindrical Vessel). <i>化学工学論文集</i>, 23(6), 969-976. 
+                            <a href="https://doi.org/10.1252/kakoronbunshu.23.969" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                        </li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Card 6: Metzner-Otto Method -->
@@ -415,6 +431,71 @@
                     <li>各データ点について $k_s = \dot{\gamma} / n$ を計算し、全実験データ点の平均値を採用する。</li>
                 </ol>
             </div>
+
+            <!-- Card 7: Cavern Models -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="target"></i>
+                    <span>7. 降伏応力流体におけるキャバーン（流動領域）径の推算</span>
+                </div>
+                <p>
+                    ビンガム流体やキャッソン流体など、降伏応力 $\tau_y$ を持つ非ニュートン流体を攪拌する場合、インペラ周辺のせん断応力が降伏応力を上回る領域でのみ流動が発生し、それ以外の壁際などの領域では流体が静止したままとなる「キャバーン（Cavern：洞窟状の死水域）」が形成されます。<br>
+                    キャバーン径 $D_c$ がタンク径 $D_T$ に達しているかどうかは、スケールアップにおいてタンク全体が混合されているかを判断する重要な基準となります。
+                </p>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">Elson の球形モデル (Spherical Model)</h3>
+                <p>
+                    キャバーンがインペラを中心に「球状」に形成されると仮定した基本モデル（Elson et al., 1986）です。
+                </p>
+                <div class="formula-block">
+                    $$\left( \frac{D_c}{D} \right)^3 = \frac{4 \, N_p}{\pi^3} \left( \frac{\rho \, n^2 D^2}{\tau_y} \right)$$
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">Elson の円筒形モデル (Cylindrical Model)</h3>
+                <p>
+                    ラシュトンタービンのようなラジアル流（横方向への吐出）が強いインペラにおいて、キャバーンが「円筒状」に形成されると仮定したモデルです。一般に球形モデルよりも少し大きく（厳しく）見積もられます。
+                </p>
+                <div class="formula-block">
+                    $$\left( \frac{D_c}{D} \right)^3 = \frac{1.36 \, N_p}{\pi^2} \left( \frac{\rho \, n^2 D^2}{\tau_y} \right)$$
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">Amanullah のトーラス形モデル (Torus Model)</h3>
+                <p>
+                    傾斜パドル翼やプロペラなどの軸流翼（下向き推力を持つインペラ）では、キャバーンが「ドーナツ状（トーラス形）」になることが知られています（<a href="https://doi.org/10.1016/S0009-2509(97)00335-5" target="_blank" style="color: var(--pink-accent); text-decoration: underline;">Amanullah et al., 1998</a>）。インペラの接線力と軸方向推力の合力を考慮するため計算が複雑になりますが、高精度な推算が可能です。本シミュレーターでは、簡易評価としてElsonモデルを汎用的に用いています。
+                </p>
+
+                <div style="margin-top: 32px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--card-border);">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;"><i data-feather="book-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 原著論文（参考文献）</div>
+                    <ul style="color: var(--text-secondary); margin-left: 20px; line-height: 1.6;">
+                        <li style="margin-bottom: 8px;">
+                            Elson, T. P., Cheesman, D. J., & Nienow, A. W. (1986). 
+                            <br>X-ray studies of cavern sizes and mixing performance with fluids possessing a yield stress. <i>Chemical Engineering Science</i>, 41(10), 2555-2562. 
+                            <a href="https://doi.org/10.1016/0009-2509(86)80039-0" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                        </li>
+                        <li>
+                            Amanullah, A., Hjorth, S. A., & Nienow, A. W. (1998). 
+                            <br>A new mathematical model to predict cavern diameters in highly shear thinning, power law liquids using axial flow impellers. <i>Chemical Engineering Science</i>, 53(3), 455-469. 
+                            <a href="https://doi.org/10.1016/S0009-2509(97)00335-5" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="parameter-list" style="margin-top: 32px;">
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$D_c$</span>
+                        <span>キャバーン径 [m]</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$D$</span>
+                        <span>インペラ翼径 [m]</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$\tau_y$</span>
+                        <span>降伏応力 [Pa]</span>
+                    </div>
+                </div>
+            </div>
+
 
             <div style="text-align: center; margin-bottom: 40px;">
                 <a href="index.html" class="btn btn-secondary" style="width: auto; display: inline-flex;">

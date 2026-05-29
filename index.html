@@ -121,9 +121,14 @@
                         <div class="input-group full-width" style="display:flex; gap:8px; align-items:flex-end;">
                             <div style="flex:1;">
                                 <label>モデルCSV読込 <span style="font-size:0.75rem;opacity:0.6;">（粘度計アプリから出力）</span></label>
-                                <label for="rheology-csv-input" class="btn-csv-load" style="display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
-                                    <i data-feather="upload" style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
-                                </label>
+                                <div style="display:flex; gap:8px;">
+                                    <label for="rheology-csv-input" class="btn-csv-load" style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
+                                        <i data-feather="upload" style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
+                                    </label>
+                                    <button type="button" id="btn-clear-rheology" style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;" title="クリア">
+                                        <i data-feather="trash-2" style="width:14px;height:14px;vertical-align:middle;"></i>
+                                    </button>
+                                </div>
                                 <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
                             </div>
                         </div>
