@@ -199,7 +199,7 @@
                 </p>
 
                 <div class="formula-block">
-                    $$Np_0 = \left( \frac{1.2 \, \pi^4 \, \beta^2}{V_d} \right) \cdot f$$
+                    $$Np_0 = \left( \frac{1.2 \, \pi^4 \, \beta^2}{V_d} \right) \cdot f \cdot N_{stage}$$
                 </div>
                 <p>ここで、各変数および摩擦係数 $f$ は以下の補助関数によって決定されます：</p>
                 
@@ -242,6 +242,10 @@
                     <div class="parameter-item">
                         <span class="parameter-symbol">$f_\infty$</span>
                         <span>$\displaystyle f_\infty = 0.0151 \left( \frac{d}{D_T} \right) C_t^{0.308}$ （極限摩擦係数）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$N_{stage}$</span>
+                        <span>インペラ段数（多段翼の場合は動力が段数倍されます）</span>
                     </div>
                 </div>
 

@@ -19,7 +19,7 @@ let config = {
     d: 0.060,
     b: 0.020,
     clearance: 0.020,
-    n_stage: 4,
+    n_stage: 1,
     baffleActive: true,
     nB: 1,
     Bw: 0.014
@@ -114,6 +114,17 @@ function initInputs() {
     document.getElementById('Bw').value = config.Bw;
 
     toggleBaffleInputs();
+
+    // 羽根角度 θ の初期ロック状態反映
+    const isFlat = config.impellerType === 'flat-paddle' || config.impellerType === 'flat-turbine';
+    const thetaInput = document.getElementById('theta');
+    if (thetaInput) {
+        thetaInput.disabled = isFlat;
+        if (isFlat) {
+            thetaInput.value = 90;
+            config.theta = 90;
+        }
+    }
 }
 
 function initEventListeners() {
@@ -173,6 +184,22 @@ function initEventListeners() {
                     if (ksInput) ksInput.value = presetMap[val].toFixed(1);
                     if (typeof updateRheologyUI === 'function') updateRheologyUI();
                     showToast(`インペラ種類に合わせて kₛ を ${presetMap[val].toFixed(1)} に設定しました`, 'info');
+                }
+
+                // 羽根角度 θ の自動ロック（フラット翼の場合は90度に固定して無効化）
+                const thetaInput = document.getElementById('theta');
+                if (thetaInput) {
+                    if (val === 'flat-paddle' || val === 'flat-turbine') {
+                        thetaInput.value = 90;
+                        thetaInput.disabled = true;
+                        config.theta = 90;
+                    } else {
+                        thetaInput.disabled = false;
+                        if (parseFloat(thetaInput.value) === 90) {
+                            thetaInput.value = 45;
+                            config.theta = 45;
+                        }
+                    }
                 }
             }
             
@@ -431,7 +458,7 @@ function calculateNpCurve(Re) {
 
     // Unbaffled Power number Np0
     const volume_factor = 8 * Math.pow(d, 3) / (Math.pow(DT, 2) * H);
-    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f;
+    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f * config.n_stage;
 
     // Baffled Power number (Kamei Equation)
     if (!baffleActive || nB <= 0 || Bw <= 0) {
@@ -821,7 +848,7 @@ function calcEffectiveViscosity(n_rps) {
         case 'casson':
             if (n_rps > 0) {
                 const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gamma_dot);
-                return s * s / gamma_dot;
+                return s * s;
             }
             break;
         case 'hb':
@@ -874,7 +901,7 @@ function calcKsMetznerOtto() {
                 switch (m) {
                     case 'powerlaw': return pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
                     case 'bingham':  return pr.tau_y / gd + pr.eta_p - mu_eff;
-                    case 'casson': { const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gd); return s * s / gd - mu_eff; }
+                    case 'casson': { const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gd); return s * s - mu_eff; }
                     case 'hb':       return pr.tau_y / gd + pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
                     case 'cross':    return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gd, pr.m)) - mu_eff;
                     case 'carreau':  return pr.eta_inf + (pr.eta_0 - pr.eta_inf) * Math.pow(1 + Math.pow(pr.lambda * gd, 2), (pr.n - 1) / 2) - mu_eff;
@@ -1446,7 +1473,7 @@ function loadSampleData() {
     config.d = 0.060;
     config.b = 0.020;
     config.clearance = 0.020;
-    config.n_stage = 4;
+    config.n_stage = 1;
     config.baffleActive = true;
     config.nB = 1;
     config.Bw = 0.014;

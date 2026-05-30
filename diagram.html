@@ -658,7 +658,7 @@
                 if (config.headType === 'hemispherical') {
                     V_est = Math.PI * H * H * (3 * R - H) / 3;
                 } else if (config.headType === 'semi-elliptical') {
-                    V_est = Math.PI * R * R * H * H * (h_dish/2 - H/3) / (h_dish * h_dish);
+                    V_est = Math.PI * R * R * H * H * (h_dish - H/3) / (h_dish * h_dish);
                 } else {
                     V_est = V_dish * (H / h_dish);
                 }
