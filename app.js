@@ -1356,8 +1356,8 @@ function initChart() {
                     },
                     afterBuildTicks: function(scale) {
                         const ticks = [];
-                        const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 0.1);
-                        const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100000);
+                        const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 1.0);
+                        const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100000000);
                         const minLog = Math.floor(Math.log10(minVal));
                         const maxLog = Math.ceil(Math.log10(maxVal));
                         for (let log = minLog; log <= maxLog; log++) {
@@ -1374,8 +1374,8 @@ function initChart() {
                         }
                         scale.ticks = ticks;
                     },
-                    min: 0.1,
-                    max: 100000
+                    min: 1,
+                    max: 100000000
                 },
                 y: {
                     type: 'logarithmic',
@@ -1521,9 +1521,9 @@ function updateChart() {
         }
     });
 
-    // 動的にグラフのX軸範囲（Log）を決定（最低限 -1 〜 5 は確保）
-    const startLog = Math.min(-1, Math.floor(Math.log10(minRe)));
-    const endLog = Math.max(5, Math.ceil(Math.log10(maxRe)));
+    // レイノルズ数表示範囲を 10^0 (1) 以上 10^8 (100,000,000) までに固定
+    const startLog = 0;
+    const endLog = 8;
     chart.options.scales.x.min = Math.pow(10, startLog);
     chart.options.scales.x.max = Math.pow(10, endLog);
 
