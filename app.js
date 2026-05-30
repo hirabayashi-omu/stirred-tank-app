@@ -817,6 +817,160 @@ const chartAreaBorder = {
     }
 };
 
+// chartRegions plugin to draw Laminar, Transitional, and Turbulent regions on main screen (dark mode)
+const chartRegions = {
+    id: 'chartRegions',
+    beforeDraw(chart) {
+        const {ctx, chartArea: {top, bottom, left, right, height}, scales: {x}} = chart;
+        if (!x) return;
+        ctx.save();
+
+        const laminarBoundary = 10;
+        const turbulentBoundary = 1000;
+
+        const xLaminar = x.getPixelForValue(laminarBoundary);
+        const xTurbulent = x.getPixelForValue(turbulentBoundary);
+
+        const pLaminar = Math.max(left, Math.min(right, xLaminar));
+        const pTurbulent = Math.max(left, Math.min(right, xTurbulent));
+
+        // Draw background bands (faint white/gray overlay for dark theme)
+        if (pLaminar > left) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+            ctx.fillRect(left, top, pLaminar - left, height);
+        }
+        if (pTurbulent > pLaminar) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.fillRect(pLaminar, top, pTurbulent - pLaminar, height);
+        }
+        if (right > pTurbulent) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.045)';
+            ctx.fillRect(pTurbulent, top, right - pTurbulent, height);
+        }
+
+        // Draw boundary dashed lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 6]);
+
+        if (xLaminar >= left && xLaminar <= right) {
+            ctx.beginPath();
+            ctx.moveTo(xLaminar, top);
+            ctx.lineTo(xLaminar, bottom);
+            ctx.stroke();
+        }
+        if (xTurbulent >= left && xTurbulent <= right) {
+            ctx.beginPath();
+            ctx.moveTo(xTurbulent, top);
+            ctx.lineTo(xTurbulent, bottom);
+            ctx.stroke();
+        }
+
+        // Draw Region labels
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.font = 'bold 11px Inter, Outfit, Noto Sans JP, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        const drawLabel = (textLines, xCenter, yStart) => {
+            textLines.forEach((line, index) => {
+                ctx.fillText(line, xCenter, yStart + index * 14);
+            });
+        };
+
+        const labelY = top + 12;
+
+        if (pLaminar > left && (pLaminar - left) > 50) {
+            drawLabel(['層流域', 'Re ≦ 10'], (left + pLaminar) / 2, labelY);
+        }
+        if (pTurbulent > pLaminar && (pTurbulent - pLaminar) > 50) {
+            drawLabel(['遷移域', '10 < Re < 10³'], (pLaminar + pTurbulent) / 2, labelY);
+        }
+        if (right > pTurbulent && (right - pTurbulent) > 50) {
+            drawLabel(['乱流域', 'Re ≧ 10³'], (pTurbulent + right) / 2, labelY);
+        }
+
+        ctx.restore();
+    }
+};
+
+// lightChartRegions plugin to draw Laminar, Transitional, and Turbulent regions on PDF chart (light mode)
+const lightChartRegions = {
+    id: 'lightChartRegions',
+    beforeDraw(chart) {
+        const {ctx, chartArea: {top, bottom, left, right, height}, scales: {x}} = chart;
+        if (!x) return;
+        ctx.save();
+
+        const laminarBoundary = 10;
+        const turbulentBoundary = 1000;
+
+        const xLaminar = x.getPixelForValue(laminarBoundary);
+        const xTurbulent = x.getPixelForValue(turbulentBoundary);
+
+        const pLaminar = Math.max(left, Math.min(right, xLaminar));
+        const pTurbulent = Math.max(left, Math.min(right, xTurbulent));
+
+        // Draw background bands (faint dark overlay for light theme)
+        if (pLaminar > left) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.015)';
+            ctx.fillRect(left, top, pLaminar - left, height);
+        }
+        if (pTurbulent > pLaminar) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+            ctx.fillRect(pLaminar, top, pTurbulent - pLaminar, height);
+        }
+        if (right > pTurbulent) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.045)';
+            ctx.fillRect(pTurbulent, top, right - pTurbulent, height);
+        }
+
+        // Draw boundary dashed lines
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([5, 5]);
+
+        if (xLaminar >= left && xLaminar <= right) {
+            ctx.beginPath();
+            ctx.moveTo(xLaminar, top);
+            ctx.lineTo(xLaminar, bottom);
+            ctx.stroke();
+        }
+        if (xTurbulent >= left && xTurbulent <= right) {
+            ctx.beginPath();
+            ctx.moveTo(xTurbulent, top);
+            ctx.lineTo(xTurbulent, bottom);
+            ctx.stroke();
+        }
+
+        // Draw Region labels
+        ctx.fillStyle = 'rgba(17, 24, 39, 0.65)'; // Dark text
+        ctx.font = 'bold 10px Inter, Outfit, Noto Sans JP, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        const drawLabel = (textLines, xCenter, yStart) => {
+            textLines.forEach((line, index) => {
+                ctx.fillText(line, xCenter, yStart + index * 13);
+            });
+        };
+
+        const labelY = top + 10;
+
+        if (pLaminar > left && (pLaminar - left) > 50) {
+            drawLabel(['層流域', 'Re ≦ 10'], (left + pLaminar) / 2, labelY);
+        }
+        if (pTurbulent > pLaminar && (pTurbulent - pLaminar) > 50) {
+            drawLabel(['遷移域', '10 < Re < 10³'], (pLaminar + pTurbulent) / 2, labelY);
+        }
+        if (right > pTurbulent && (right - pTurbulent) > 50) {
+            drawLabel(['乱流域', 'Re ≧ 10³'], (pTurbulent + right) / 2, labelY);
+        }
+
+        ctx.restore();
+    }
+};
+
 function recalculateExperimentalData() {
     expBlocks.forEach(b => {
         recalculateBlock(b.id);
@@ -1108,7 +1262,7 @@ function initChart() {
         data: {
             datasets: []
         },
-        plugins: [chartAreaBorder],
+        plugins: [chartAreaBorder, chartRegions],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -2226,7 +2380,7 @@ function generatePDFReport() {
         data: {
             datasets: lightDatasets
         },
-        plugins: [lightChartAreaBorder, customCanvasBackgroundColor],
+        plugins: [lightChartAreaBorder, customCanvasBackgroundColor, lightChartRegions],
         options: {
             responsive: false,
             devicePixelRatio: 2, // High resolution export
