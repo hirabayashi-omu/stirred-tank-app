@@ -368,7 +368,8 @@ function calcLiquidVolume() {
         if (headType === 'hemispherical') {
             return Math.PI * H * H * (3 * R - H) / 3;
         } else if (headType === 'semi-elliptical') {
-            return Math.PI * R * R * H * H * (h_dish / 2 - H / 3) / (h_dish * h_dish);
+            // Corrected formula: V(H) = pi*(R^2/h_dish^2)*(h_dish*H^2 - H^3/3)
+            return (Math.PI * R * R / (h_dish * h_dish)) * (h_dish * H * H - Math.pow(H, 3) / 3);
         } else {
             // dish: approximate linearly
             return V_dish * (H / h_dish);
