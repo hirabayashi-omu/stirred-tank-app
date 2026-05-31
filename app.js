@@ -22,7 +22,17 @@ let config = {
     n_stage: 1,
     baffleActive: true,
     nB: 1,
-    Bw: 0.014
+    Bw: 0.014,
+    dp_um: 150,
+    rho_S: 2500,
+    solidConcMode: 'wt-ratio',
+    solidConcVal: 1.0,
+    sFactorMode: 'auto',
+    sFactorCustom: 5.0,
+    simSpeed: 300,
+    simSpeedSync: true,
+    activeTab: 'rushton',
+    solidLiquidActive: true
 };
 
 // Rheology model state (loaded from viscometer CSV)
@@ -79,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     recalculateAll();
+    switchMainTab(config.activeTab || 'rushton');
     feather.replace();
 });
 
@@ -125,6 +136,27 @@ function initInputs() {
             config.theta = 90;
         }
     }
+
+    // 粒子・固液撹拌データのロード
+    document.getElementById('solid-liquid-active').checked = config.solidLiquidActive ?? true;
+    document.getElementById('dp-um').value = config.dp_um ?? 150;
+    document.getElementById('rho-S').value = config.rho_S ?? 2500;
+    document.getElementById('solid-conc-mode').value = config.solidConcMode ?? 'wt-ratio';
+    document.getElementById('solid-conc-val').value = config.solidConcVal ?? 1.0;
+    document.getElementById('s-factor-mode').value = config.sFactorMode ?? 'auto';
+    document.getElementById('s-factor-custom').value = config.sFactorCustom ?? 5.0;
+    
+    const cModel = document.getElementById('cavern-model');
+    if (cModel) cModel.value = config.cavernModel ?? 'spherical';
+    
+    const simSpeed = config.simSpeed ?? 300;
+    document.getElementById('sim-speed-slider').value = simSpeed;
+    document.getElementById('sim-speed-val').textContent = simSpeed;
+    document.getElementById('sim-speed-sync').checked = config.simSpeedSync ?? true;
+
+    updateSolidConcLabel();
+    toggleSFactorCustom();
+    toggleSolidLiquidInputs();
 }
 
 function initEventListeners() {
@@ -285,12 +317,122 @@ function initEventListeners() {
             deletePreset(val);
         }
     });
+
+    // 粒子・固液撹拌シミュレータ関連のイベントリスナ追加
+    document.getElementById('solid-liquid-active').addEventListener('change', (e) => {
+        config.solidLiquidActive = e.target.checked;
+        toggleSolidLiquidInputs();
+        recalculateAll();
+    });
+
+    document.getElementById('dp-um').addEventListener('input', (e) => {
+        config.dp_um = parseFloat(e.target.value) || 150;
+        recalculateAll();
+    });
+    document.getElementById('rho-S').addEventListener('input', (e) => {
+        config.rho_S = parseFloat(e.target.value) || 2500;
+        recalculateAll();
+    });
+    document.getElementById('solid-conc-mode').addEventListener('change', (e) => {
+        config.solidConcMode = e.target.value;
+        updateSolidConcLabel();
+        recalculateAll();
+    });
+    document.getElementById('solid-conc-val').addEventListener('input', (e) => {
+        config.solidConcVal = parseFloat(e.target.value) || 1.0;
+        recalculateAll();
+    });
+    document.getElementById('s-factor-mode').addEventListener('change', (e) => {
+        config.sFactorMode = e.target.value;
+        toggleSFactorCustom();
+        recalculateAll();
+    });
+    document.getElementById('s-factor-custom').addEventListener('input', (e) => {
+        config.sFactorCustom = parseFloat(e.target.value) || 5.0;
+        recalculateAll();
+    });
+    document.getElementById('sim-speed-slider').addEventListener('input', (e) => {
+        config.simSpeed = parseFloat(e.target.value) || 0;
+        document.getElementById('sim-speed-val').textContent = config.simSpeed;
+        
+        // スライダーを手動で動かしたら自動同期を解除
+        if (config.simSpeedSync) {
+            config.simSpeedSync = false;
+            document.getElementById('sim-speed-sync').checked = false;
+        }
+        updateSimulatorResultsOnly();
+        saveCurrentState(); // 同期用に追加
+    });
+    document.getElementById('sim-speed-sync').addEventListener('change', (e) => {
+        config.simSpeedSync = e.target.checked;
+        if (config.simSpeedSync) {
+            syncSimulatorSpeedWithBlock();
+        }
+        recalculateAll();
+    });
+    document.getElementById('btn-set-njs').addEventListener('click', () => {
+        const njs_rpm_str = document.getElementById('sim-res-Njs-rpm').textContent;
+        const njs_rpm = parseFloat(njs_rpm_str);
+        if (!isNaN(njs_rpm) && njs_rpm > 0) {
+            config.simSpeed = Math.round(njs_rpm);
+            document.getElementById('sim-speed-slider').value = config.simSpeed;
+            document.getElementById('sim-speed-val').textContent = config.simSpeed;
+            config.simSpeedSync = false;
+            document.getElementById('sim-speed-sync').checked = false;
+            updateSimulatorResultsOnly();
+            saveCurrentState(); // 同期用に追加
+            showToast(`シミュレーション回転数を Njs (${config.simSpeed} rpm) に設定しました`, 'success');
+        }
+    });
+
+    // Tab switching event listeners
+    const tabRushton = document.getElementById('tab-btn-rushton');
+    const tabPartsim = document.getElementById('tab-btn-partsim');
+    if (tabRushton && tabPartsim) {
+        tabRushton.addEventListener('click', () => switchMainTab('rushton'));
+        tabPartsim.addEventListener('click', () => switchMainTab('partsim'));
+    }
 }
 
 function toggleBaffleInputs() {
     const active = config.baffleActive;
-    document.getElementById('nB').disabled = !active;
-    document.getElementById('Bw').disabled = !active;
+    const nBContainer = document.getElementById('nB-container');
+    const BwContainer = document.getElementById('Bw-container');
+    if (nBContainer && BwContainer) {
+        nBContainer.style.display = active ? 'flex' : 'none';
+        BwContainer.style.display = active ? 'flex' : 'none';
+    }
+}
+
+function toggleSolidLiquidInputs() {
+    const active = config.solidLiquidActive;
+    
+    // Toggle container elements visibility
+    const ids = [
+        'dp-um-container',
+        'rho-S-container',
+        'solid-conc-mode-container',
+        'solid-conc-val-container',
+        's-factor-mode-container'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = active ? 'flex' : 'none';
+    });
+    
+    // Custom S factor container visibility
+    toggleSFactorCustom();
+
+    // Toggle Tab Button visibility
+    const tabBtn = document.getElementById('tab-btn-partsim');
+    if (tabBtn) {
+        tabBtn.style.display = active ? 'flex' : 'none';
+    }
+
+    // If solid-liquid system is deactivated and active tab was 'partsim', switch to 'rushton'
+    if (!active && config.activeTab === 'partsim') {
+        switchMainTab('rushton');
+    }
 }
 
 // Show feedback message
@@ -492,7 +634,14 @@ function calculateNpCurve(Re) {
 function recalculateAll() {
     updateIntermediateVarsUI();
     recalculateExperimentalData();
+    
+    // 同期設定が有効な場合、最初の測定ブロックの回転数に同期
+    if (config.simSpeedSync) {
+        syncSimulatorSpeedWithBlock();
+    }
+    
     updateChart();
+    updateSimulatorResults();
     saveCurrentState();
 }
 
@@ -971,6 +1120,94 @@ const lightChartRegions = {
     }
 };
 
+// chartNjsLabel plugin to draw label next to Njs point on main screen chart
+const chartNjsLabel = {
+    id: 'chartNjsLabel',
+    afterDatasetsDraw(chart) {
+        const {ctx, scales: {x, y}} = chart;
+        if (!x || !y) return;
+        
+        const njsDataset = chart.data.datasets.find(ds => ds.label === '完全浮遊限界速度 Njs');
+        if (!njsDataset || !njsDataset.data || njsDataset.data.length === 0) return;
+        
+        const pt = njsDataset.data[0];
+        const px = x.getPixelForValue(pt.x);
+        const py = y.getPixelForValue(pt.y);
+        
+        if (px === undefined || py === undefined) return;
+        
+        ctx.save();
+        const text = 'Njs (完全浮遊)';
+        ctx.font = 'bold 11px Inter, Outfit, Noto Sans JP, sans-serif';
+        const textWidth = ctx.measureText(text).width;
+        
+        // Draw background pill to mask overlapping elements
+        ctx.fillStyle = 'rgba(11, 15, 25, 0.92)'; // Dark background matching theme
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)'; // Red border matching dot
+        ctx.lineWidth = 1.2;
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(px + 12, py - 9, textWidth + 12, 18, 4);
+        } else {
+            ctx.rect(px + 12, py - 9, textWidth + 12, 18);
+        }
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw white text inside the pill
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, px + 18, py);
+        ctx.restore();
+    }
+};
+
+// lightChartNjsLabel plugin to draw label next to Njs point on PDF chart
+const lightChartNjsLabel = {
+    id: 'lightChartNjsLabel',
+    afterDatasetsDraw(chart) {
+        const {ctx, scales: {x, y}} = chart;
+        if (!x || !y) return;
+        
+        const njsDataset = chart.data.datasets.find(ds => ds.label === '完全浮遊限界速度 Njs');
+        if (!njsDataset || !njsDataset.data || njsDataset.data.length === 0) return;
+        
+        const pt = njsDataset.data[0];
+        const px = x.getPixelForValue(pt.x);
+        const py = y.getPixelForValue(pt.y);
+        
+        if (px === undefined || py === undefined) return;
+        
+        ctx.save();
+        const text = 'Njs (完全浮遊)';
+        ctx.font = 'bold 9px Inter, Outfit, Noto Sans JP, sans-serif';
+        const textWidth = ctx.measureText(text).width;
+        
+        // Draw light background pill for print mode
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.strokeStyle = 'rgba(220, 38, 38, 0.85)';
+        ctx.lineWidth = 1.0;
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(px + 10, py - 8, textWidth + 10, 16, 3);
+        } else {
+            ctx.rect(px + 10, py - 8, textWidth + 10, 16);
+        }
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw dark text inside the pill
+        ctx.fillStyle = '#111827';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, px + 15, py);
+        ctx.restore();
+    }
+};
+
 function recalculateExperimentalData() {
     expBlocks.forEach(b => {
         recalculateBlock(b.id);
@@ -1084,68 +1321,71 @@ function calcKsMetznerOtto() {
 // Rheology CSV import
 // ============================================================
 
+function processRheologyCSV(text) {
+    const lines = text.replace(/\r/g, '').split('\n');
+    const dataLines = lines.filter(l => l.trim() && !l.startsWith('#'));
+    if (dataLines.length < 2) { showToast('CSVの形式が不正です', 'error'); return; }
+
+    const headers = dataLines[0].split(',').map(h => h.trim());
+    const idx = {};
+    headers.forEach((h, i) => { idx[h] = i; });
+
+    const MODEL_ID_MAP = {
+        'Newtonian': 'newtonian', 'Bingham': 'bingham', 'Casson': 'casson',
+        'Power-law': 'powerlaw', 'Herschel-Bulkley': 'hb', 'Cross': 'cross', 'Carreau': 'carreau'
+    };
+
+    const samples = {};
+    dataLines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        const cols = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; }
+            else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        cols.push(cur);
+        const clean = cols.map(c => c.trim());
+        const sampleName = clean[idx['Sample']] || '';
+        const modelName  = clean[idx['Model']]  || '';
+        const modelId = MODEL_ID_MAP[modelName] || modelName.toLowerCase();
+        const g = key => { const x = parseFloat(clean[idx[key]]); return isNaN(x) ? undefined : x; };
+
+        const params = {};
+        if (g('eta_0_Pas')   !== undefined) params.eta_0   = g('eta_0_Pas');
+        if (g('tau_y_Pa')    !== undefined) params.tau_y   = g('tau_y_Pa');
+        if (g('eta_p_Pas')   !== undefined) params.eta_p   = g('eta_p_Pas');
+        if (g('K_Pasn')      !== undefined) params.K       = g('K_Pasn');
+        if (g('n_flow')      !== undefined) params.n       = g('n_flow');
+        if (g('lambda_s')    !== undefined) params.lambda  = g('lambda_s');
+        if (g('m_cross')     !== undefined) params.m       = g('m_cross');
+        if (g('eta_inf_Pas') !== undefined) params.eta_inf = g('eta_inf_Pas');
+
+        if (!samples[sampleName]) samples[sampleName] = [];
+        samples[sampleName].push({
+            modelId, name: modelName,
+            rating: clean[idx['Rating']] || '',
+            r2:   parseFloat(clean[idx['R2']])      || 0,
+            rmse: parseFloat(clean[idx['RMSE_Pa']]) || 0,
+            mae:  parseFloat(clean[idx['MAE_Pa']])  || 0,
+            params
+        });
+    });
+
+    if (Object.keys(samples).length === 0) { showToast('有効なデータが見つかりません', 'error'); return; }
+    rheologyData.samples = samples;
+    rheologyData.activeSample = Object.keys(samples)[0];
+    rheologyData.activeModel = 'newtonian';
+    updateRheologyUI();
+    recalculateAll();
+    showToast('レオロジーデータを読み込みました', 'success');
+}
+
 function loadRheologyCSV(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.replace(/\r/g, '').split('\n');
-        const dataLines = lines.filter(l => l.trim() && !l.startsWith('#'));
-        if (dataLines.length < 2) { showToast('CSVの形式が不正です', 'error'); return; }
-
-        const headers = dataLines[0].split(',').map(h => h.trim());
-        const idx = {};
-        headers.forEach((h, i) => { idx[h] = i; });
-
-        const MODEL_ID_MAP = {
-            'Newtonian': 'newtonian', 'Bingham': 'bingham', 'Casson': 'casson',
-            'Power-law': 'powerlaw', 'Herschel-Bulkley': 'hb', 'Cross': 'cross', 'Carreau': 'carreau'
-        };
-
-        const samples = {};
-        dataLines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            const cols = [];
-            let cur = '', inQ = false;
-            for (const ch of line) {
-                if (ch === '"') { inQ = !inQ; }
-                else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
-                else cur += ch;
-            }
-            cols.push(cur);
-            const clean = cols.map(c => c.trim());
-            const sampleName = clean[idx['Sample']] || '';
-            const modelName  = clean[idx['Model']]  || '';
-            const modelId = MODEL_ID_MAP[modelName] || modelName.toLowerCase();
-            const g = key => { const x = parseFloat(clean[idx[key]]); return isNaN(x) ? undefined : x; };
-
-            const params = {};
-            if (g('eta_0_Pas')   !== undefined) params.eta_0   = g('eta_0_Pas');
-            if (g('tau_y_Pa')    !== undefined) params.tau_y   = g('tau_y_Pa');
-            if (g('eta_p_Pas')   !== undefined) params.eta_p   = g('eta_p_Pas');
-            if (g('K_Pasn')      !== undefined) params.K       = g('K_Pasn');
-            if (g('n_flow')      !== undefined) params.n       = g('n_flow');
-            if (g('lambda_s')    !== undefined) params.lambda  = g('lambda_s');
-            if (g('m_cross')     !== undefined) params.m       = g('m_cross');
-            if (g('eta_inf_Pas') !== undefined) params.eta_inf = g('eta_inf_Pas');
-
-            if (!samples[sampleName]) samples[sampleName] = [];
-            samples[sampleName].push({
-                modelId, name: modelName,
-                rating: clean[idx['Rating']] || '',
-                r2:   parseFloat(clean[idx['R2']])      || 0,
-                rmse: parseFloat(clean[idx['RMSE_Pa']]) || 0,
-                mae:  parseFloat(clean[idx['MAE_Pa']])  || 0,
-                params
-            });
-        });
-
-        if (Object.keys(samples).length === 0) { showToast('有効なデータが見つかりません', 'error'); return; }
-        rheologyData.samples = samples;
-        rheologyData.activeSample = Object.keys(samples)[0];
-        rheologyData.activeModel = 'newtonian';
-        updateRheologyUI();
-        recalculateAll();
-        showToast('レオロジーCSVを読み込みました', 'success');
+        processRheologyCSV(e.target.result);
     };
     reader.readAsText(file);
 }
@@ -1187,6 +1427,11 @@ function updateRheologyUI() {
     modelSel.innerHTML = opts;
 
     const isNewt = rheologyData.activeModel === 'newtonian';
+    const cavernModelGroup = document.getElementById('cavern-model-group');
+    if (cavernModelGroup) {
+        const isYieldFluid = rheologyData.activeModel === 'bingham' || rheologyData.activeModel === 'casson' || rheologyData.activeModel === 'hb';
+        cavernModelGroup.style.display = isYieldFluid ? 'block' : 'none';
+    }
 
     let allN = [];
     expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
@@ -1239,6 +1484,14 @@ function initRheologyListeners() {
         updateRheologyUI();
         recalculateAll();
     });
+    const cavernModelSelect = document.getElementById('cavern-model');
+    if (cavernModelSelect) {
+        cavernModelSelect.addEventListener('change', e => {
+            config.cavernModel = e.target.value;
+            saveCurrentState();
+            recalculateAll();
+        });
+    }
 }
 
 function calculateReVal(n) {
@@ -1262,7 +1515,7 @@ function initChart() {
         data: {
             datasets: []
         },
-        plugins: [chartAreaBorder, chartRegions],
+        plugins: [chartAreaBorder, chartRegions, chartNjsLabel],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1603,6 +1856,29 @@ function updateChart() {
         pointStyle: 'circle'
     });
 
+    // 3. Generate Just-Suspended Speed (Njs) Plot Point (only if solid-liquid system is active)
+    if (config.solidLiquidActive) {
+        const njsRes = calculateNjs();
+        if (!njsRes.error && njsRes.Njs_rpm > 0) {
+            // Calculate Re at Njs
+            const Re_Njs = (config.rho * njsRes.Njs_rps * Math.pow(config.d, 2)) / njsRes.mu;
+            // Calculate Np at Re_Njs
+            const { Np } = calculateNpCurve(Re_Njs);
+            
+            datasets.push({
+                label: '完全浮遊限界速度 Njs',
+                data: [{ x: Re_Njs, y: Np }],
+                showLine: false,
+                backgroundColor: '#ef4444', // Red dot
+                borderColor: '#f3f4f6',
+                borderWidth: 2,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointStyle: 'rectRot' // diamond shape
+            });
+        }
+    }
+
     chart.data.datasets = datasets;
 
     chart.update();
@@ -1701,6 +1977,19 @@ function loadSampleData() {
     expBlocks.forEach(b => renderBlockHTML(b));
 
     recalculateAll();
+    
+    // サンプル用のレオロジーCSVデータを読み込む
+    const sampleCSV = `Sample,Model,Rating,R2,RMSE_Pa,MAE_Pa,eta_0_Pas,tau_y_Pa,eta_p_Pas,K_Pasn,n_flow,lambda_s,m_cross,eta_inf_Pas
+カオリンスラリー (40wt%),Bingham,Excellent,0.995,0.12,0.08,0,5.2,0.025,0,0,0,0,0
+ヨーグルト (プレーン),Casson,Good,0.985,0.25,0.18,0,6.5,0.15,0,0,0,0,0
+トマトペースト (30Brix),Herschel-Bulkley,Excellent,0.998,0.50,0.30,0,18.0,0,15.0,0.40,0,0,0
+キサンタンガム水溶液 (0.5%),Power-law,Fair,0.950,1.50,1.20,0,0,0,2.1,0.25,0,0,0
+グリセリン (20℃),Newtonian,Excellent,0.999,0.01,0.01,1.41,0,0,0,0,0,0,0
+マヨネーズ,Herschel-Bulkley,Good,0.988,1.2,0.8,0,65.0,0,12.0,0.55,0,0,0
+歯磨き粉,Bingham,Good,0.980,2.5,1.8,0,120.0,25.0,0,0,0,0,0`;
+
+    processRheologyCSV(sampleCSV);
+    
     showToast('サンプルデータを読み込みました。', 'success');
 }
 
@@ -2329,6 +2618,29 @@ function generatePDFReport() {
     document.getElementById('pdf-val-nb').textContent = config.nB;
     document.getElementById('pdf-val-bw').textContent = config.Bw.toFixed(3);
 
+    // Solid-Liquid data mapping for PDF
+    const slSection = document.getElementById('pdf-solid-liquid-section');
+    if (config.solidLiquidActive) {
+        slSection.style.display = 'block';
+        document.getElementById('pdf-val-dp').textContent = config.dp_um;
+        document.getElementById('pdf-val-rhos').textContent = config.rho_S;
+        
+        let S = 5.0;
+        if (config.sFactorMode === 'auto') {
+            S = getZwieteringPresetS();
+        } else {
+            S = config.sFactorCustom ?? 5.0;
+        }
+        document.getElementById('pdf-val-sfactor').textContent = S.toFixed(2);
+        
+        // Use the displayed Njs results
+        document.getElementById('pdf-val-xwt').textContent = document.getElementById('sim-res-X').textContent.replace(' wt%', '');
+        document.getElementById('pdf-val-njs').textContent = document.getElementById('sim-res-Njs-rpm').textContent.replace(' rpm', '');
+        document.getElementById('pdf-val-pnjs').textContent = document.getElementById('sim-res-P-njs').textContent.replace(' W', '');
+    } else {
+        slSection.style.display = 'none';
+    }
+
     // 3. Render Light Mode Chart on Hidden Canvas
     const pdfCanvas = document.getElementById('pdfChartCanvas');
     const pdfCtx = pdfCanvas.getContext('2d');
@@ -2368,9 +2680,12 @@ function generatePDFReport() {
             copy.borderColor = '#d97706'; // High-contrast Amber/Orange
         } else if (copy.label.includes('Np')) {
             copy.borderColor = '#0284c7'; // High-contrast Blue
-        } else if (copy.label.includes('実験データ')) {
+        } else if (copy.label.includes('実験データ') || copy.label.includes('実測値')) {
             copy.backgroundColor = '#059669'; // High-contrast Emerald
             copy.borderColor = '#111827'; // Solid Dark boundary for dots
+        } else if (copy.label.includes('Njs')) {
+            copy.backgroundColor = '#dc2626'; // High-contrast Red dot
+            copy.borderColor = '#111827';
         }
         return copy;
     });
@@ -2380,7 +2695,7 @@ function generatePDFReport() {
         data: {
             datasets: lightDatasets
         },
-        plugins: [lightChartAreaBorder, customCanvasBackgroundColor, lightChartRegions],
+        plugins: [lightChartAreaBorder, customCanvasBackgroundColor, lightChartRegions, lightChartNjsLabel],
         options: {
             responsive: false,
             devicePixelRatio: 2, // High resolution export
@@ -2794,6 +3109,7 @@ function loadPreset(name) {
 
     // Sync UI fields
     initInputs();
+    switchMainTab(config.activeTab || 'rushton');
     recalculateAll();
     showToast(`プリセット "${name}" を読み込みました。`, 'success');
 }
@@ -2830,3 +3146,1014 @@ function saveCurrentState() {
         console.error("Failed to save current state to localStorage", e);
     }
 }
+
+// -----------------------------------------------------------
+// Solid-Liquid Particle Suspension (Zwietering Njs) Calculations
+// -----------------------------------------------------------
+
+function updateSolidConcLabel() {
+    const label = document.getElementById('solid-conc-label');
+    if (!label) return;
+    if (config.solidConcMode === 'wt-ratio') {
+        label.innerHTML = '固体濃度 X (wt% (対液)) <span style="font-size:0.7rem;opacity:0.6;">(質量比×100)</span>';
+    } else {
+        label.innerHTML = '全体重量濃度 w (wt% (全体)) <span style="font-size:0.7rem;opacity:0.6;">(全懸濁液基準)</span>';
+    }
+}
+
+function toggleSFactorCustom() {
+    const container = document.getElementById('s-factor-custom-container');
+    if (!container) return;
+    if (config.solidLiquidActive && config.sFactorMode === 'custom') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function getZwieteringPresetS() {
+    const { impellerType, headType } = config;
+    const isFlatBottom = headType === 'flat';
+    if (isFlatBottom) {
+        switch (impellerType) {
+            case 'flat-turbine': return 7.0;
+            case 'flat-paddle': return 7.5;
+            case 'pitched-paddle': return 5.0;
+            case 'propeller': return 9.0;
+            case 'faudler': return 7.0;
+            default: return 7.0;
+        }
+    } else {
+        // Dished bottom
+        switch (impellerType) {
+            case 'flat-turbine': return 5.2;
+            case 'flat-paddle': return 5.6;
+            case 'pitched-paddle': return 4.6;
+            case 'propeller': return 8.2;
+            case 'faudler': return 6.0;
+            default: return 6.0;
+        }
+    }
+}
+
+function calculateNjs() {
+    const dp = (config.dp_um ?? 150) * 1e-6; // μm -> m
+    const rhoS = config.rho_S ?? 2500;
+    const rhoL = config.rho;
+    const delta_rho = rhoS - rhoL;
+    
+    if (delta_rho <= 0) {
+        return {
+            error: "粒子密度が液密度以下です（浮上または中性浮遊）",
+            Njs_rpm: 0,
+            Njs_rps: 0,
+            S: 0,
+            delta_rho: delta_rho,
+            X: 0,
+            nu: 0
+        };
+    }
+    
+    let X = config.solidConcVal ?? 1.0;
+    if (config.solidConcMode === 'wt-total') {
+        const w = config.solidConcVal ?? 1.0;
+        if (w >= 100) {
+            return {
+                error: "全体重量濃度は100wt%未満で入力してください",
+                Njs_rpm: 0,
+                Njs_rps: 0,
+                S: 0,
+                delta_rho: delta_rho,
+                X: 0,
+                nu: 0
+            };
+        }
+        X = (w / (100 - w)) * 100;
+    }
+    
+    let S = 5.0;
+    if (config.sFactorMode === 'auto') {
+        S = getZwieteringPresetS();
+    } else {
+        S = config.sFactorCustom ?? 5.0;
+    }
+    
+    const d = config.d;
+    const g = config.g;
+    
+    // Newton / non-Newtonian solver
+    let Njs_rps = 1.0; // initial guess
+    const isNewt = (rheologyData.activeModel === 'newtonian' || !rheologyData.activeModel);
+    
+    if (isNewt) {
+        const nu = config.mu / rhoL;
+        Njs_rps = S * Math.pow(nu, 0.1) * Math.pow(dp, 0.2) * Math.pow(g * delta_rho / rhoL, 0.45) * Math.pow(X, 0.13) * Math.pow(d, -0.85);
+        return {
+            Njs_rps,
+            Njs_rpm: Njs_rps * 60,
+            S,
+            delta_rho,
+            X,
+            nu,
+            mu: config.mu
+        };
+    } else {
+        // Implicit solver (fixed point iteration)
+        const maxIter = 100;
+        const tolerance = 1e-5;
+        let nu = 0;
+        let mu_eff = 0;
+        
+        for (let iter = 0; iter < maxIter; iter++) {
+            mu_eff = calcEffectiveViscosity(Njs_rps);
+            nu = mu_eff / rhoL;
+            const next_Njs_rps = S * Math.pow(nu, 0.1) * Math.pow(dp, 0.2) * Math.pow(g * delta_rho / rhoL, 0.45) * Math.pow(X, 0.13) * Math.pow(d, -0.85);
+            
+            if (Math.abs(next_Njs_rps - Njs_rps) < tolerance) {
+                Njs_rps = next_Njs_rps;
+                break;
+            }
+            Njs_rps = 0.7 * next_Njs_rps + 0.3 * Njs_rps;
+        }
+        
+        return {
+            Njs_rps,
+            Njs_rpm: Njs_rps * 60,
+            S,
+            delta_rho,
+            X,
+            nu,
+            mu: mu_eff
+        };
+    }
+}
+
+function updateSimulatorResults() {
+    const res = calculateNjs();
+    const warnBox = document.getElementById('sim-warning-box');
+    const warnText = document.getElementById('sim-warning-text');
+    
+    if (!warnBox) return; // not initialized
+    
+    if (res.error) {
+        warnBox.style.display = 'block';
+        warnText.textContent = res.error;
+        
+        document.getElementById('sim-res-S').textContent = '--';
+        document.getElementById('sim-res-deltarho').textContent = '-- kg/m³';
+        document.getElementById('sim-res-nu').textContent = '-- m²/s';
+        document.getElementById('sim-res-X').textContent = '-- wt%';
+        document.getElementById('sim-res-njs-rps').textContent = '-- 1/s';
+        document.getElementById('sim-res-Njs-rpm').textContent = '-- rpm';
+        document.getElementById('sim-res-P-njs').textContent = '-- W';
+        document.getElementById('sim-res-Pv-njs').textContent = '-- W/m³';
+        
+        updateSimStatusBadge(0, 100);
+        return;
+    }
+    
+    warnBox.style.display = 'none';
+    
+    document.getElementById('sim-res-S').textContent = res.S.toFixed(2);
+    document.getElementById('sim-res-deltarho').textContent = Math.round(res.delta_rho) + ' kg/m³';
+    document.getElementById('sim-res-nu').textContent = res.nu.toExponential(4) + ' m²/s';
+    document.getElementById('sim-res-X').textContent = res.X.toFixed(3) + ' wt%';
+    document.getElementById('sim-res-njs-rps').textContent = res.Njs_rps.toFixed(3) + ' 1/s';
+    document.getElementById('sim-res-Njs-rpm').textContent = Math.round(res.Njs_rpm) + ' rpm';
+    
+    // Calculate required power at Njs
+    const Re_Njs = (config.rho * res.Njs_rps * Math.pow(config.d, 2)) / res.mu;
+    const { Np } = calculateNpCurve(Re_Njs);
+    const P_njs = Np * config.rho * Math.pow(res.Njs_rps, 3) * Math.pow(config.d, 5);
+    const V = calcLiquidVolumeForPv();
+    const Pv_njs = P_njs / V;
+    
+    document.getElementById('sim-res-P-njs').textContent = P_njs.toFixed(3) + ' W';
+    document.getElementById('sim-res-Pv-njs').textContent = Pv_njs.toFixed(1) + ' W/m³';
+    
+    updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
+    updateCavernDiameter();
+}
+
+function updateSimulatorResultsOnly() {
+    const res = calculateNjs();
+    if (!res.error) {
+        updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
+    }
+    updateCavernDiameter();
+}
+
+// 降伏応力流体用キャバーン径（流動領域）の推算 (Elson et al.)
+function updateCavernDiameter() {
+    const cavernRow = document.getElementById('cavern-row');
+    const dcLabel = document.getElementById('sim-res-cavern-dc');
+    if (!cavernRow || !dcLabel) return;
+    
+    const mod = rheologyData?.activeModel;
+    const isYieldFluid = mod === 'bingham' || mod === 'casson' || mod === 'hb';
+    
+    const models = rheologyData?.samples?.[rheologyData?.activeSample] || [];
+    const modelInfo = models.find(m => m.modelId === mod);
+    const pr = modelInfo?.params;
+    
+    if (!isYieldFluid || !pr || !pr.tau_y || pr.tau_y <= 0) {
+        cavernRow.style.display = 'none';
+        config.cavern_Dc = null;
+        return;
+    }
+    
+    const n_rps = config.simSpeed / 60;
+    if (n_rps <= 0) {
+        dcLabel.textContent = '0.000 m';
+        config.cavern_Dc = 0;
+        cavernRow.style.display = 'table-row';
+        return;
+    }
+    
+    // 現在の回転数での動力 P を計算
+    const mu_eff = calcEffectiveViscosity(n_rps);
+    const Re = (config.rho * n_rps * Math.pow(config.d, 2)) / mu_eff;
+    const { Np } = calculateNpCurve(Re);
+    const P = Np * config.rho * Math.pow(n_rps, 3) * Math.pow(config.d, 5);
+    
+    // キャバーンモデルに応じた係数 K_c
+    const Kc = (config.cavernModel === 'cylindrical') ? 1.0 : 1.36;
+    
+    // Dc = (Kc * P / (pi^2 * tau_y * N))^(1/3)
+    let Dc = Math.pow((Kc * P) / (Math.pow(Math.PI, 2) * pr.tau_y * n_rps), 1/3);
+    
+    // キャバーン径は槽径 DT を超えない（壁に到達）
+    if (Dc > config.DT) {
+        Dc = config.DT;
+    }
+    
+    dcLabel.textContent = Dc.toFixed(3) + ' m';
+    config.cavern_Dc = Dc;
+    cavernRow.style.display = 'table-row';
+}
+
+function updateSimStatusBadge(currentN, njsN) {
+    const badge = document.getElementById('sim-status-badge');
+    if (!badge) return;
+    
+    if (currentN === 0) {
+        badge.textContent = '完全沈降';
+        badge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+        badge.style.color = '#ef4444';
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+    } else if (currentN < 0.9 * njsN) {
+        badge.textContent = '不完全浮遊';
+        badge.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+        badge.style.color = '#f59e0b';
+        badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+    } else if (currentN < 1.2 * njsN) {
+        badge.textContent = '完全浮遊';
+        badge.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+        badge.style.color = '#10b981';
+        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+    } else {
+        badge.textContent = '均一分散';
+        badge.style.backgroundColor = 'rgba(6, 182, 212, 0.1)';
+        badge.style.color = '#06b6d4';
+        badge.style.borderColor = 'rgba(6, 182, 212, 0.2)';
+    }
+}
+
+function syncSimulatorSpeedWithBlock() {
+    if (expBlocks.length > 0) {
+        const firstBlock = expBlocks[0];
+        let sumN = 0;
+        firstBlock.rows.forEach(r => sumN += r.N);
+        const aveN = sumN / firstBlock.rows.length;
+        config.simSpeed = Math.round(aveN);
+        
+        const slider = document.getElementById('sim-speed-slider');
+        if (slider) {
+            slider.value = config.simSpeed;
+            document.getElementById('sim-speed-val').textContent = config.simSpeed;
+        }
+    }
+}
+
+// -----------------------------------------------------------
+// Canvas 2D Particle Animation Engine
+// -----------------------------------------------------------
+
+let simCanvas = null;
+let simCtx = null;
+let simParticles = [];
+let simAnimId = null;
+let simImpellerAngle = 0;    // accumulated rotation angle [rad]
+let simLastFrameTime = null; // performance.now() at last frame
+
+function getVesselVisualCoords() {
+    const cx = 225;
+    const D_px = 240; // width of visual tank diameter
+    const scale = D_px / config.DT;
+    
+    let hb = 0;
+    if (config.headType === 'semi-elliptical') {
+        hb = D_px / 4;
+    } else if (config.headType === 'dish') {
+        hb = D_px * 0.1935;
+    } else if (config.headType === 'hemispherical') {
+        hb = D_px / 2;
+    }
+    
+    const y_deepest = 300;
+    const y_cyl = y_deepest - hb;
+    const h_liquid_px = config.H * scale;
+    
+    // Cap Y liquid height so it doesn't overflow top flange (Y=40)
+    let y_liquid = y_deepest - h_liquid_px;
+    if (y_liquid < 45) {
+        y_liquid = 45;
+    }
+    
+    const lx = cx - D_px / 2;
+    const rx = cx + D_px / 2;
+    
+    return { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx };
+}
+
+function getVesselBottomY(x, coords) {
+    const { cx, D_px, hb, y_cyl, lx, rx } = coords;
+    if (x <= lx) return y_cyl;
+    if (x >= rx) return y_cyl;
+    
+    if (config.headType === 'flat') {
+        return y_cyl;
+    } else if (config.headType === 'hemispherical') {
+        const R = D_px / 2;
+        const dx = x - cx;
+        return y_cyl + Math.sqrt(Math.max(0, R * R - dx * dx));
+    } else {
+        const a = D_px / 2;
+        const b = hb;
+        const dx = x - cx;
+        return y_cyl + b * Math.sqrt(Math.max(0, 1 - (dx * dx) / (a * a)));
+    }
+}
+
+function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
+    const { cx, D_px, scale, y_deepest, y_liquid, lx, rx } = coords;
+    
+    if (speed_rpm <= 5 || y < y_liquid || y > getVesselBottomY(x, coords)) {
+        return { vx: 0, vy: 0 };
+    }
+    
+    const speedMagnitude = 3.5 * (speed_rpm / 600);
+    const clearance_px = config.clearance * scale;
+    const b_px = config.b * scale;
+    const y_imp = y_deepest - clearance_px - b_px / 2;
+    
+    let cavernDecay = 1.0;
+    // 降伏応力流体の場合、キャバーン外は流速ゼロ（死水域）だが境界を曖昧化（20pxで減衰）
+    if (config.cavern_Dc > 0) {
+        const cavernRadius = (config.cavern_Dc / 2) * scale;
+        let distOut = 0;
+        if (config.cavernModel === 'cylindrical') {
+            const h = cavernRadius * 1.5;
+            distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp) - h/2));
+        } else {
+            const distToImpeller = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp, 2));
+            distOut = Math.max(0, distToImpeller - cavernRadius);
+        }
+        
+        if (distOut > 0) {
+            cavernDecay = Math.max(0, 1.0 - (distOut / 20.0));
+            if (cavernDecay === 0) return { vx: 0, vy: 0 };
+        }
+    }
+    
+    const inUpper = y < y_imp;
+    const inLeft = x < cx;
+    
+    const rxScale = p.relVortexX || 1.0;
+    const ryScale = p.relVortexY || 1.0;
+    
+    const isRadial = (config.impellerType === 'flat-paddle' || config.impellerType === 'flat-turbine');
+    
+    if (isRadial) {
+        // Double circulation loop
+        const vortexOffset = (D_px / 4) * rxScale;
+        const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
+        
+        const h_upper = y_imp - y_liquid;
+        const h_lower = y_deepest - y_imp;
+        
+        const vy_c = inUpper 
+            ? (y_liquid + (h_upper / 2) * ryScale) 
+            : (y_imp + (h_lower / 2) * ryScale);
+        
+        const rx_v = x - vx_c;
+        const ry_v = y - vy_c;
+        const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+        
+        let vx_dir = 0;
+        let vy_dir = 0;
+        
+        if (inUpper) {
+            if (inLeft) {
+                vx_dir = -ry_v / dist;
+                vy_dir = rx_v / dist;
+            } else {
+                vx_dir = ry_v / dist;
+                vy_dir = -rx_v / dist;
+            }
+        } else {
+            if (inLeft) {
+                vx_dir = ry_v / dist;
+                vy_dir = -rx_v / dist;
+            } else {
+                vx_dir = -ry_v / dist;
+                vy_dir = rx_v / dist;
+            }
+        }
+        
+        const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+        const wallFactor = Math.min(1.0, wallDist / 10);
+        const centerFactor = Math.min(1.0, dist / 8);
+        
+        return {
+            vx: vx_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay,
+            vy: vy_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay
+        };
+    } else {
+        // Axial flow (downward pumping center sweep)
+        const h_total = y_deepest - y_liquid;
+        const vy_c = y_liquid + (h_total / 2) * ryScale;
+        const vortexOffset = (D_px / 4) * rxScale;
+        const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
+        
+        const rx_v = x - vx_c;
+        const ry_v = y - vy_c;
+        const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+        
+        let vx_dir = 0;
+        let vy_dir = 0;
+        
+        if (inLeft) {
+            vx_dir = -ry_v / dist;
+            vy_dir = rx_v / dist;
+        } else {
+            vx_dir = ry_v / dist;
+            vy_dir = -rx_v / dist;
+        }
+        
+        const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+        const wallFactor = Math.min(1.0, wallDist / 10);
+        const centerFactor = Math.min(1.0, dist / 12);
+        
+        return {
+            vx: vx_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay,
+            vy: vy_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay
+        };
+    }
+}
+
+function switchMainTab(tab) {
+    config.activeTab = tab;
+    saveCurrentState();
+
+    const btnRushton = document.getElementById('tab-btn-rushton');
+    const btnPartsim = document.getElementById('tab-btn-partsim');
+    const contentRushton = document.getElementById('tab-content-rushton');
+    const contentPartsim = document.getElementById('tab-content-partsim');
+    const controlsRushton = document.getElementById('rushton-controls');
+    const controlsPartsim = document.getElementById('partsim-controls');
+
+    if (!btnRushton || !btnPartsim || !contentRushton || !contentPartsim) return;
+
+    if (tab === 'rushton') {
+        btnRushton.classList.add('active');
+        btnRushton.style.color = 'var(--accent-color)';
+        btnRushton.style.borderBottom = '2px solid var(--accent-color)';
+        btnRushton.style.fontWeight = '600';
+
+        btnPartsim.classList.remove('active');
+        btnPartsim.style.color = 'var(--text-secondary)';
+        btnPartsim.style.borderBottom = '2px solid transparent';
+        btnPartsim.style.fontWeight = '500';
+
+        contentRushton.style.display = 'block';
+        contentPartsim.style.display = 'none';
+
+        if (controlsRushton) controlsRushton.style.display = 'flex';
+        if (controlsPartsim) controlsPartsim.style.display = 'none';
+
+        // Pause particle animation to save CPU
+        if (simAnimId) {
+            cancelAnimationFrame(simAnimId);
+            simAnimId = null;
+        }
+        
+        // Resize and redraw Chart.js chart since parent visibility toggled
+        if (chart) {
+            chart.resize();
+            chart.update();
+        }
+    } else {
+        btnPartsim.classList.add('active');
+        btnPartsim.style.color = 'var(--accent-color)';
+        btnPartsim.style.borderBottom = '2px solid var(--accent-color)';
+        btnPartsim.style.fontWeight = '600';
+
+        btnRushton.classList.remove('active');
+        btnRushton.style.color = 'var(--text-secondary)';
+        btnRushton.style.borderBottom = '2px solid transparent';
+        btnRushton.style.fontWeight = '500';
+
+        contentRushton.style.display = 'none';
+        contentPartsim.style.display = 'flex';
+
+        if (controlsRushton) controlsRushton.style.display = 'none';
+        if (controlsPartsim) controlsPartsim.style.display = 'block';
+
+        // Initialize and start particle simulation loop
+        initParticleSimulation();
+    }
+}
+
+function initParticleSimulation() {
+    simCanvas = document.getElementById('particleSimCanvas');
+    if (!simCanvas) return;
+    simCtx = simCanvas.getContext('2d');
+    
+    if (simAnimId) {
+        cancelAnimationFrame(simAnimId);
+        simAnimId = null;
+    }
+    simImpellerAngle = 0;
+    simLastFrameTime = null;
+    
+    const coords = getVesselVisualCoords();
+    const { lx, D_px } = coords;
+    
+    // Initialize target particles at the bottom of the vessel based on concentration
+    const targetCount = Math.min(1200, Math.max(100, Math.round(200 + 400 * Math.log10(1 + 9 * (config.solidConcVal || 1.0)))));
+    simParticles = [];
+    for (let i = 0; i < targetCount; i++) {
+        const px = lx + Math.random() * D_px;
+        const py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+        simParticles.push({
+            x: px,
+            y: py,
+            vx: 0,
+            vy: 0,
+            relSize: 0.6 + Math.random() * 0.8,
+            relVortexX: 0.75 + Math.random() * 0.5,
+            relVortexY: 0.75 + Math.random() * 0.5,
+            radius: 1.5,
+            color: '#78350f'
+        });
+    }
+    
+    function loop() {
+        drawParticleSimulation();
+        simAnimId = requestAnimationFrame(loop);
+    }
+    loop();
+}
+
+function getBladePointsAndDepth(phi, r_in, r_out, b_px, impellerType, cx, y_imp) {
+    const N = 8;
+    const points = [];
+    
+    // Determine pitch angle (tilt around radial axis)
+    let pitchAngle = 0;
+    if (impellerType === 'pitched-paddle') {
+        pitchAngle = Math.PI / 4; // 45 degrees
+    } else if (impellerType === 'propeller') {
+        pitchAngle = Math.PI / 6; // 30 degrees
+    }
+    
+    // 1. Calculate top edge points (from r_in to r_out)
+    for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const r = r_in + t * (r_out - r_in);
+        
+        let w = b_px;
+        if (impellerType === 'propeller') {
+            w = b_px * Math.sin(Math.PI * t);
+        } else if (impellerType === 'faudler') {
+            // Faudler blades are slightly tapered
+            w = b_px * (1.0 - 0.4 * t);
+        }
+        
+        let localPhi = phi;
+        if (impellerType === 'faudler') {
+            localPhi = phi - 0.45 * t; // Curve backward
+        }
+        
+        const chi = -w / 2;
+        
+        // 3D coordinates relative to (cx, y_imp, 0)
+        const x3d = r * Math.cos(localPhi) - chi * Math.sin(pitchAngle) * Math.sin(localPhi);
+        const y3d = chi * Math.cos(pitchAngle);
+        const z3d = r * Math.sin(localPhi) + chi * Math.sin(pitchAngle) * Math.cos(localPhi);
+        
+        points.push({ x: cx + x3d, y: y_imp + y3d, z: z3d });
+    }
+    
+    // 2. Calculate bottom edge points (from r_out back to r_in)
+    for (let i = N; i >= 0; i--) {
+        const t = i / N;
+        const r = r_in + t * (r_out - r_in);
+        
+        let w = b_px;
+        if (impellerType === 'propeller') {
+            w = b_px * Math.sin(Math.PI * t);
+        } else if (impellerType === 'faudler') {
+            w = b_px * (1.0 - 0.4 * t);
+        }
+        
+        let localPhi = phi;
+        if (impellerType === 'faudler') {
+            localPhi = phi - 0.45 * t;
+        }
+        
+        const chi = w / 2;
+        
+        const x3d = r * Math.cos(localPhi) - chi * Math.sin(pitchAngle) * Math.sin(localPhi);
+        const y3d = chi * Math.cos(pitchAngle);
+        const z3d = r * Math.sin(localPhi) + chi * Math.sin(pitchAngle) * Math.cos(localPhi);
+        
+        points.push({ x: cx + x3d, y: y_imp + y3d, z: z3d });
+    }
+    
+    // Average Z depth for sorting
+    let sumZ = 0;
+    points.forEach(pt => sumZ += pt.z);
+    const avgZ = sumZ / points.length;
+    
+    return { points, avgZ };
+}
+
+function drawParticleSimulation() {
+    if (!simCanvas || !simCtx) return;
+    
+    const coords = getVesselVisualCoords();
+    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+    
+    simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+    
+    // 1. Draw Liquid Region Fill
+    simCtx.save();
+    simCtx.fillStyle = 'rgba(6, 182, 212, 0.05)';
+    simCtx.beginPath();
+    simCtx.moveTo(lx, y_liquid);
+    simCtx.lineTo(lx, y_cyl);
+    
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
+    } else if (config.headType === 'hemispherical') {
+        simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
+    } else {
+        simCtx.lineTo(rx, y_cyl);
+    }
+    simCtx.lineTo(rx, y_liquid);
+    simCtx.closePath();
+    simCtx.fill();
+    
+    // Draw Liquid Surface
+    simCtx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+    simCtx.lineWidth = 1.5;
+    simCtx.beginPath();
+    simCtx.moveTo(lx, y_liquid);
+    simCtx.lineTo(rx, y_liquid);
+    simCtx.stroke();
+    simCtx.restore();
+    
+    // 2. Draw Baffles
+    if (config.baffleActive) {
+        simCtx.save();
+        simCtx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+        simCtx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+        simCtx.lineWidth = 1;
+        const bw_px = Math.max(4, config.Bw * scale);
+        const baffle_h = y_cyl - y_liquid;
+        
+        simCtx.fillRect(lx, y_liquid, bw_px, baffle_h);
+        simCtx.strokeRect(lx, y_liquid, bw_px, baffle_h);
+        
+        if (config.nB > 1) {
+            simCtx.fillRect(rx - bw_px, y_liquid, bw_px, baffle_h);
+            simCtx.strokeRect(rx - bw_px, y_liquid, bw_px, baffle_h);
+        }
+        simCtx.restore();
+    }
+    
+    // 2.5 Draw Dead Water Zone and Cavern (for Yield Stress Fluids)
+    if (config.cavern_Dc > 0) {
+        simCtx.save();
+        const cavernRadius = (config.cavern_Dc / 2) * scale;
+        const clearance_px = config.clearance * scale;
+        const b_px = config.b * scale;
+        const y_imp = y_deepest - clearance_px - b_px / 2;
+        
+        // タンク全体を暗くして死水域を表現
+        simCtx.fillStyle = 'rgba(15, 23, 42, 0.5)';
+        simCtx.beginPath();
+        simCtx.moveTo(lx, y_liquid);
+        simCtx.lineTo(lx, y_cyl);
+        if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+            simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
+        } else if (config.headType === 'hemispherical') {
+            simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
+        } else {
+            simCtx.lineTo(rx, y_cyl);
+        }
+        simCtx.lineTo(rx, y_liquid);
+        simCtx.closePath();
+        simCtx.fill();
+        
+        // キャバーン領域を「くり抜く」 (流動領域) - 境界をさらに曖昧化
+        simCtx.globalCompositeOperation = 'destination-out';
+        simCtx.fillStyle = 'rgba(255, 255, 255, 1)';
+        simCtx.filter = 'blur(24px)';
+        simCtx.beginPath();
+        if (config.cavernModel === 'cylindrical') {
+            const h = cavernRadius * 1.5; // 円筒モデルの高さ（概算）
+            simCtx.fillRect(cx - cavernRadius, y_imp - h/2, cavernRadius * 2, h);
+        } else {
+            simCtx.arc(cx, y_imp, cavernRadius, 0, 2 * Math.PI);
+            simCtx.fill();
+        }
+        simCtx.filter = 'none';
+        
+        // 通常の描画モードに戻す
+        simCtx.globalCompositeOperation = 'source-over';
+        
+        // ラベル描画
+        simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+        simCtx.font = '10px sans-serif';
+        simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp - 5);
+        
+        simCtx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+        simCtx.fillText('死水域 (Dead Zone)', lx + 10, y_liquid + 20);
+        simCtx.restore();
+    }
+    
+    // Adjust particle count dynamically based on concentration
+    const targetCount = Math.min(1200, Math.max(100, Math.round(200 + 400 * Math.log10(1 + 9 * (config.solidConcVal || 1.0)))));
+    if (simParticles.length < targetCount) {
+        const toAdd = targetCount - simParticles.length;
+        for (let i = 0; i < toAdd; i++) {
+            const px = lx + Math.random() * D_px;
+            const py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+            simParticles.push({
+                x: px,
+                y: py,
+                vx: 0,
+                vy: 0,
+                relSize: 0.6 + Math.random() * 0.8,
+                relVortexX: 0.75 + Math.random() * 0.5,
+                relVortexY: 0.75 + Math.random() * 0.5,
+                radius: 1.5,
+                color: '#78350f'
+            });
+        }
+    } else if (simParticles.length > targetCount) {
+        simParticles.length = targetCount;
+    }
+
+    // 3. Draw Particles (under physics)
+    const njsResult = calculateNjs();
+    const njs_rpm = njsResult.error ? 1000 : njsResult.Njs_rpm;
+    const liftOffThreshold = 0.15 * njs_rpm;
+    
+    // Base radius scales with config.dp_um
+    const baseRadius = Math.max(0.8, Math.min(6.0, 0.5 + 0.1 * Math.sqrt(config.dp_um || 150)));
+
+    simCtx.save();
+    simParticles.forEach(p => {
+        if (!p.relSize) {
+            p.relSize = 0.6 + Math.random() * 0.8;
+        }
+        p.radius = baseRadius * p.relSize;
+
+        const fluidVel = getFluidVelocity(p.x, p.y, config.simSpeed, coords, p);
+        
+        // Fluid drag coupling - responsiveness (inertia) decreases with particle density and size
+        const dp = config.dp_um || 150;
+        const inertia = Math.max(0.015, 0.3 / (1.0 + 0.6 * (config.rho_S / 1000) * Math.sqrt(dp / 150)));
+        p.vx += (fluidVel.vx - p.vx) * inertia;
+        p.vy += (fluidVel.vy - p.vy) * inertia;
+        
+        // Sedimentation gravity force
+        const delta_rho = Math.max(0, config.rho_S - config.rho);
+        const settling = 0.04 * (delta_rho / 1500) * Math.pow(dp / 150, 1.5);
+        p.vy += settling;
+        
+        // Turbulent fluctuations (scales with rpm)
+        const turb = 0.35 * (config.simSpeed / 300) * (p.relSize || 1.0);
+        p.vx += (Math.random() - 0.5) * turb;
+        p.vy += (Math.random() - 0.5) * turb;
+        
+        // Update coordinates
+        p.x += p.vx;
+        p.y += p.vy;
+        
+        // Boundary collision
+        if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.2; }
+        if (p.x > rx - p.radius) { p.x = rx - p.radius; p.vx = -p.vx * 0.2; }
+        
+        if (p.y < y_liquid + p.radius) { p.y = y_liquid + p.radius; p.vy = Math.abs(p.vy) * 0.1; }
+        
+        const y_bot = getVesselBottomY(p.x, coords);
+        
+        if (p.y > y_bot - p.radius - 1) {
+            p.y = y_bot - p.radius - 1;
+            
+            if (config.simSpeed < liftOffThreshold) {
+                // Completely settled
+                p.vx = 0;
+                p.vy = 0;
+                p.color = '#78350f'; // resting: dark amber
+            } else {
+                // Rolling/bouncing at bottom
+                p.vy = -Math.abs(p.vy) * 0.05;
+                const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
+                    ? (p.x < cx ? -0.8 : 0.8) // sweep outwards
+                    : (p.x < cx ? 0.8 : -0.8); // sweep inwards
+                p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
+                p.color = '#b45309'; // rolling: medium gold
+            }
+        } else {
+            // Suspended
+            if (config.simSpeed >= njs_rpm) {
+                p.color = '#f59e0b'; // fully suspended: bright orange
+            } else {
+                p.color = '#d97706'; // partially suspended: medium orange
+            }
+        }
+        
+        // Draw particle
+        simCtx.fillStyle = p.color;
+        simCtx.beginPath();
+        simCtx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI);
+        simCtx.fill();
+    });
+    simCtx.restore();
+    
+    // 4 & 5. Draw Shaft + Impeller Blades (3D rotating, depth-sorted)
+    const clearance_px = config.clearance * scale;
+    const b_px = config.b * scale;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
+    const d_px = config.d * scale;
+    const r_hub = 5;
+    const r_in = r_hub;
+    const r_out = d_px / 2;
+    
+    // Calculate current rotation angle using delta-time accumulation
+    // (avoids float precision loss from large Date.now() values)
+    const nowPerfMs = performance.now();
+    if (simLastFrameTime !== null) {
+        const dtSec = (nowPerfMs - simLastFrameTime) / 1000;
+        const omega = (config.simSpeed > 5) ? (config.simSpeed * Math.PI / 30) : 0;
+        simImpellerAngle += omega * dtSec;
+        // Keep angle in [0, 2π) to avoid unbounded growth
+        simImpellerAngle = simImpellerAngle % (2 * Math.PI);
+    }
+    simLastFrameTime = nowPerfMs;
+    const angle = simImpellerAngle;
+    
+    // Determine blade count per impeller type
+    const bladeCountMap = {
+        'flat-turbine':   6,
+        'pitched-paddle': 4,
+        'flat-paddle':    2,
+        'propeller':      3,
+        'faudler':        3,
+    };
+    const nBlades = bladeCountMap[config.impellerType] || 2;
+    
+    // Multi-stage Y positions
+    const n_stages = parseInt(config.n_stage) || 1;
+    let stages_y = [];
+    if (n_stages === 1) {
+        stages_y.push(y_bottom_impeller);
+    } else {
+        const y_top_impeller_limit = y_liquid + b_px / 2;
+        const available_span = y_bottom_impeller - y_top_impeller_limit;
+        const ideal_gap = available_span / (n_stages - 1);
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+        for (let i = 0; i < n_stages; i++) {
+            stages_y.push(y_bottom_impeller - (i * stage_gap));
+        }
+    }
+    
+    // Build draw-element list for depth sorting
+    const drawElements = [];
+    
+    // Shaft (drawn at Z = -0.1, i.e., behind everything except blades behind it)
+    drawElements.push({
+        avgZ: -0.1,
+        draw: () => {
+            simCtx.save();
+            simCtx.strokeStyle = '#52525b';
+            simCtx.lineWidth = 4;
+            simCtx.lineCap = 'round';
+            simCtx.beginPath();
+            simCtx.moveTo(cx, y_liquid - 15);
+            simCtx.lineTo(cx, y_bottom_impeller + b_px / 2);
+            simCtx.stroke();
+            simCtx.restore();
+        }
+    });
+    
+    stages_y.forEach(y_imp => {
+        // --- Turbine disc (Rushton only) — drawn slightly in front of back blades ---
+        if (config.impellerType === 'flat-turbine') {
+            drawElements.push({
+                avgZ: 0.01,
+                draw: () => {
+                    simCtx.save();
+                    simCtx.fillStyle = '#a1a1aa';
+                    simCtx.strokeStyle = '#52525b';
+                    simCtx.lineWidth = 0.8;
+                    simCtx.fillRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    simCtx.strokeRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    simCtx.restore();
+                }
+            });
+        }
+        
+        // --- Hub at Z = 0 (slightly in front of disc) ---
+        drawElements.push({
+            avgZ: 0.02,
+            draw: () => {
+                simCtx.save();
+                simCtx.fillStyle = '#3f3f46';
+                simCtx.strokeStyle = '#27272a';
+                simCtx.lineWidth = 1;
+                simCtx.beginPath();
+                simCtx.arc(cx, y_imp, r_hub, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.stroke();
+                simCtx.restore();
+            }
+        });
+        
+        // --- Blades ---
+        for (let k = 0; k < nBlades; k++) {
+            const phi = angle + (k * 2 * Math.PI / nBlades);
+            const { points, avgZ } = getBladePointsAndDepth(
+                phi, r_in, r_out, b_px, config.impellerType, cx, y_imp
+            );
+            
+            // Depth-dependent shading: front blades are brighter
+            const brightness = 0.65 + 0.35 * ((avgZ / r_out) * 0.5 + 0.5);
+            const baseH = 330; // pink hue
+            const fillColor = `hsl(${baseH}, 75%, ${Math.round(50 * brightness)}%)`;
+            const strokeColor = `hsl(${baseH}, 80%, ${Math.round(38 * brightness)}%)`;
+            
+            drawElements.push({
+                avgZ,
+                draw: () => {
+                    simCtx.save();
+                    simCtx.fillStyle = fillColor;
+                    simCtx.strokeStyle = strokeColor;
+                    simCtx.lineWidth = 1.2;
+                    simCtx.beginPath();
+                    simCtx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        simCtx.lineTo(points[i].x, points[i].y);
+                    }
+                    simCtx.closePath();
+                    simCtx.fill();
+                    simCtx.stroke();
+                    simCtx.restore();
+                }
+            });
+        }
+    });
+    
+    // Sort elements back-to-front (ascending Z)
+    drawElements.sort((a, b) => a.avgZ - b.avgZ);
+    drawElements.forEach(el => el.draw());
+    
+
+    // 6. Draw Vessel Outer Wall Outline
+    simCtx.save();
+    simCtx.strokeStyle = '#d4d4d8';
+    simCtx.lineWidth = 2;
+    simCtx.lineCap = 'round';
+    simCtx.lineJoin = 'round';
+    simCtx.beginPath();
+    simCtx.moveTo(lx, y_liquid - 10);
+    simCtx.lineTo(lx, y_cyl);
+    
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
+    } else if (config.headType === 'hemispherical') {
+        simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
+    } else {
+        simCtx.lineTo(rx, y_cyl);
+    }
+    simCtx.lineTo(rx, y_liquid - 10);
+    simCtx.stroke();
+    simCtx.restore();
+}
+
