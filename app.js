@@ -2065,6 +2065,74 @@ function exportCSV() {
         csvContent += `"${r.name}","${r.def}",${r.val.toFixed(5)}\n`;
     });
 
+    // 4. 完全浮遊速度 (Zwietering式)
+    csvContent += '\n';
+    csvContent += '--- COMPLETE SUSPENSION SPEED (Zwietering) ---\n';
+    if (config.solidLiquidActive) {
+        const njsRes = calculateNjs();
+        if (!njsRes.error) {
+            const dp_m = (config.dp_um ?? 150) * 1e-6;
+            const S_val = config.sFactorMode === 'auto' ? getZwieteringPresetS() : (config.sFactorCustom ?? 5.0);
+            csvContent += 'Variable,Definition,Value,Unit\n';
+            csvContent += `"dp","粒子径",${dp_m.toExponential(4)},"m"\n`;
+            csvContent += `"rho_S","粒子密度",${config.rho_S},"kg/m3"\n`;
+            csvContent += `"delta_rho","密度差 (rhoS - rhoL)",${njsRes.delta_rho.toFixed(1)},"kg/m3"\n`;
+            csvContent += `"nu","動粘度",${njsRes.nu.toExponential(4)},"m2/s"\n`;
+            csvContent += `"X","粒子質量分率",${njsRes.X.toFixed(4)},"wt%"\n`;
+            csvContent += `"S","Zwietering形状因子",${S_val.toFixed(2)},"-"\n`;
+            csvContent += `"Njs","完全浮遊限界回転数",${njsRes.Njs_rps.toFixed(4)},"1/s"\n`;
+            csvContent += `"Njs_rpm","完全浮遊限界回転数",${njsRes.Njs_rpm.toFixed(1)},"rpm"\n`;
+            // Np and P at Njs
+            const Re_Njs = (config.rho * njsRes.Njs_rps * Math.pow(config.d, 2)) / njsRes.mu;
+            const { Np: Np_njs } = calculateNpCurve(Re_Njs);
+            const P_njs = Np_njs * config.rho * Math.pow(njsRes.Njs_rps, 3) * Math.pow(config.d, 5);
+            const V_njs = calcLiquidVolumeForPv();
+            csvContent += `"Re_Njs","Njs時のレイノルズ数",${Re_Njs.toFixed(1)},"-"\n`;
+            csvContent += `"Np_Njs","Njs時の動力数",${Np_njs.toFixed(4)},"-"\n`;
+            csvContent += `"P_Njs","Njs時の攪拌所要動力",${P_njs.toFixed(4)},"W"\n`;
+            csvContent += `"Pv_Njs","Njs時の単位体積動力",${(P_njs/V_njs).toFixed(2)},"W/m3"\n`;
+        } else {
+            csvContent += `# エラー: ${njsRes.error}\n`;
+        }
+    } else {
+        csvContent += '# 固液分散が無効です\n';
+    }
+
+    // 5. Metzner-Otto (非ニュートン流体)
+    csvContent += '\n';
+    csvContent += '--- METZNER-OTTO (Non-Newtonian) ---\n';
+    const isNonNewt = rheologyData.activeModel && rheologyData.activeModel !== 'newtonian';
+    if (isNonNewt && Object.keys(rheologyData.samples).length > 0) {
+        const modelsArr = rheologyData.samples[rheologyData.activeSample] || [];
+        const mInfo = modelsArr.find(m => m.modelId === rheologyData.activeModel);
+        csvContent += 'Variable,Definition,Value,Unit\n';
+        csvContent += `"Sample","試料名","${rheologyData.activeSample}","-"\n`;
+        csvContent += `"Model","レオロジーモデル","${mInfo ? mInfo.name : rheologyData.activeModel}","-"\n`;
+        csvContent += `"ks","Metzner-Otto装置定数",${rheologyData.ks.toFixed(4)},"-"\n`;
+        if (mInfo) {
+            const p = mInfo.params;
+            csvContent += `"R2","決定係数 R²",${mInfo.r2.toFixed(5)},"-"\n`;
+            csvContent += `"RMSE","RMSE",${mInfo.rmse.toFixed(5)},"Pa"\n`;
+            if (p.tau_y !== undefined) csvContent += `"tau_y","降伏応力",${p.tau_y.toFixed(5)},"Pa"\n`;
+            if (p.eta_p !== undefined) csvContent += `"eta_p","塑性粘度 / Casson粘度",${p.eta_p.toFixed(5)},"Pa.s"\n`;
+            if (p.K    !== undefined) csvContent += `"K","粘性係数",${p.K.toFixed(5)},"Pa.s^n"\n`;
+            if (p.n    !== undefined) csvContent += `"n","流動指数",${p.n.toFixed(5)},"-"\n`;
+            if (p.eta_0 !== undefined) csvContent += `"eta_0","ゼロせん断粘度",${p.eta_0.toFixed(5)},"Pa.s"\n`;
+            if (p.eta_inf !== undefined) csvContent += `"eta_inf","無限せん断粘度",${p.eta_inf.toFixed(5)},"Pa.s"\n`;
+            if (p.lambda !== undefined) csvContent += `"lambda","時定数 lambda",${p.lambda.toFixed(5)},"s"\n`;
+        }
+        // Per-block effective viscosity
+        csvContent += `\n"Block","N_avg (rpm)","gamma_eff (1/s)","mu_eff (Pa.s)"\n`;
+        expBlocks.forEach(b => {
+            const n_rps = b.aveCalculated ? (b.aveCalculated.N / 60) : 0;
+            const gamma_eff = rheologyData.ks * n_rps;
+            const mu_eff = calcEffectiveViscosity(n_rps);
+            csvContent += `"${b.name}",${(n_rps*60).toFixed(1)},${gamma_eff.toFixed(3)},${mu_eff.toFixed(6)}\n`;
+        });
+    } else {
+        csvContent += '# 非ニュートン流体モデルが選択されていません\n';
+    }
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -2633,10 +2701,27 @@ function generatePDFReport() {
         }
         document.getElementById('pdf-val-sfactor').textContent = S.toFixed(2);
         
-        // Use the displayed Njs results
-        document.getElementById('pdf-val-xwt').textContent = document.getElementById('sim-res-X').textContent.replace(' wt%', '');
-        document.getElementById('pdf-val-njs').textContent = document.getElementById('sim-res-Njs-rpm').textContent.replace(' rpm', '');
-        document.getElementById('pdf-val-pnjs').textContent = document.getElementById('sim-res-P-njs').textContent.replace(' W', '');
+        // Calculate Njs values directly for full detail
+        const njsRes = calculateNjs();
+        if (!njsRes.error) {
+            document.getElementById('pdf-val-deltarho').textContent = Math.round(njsRes.delta_rho) + ' kg/m³';
+            document.getElementById('pdf-val-nu').textContent = njsRes.nu.toExponential(3) + ' m²/s';
+            document.getElementById('pdf-val-xwt').textContent = njsRes.X.toFixed(3);
+            document.getElementById('pdf-val-njs').textContent = Math.round(njsRes.Njs_rpm);
+            // Re, Np, P, Pv at Njs
+            const Re_njs = (config.rho * njsRes.Njs_rps * Math.pow(config.d, 2)) / njsRes.mu;
+            const { Np: Np_njs_pdf } = calculateNpCurve(Re_njs);
+            const P_njs_pdf = Np_njs_pdf * config.rho * Math.pow(njsRes.Njs_rps, 3) * Math.pow(config.d, 5);
+            const Pv_njs_pdf = P_njs_pdf / calcLiquidVolumeForPv();
+            document.getElementById('pdf-val-re-njs').textContent = Math.round(Re_njs).toLocaleString();
+            document.getElementById('pdf-val-np-njs').textContent = Np_njs_pdf.toFixed(3);
+            document.getElementById('pdf-val-pnjs').textContent = P_njs_pdf.toFixed(3);
+            document.getElementById('pdf-val-pvnjs').textContent = Pv_njs_pdf.toFixed(1);
+        } else {
+            document.getElementById('pdf-val-xwt').textContent = document.getElementById('sim-res-X').textContent.replace(' wt%', '');
+            document.getElementById('pdf-val-njs').textContent = '--';
+            document.getElementById('pdf-val-pnjs').textContent = '--';
+        }
     } else {
         slSection.style.display = 'none';
     }
@@ -2949,9 +3034,38 @@ function generatePDFReport() {
                     <div style="margin-bottom:4px;"><strong style="color:#0f172a;">Metzner-Otto法 定数と代表値</strong></div>
                     <ul style="margin:0; padding-left:16px; color:#334155;">
                         <li>装置定数 k<sub>s</sub> = ${rheologyData.ks.toFixed(2)}</li>
-                        <li>有効せん断速度式: &gamma;<sub>eff</sub> = k<sub>s</sub> × N</li>
-                        <li>代表有効粘度 (N ≈ ${(n_rep_pdf*60).toFixed(0)} rpm時): &mu;<sub>eff</sub> ≈ ${mu_eff_rep.toFixed(4)} Pa·s</li>
+                        <li>有効せん断速度式: &gamma;<sub>eff</sub> = k<sub>s</sub> × N &nbsp;[1/s]</li>
+                        <li>代表有効粘度 (N ≈ ${(n_rep_pdf*60).toFixed(0)} rpm時): &mu;<sub>eff</sub> ≈ ${mu_eff_rep.toFixed(5)} Pa·s</li>
                     </ul>
+                </div>
+                <div style="border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 8px;">
+                    <div style="margin-bottom:4px;"><strong style="color:#0f172a;">各測定ブロックの有効粘度（Metzner-Otto法）</strong></div>
+                    <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                        <thead>
+                            <tr style="background:#e2e8f0; text-align:center; font-weight:600;">
+                                <th style="padding:3px 6px; border:1px solid #cbd5e1; text-align:left;">ブロック名</th>
+                                <th style="padding:3px 6px; border:1px solid #cbd5e1;">N (rpm)</th>
+                                <th style="padding:3px 6px; border:1px solid #cbd5e1;">&gamma;<sub>eff</sub> = k<sub>s</sub>N (1/s)</th>
+                                <th style="padding:3px 6px; border:1px solid #cbd5e1;">&mu;<sub>eff</sub> (Pa·s)</th>
+                                <th style="padding:3px 6px; border:1px solid #cbd5e1;">Re<sub>eff</sub> [-]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${expBlocks.map(b => {
+                                const n_rps_b = b.aveCalculated ? (b.aveCalculated.N / 60) : 0;
+                                const gamma_eff_b = rheologyData.ks * n_rps_b;
+                                const mu_eff_b = calcEffectiveViscosity(n_rps_b);
+                                const Re_eff_b = mu_eff_b > 0 ? (config.rho * n_rps_b * config.d * config.d / mu_eff_b) : 0;
+                                return `<tr style="text-align:center;">
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; text-align:left; font-weight:500;">${b.name}</td>
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${(n_rps_b*60).toFixed(1)}</td>
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${gamma_eff_b.toFixed(2)}</td>
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace; color:#0284c7; font-weight:600;">${mu_eff_b.toFixed(5)}</td>
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${Math.round(Re_eff_b).toLocaleString()}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
             `;
             pdfNonNewtSection.style.display = 'block';

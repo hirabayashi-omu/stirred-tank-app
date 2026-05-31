@@ -547,17 +547,22 @@
                         </div>
                     </div>
                     <div id="pdf-solid-liquid-section" style="grid-column: span 2; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 2px; display: none;">
-                        <strong>固液攪拌・粒子データ (Zwietering):</strong><br>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <strong>固液攪拌・粒子完全浮遊速度 (Zwietering式: N<sub>js</sub> = S·ν<sup>0.1</sup>·d<sub>p</sub><sup>0.2</sup>·g<sup>0.45</sup>·Δρ<sup>0.45</sup>·X<sup>0.13</sup>·d<sup>-0.85</sup>·ρ<sub>L</sub><sup>-0.45</sup>):</strong><br>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
                             <div>
                                 ・粒子径 dp: <span id="pdf-val-dp"></span> μm<br>
                                 ・粒子密度 ρs: <span id="pdf-val-rhos"></span> kg/m³<br>
+                                ・密度差 Δρ: <span id="pdf-val-deltarho"></span> kg/m³<br>
+                                ・動粘度 ν: <span id="pdf-val-nu"></span> m²/s<br>
                                 ・濃度 X: <span id="pdf-val-xwt"></span> wt%
                             </div>
                             <div>
                                 ・形状因子 S: <span id="pdf-val-sfactor"></span><br>
-                                ・限界回転数 Njs: <span id="pdf-val-njs"></span> rpm<br>
-                                ・Njs 時の動力: <span id="pdf-val-pnjs"></span> W
+                                ・<strong>完全浮遊速度 N<sub>js</sub>: <span id="pdf-val-njs" style="color:#0891b2;"></span> rpm</strong><br>
+                                ・Re<sub>Njs</sub>: <span id="pdf-val-re-njs"></span> [-]<br>
+                                ・Np<sub>Njs</sub>: <span id="pdf-val-np-njs"></span> [-]<br>
+                                ・N<sub>js</sub> 時の攪拌所要動力: <span id="pdf-val-pnjs"></span> W<br>
+                                ・N<sub>js</sub> 時の単位体積動力: <span id="pdf-val-pvnjs"></span> W/m³
                             </div>
                         </div>
                     </div>
@@ -598,7 +603,7 @@
             </table>
             <!-- Non-Newtonian Info Section -->
             <div id="pdf-non-newtonian-section" style="display: none; margin-bottom: 20px;">
-                <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ 非ニュートン流体 レオロジー特性 (Metzner-Otto法)</h2>
+                <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ 非ニュートン流体 レオロジー特性 &amp; Metzner-Otto法 (有効粘度推算)</h2>
                 <div id="pdf-non-newtonian-content" style="font-size: 10px; line-height: 1.6; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
                 </div>
             </div>
