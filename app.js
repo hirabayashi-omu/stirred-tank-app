@@ -3619,112 +3619,149 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     const speedMagnitude = 3.5 * (speed_rpm / 600);
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
-    const y_imp = y_deepest - clearance_px - b_px / 2;
-    
+
+    // --- Compute multi-stage Y positions (same logic as drawParticleSimulation) ---
+    const n_stages = parseInt(config.n_stage) || 1;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
+    let stages_y = [];
+    if (n_stages === 1) {
+        stages_y.push(y_bottom_impeller);
+    } else {
+        const y_top_impeller_limit = y_liquid + b_px / 2;
+        const available_span = y_bottom_impeller - y_top_impeller_limit;
+        const ideal_gap = available_span / (n_stages - 1);
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+        for (let i = 0; i < n_stages; i++) {
+            stages_y.push(y_bottom_impeller - (i * stage_gap));
+        }
+    }
+
+    // --- Cavern / dead-zone decay (multi-stage: each stage has its own cavern) ---
+    // For yield-stress fluids, dead zone is tested around the nearest stage
     let cavernDecay = 1.0;
-    // 降伏応力流体の場合、キャバーン外は流速ゼロ（死水域）だが境界を曖昧化（20pxで減衰）
     if (config.cavern_Dc > 0) {
         const cavernRadius = (config.cavern_Dc / 2) * scale;
-        let distOut = 0;
-        if (config.cavernModel === 'cylindrical') {
-            const h = cavernRadius * 1.5;
-            distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp) - h/2));
-        } else {
-            const distToImpeller = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp, 2));
-            distOut = Math.max(0, distToImpeller - cavernRadius);
+        // Find closest stage to this point
+        let minDistOut = Infinity;
+        for (const y_imp_s of stages_y) {
+            let distOut = 0;
+            if (config.cavernModel === 'cylindrical') {
+                const hc = cavernRadius * 1.5;
+                distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp_s) - hc / 2));
+            } else {
+                const dist3d = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp_s, 2));
+                distOut = Math.max(0, dist3d - cavernRadius);
+            }
+            if (distOut < minDistOut) minDistOut = distOut;
         }
-        
-        if (distOut > 0) {
-            cavernDecay = Math.max(0, 1.0 - (distOut / 20.0));
+        if (minDistOut > 0) {
+            cavernDecay = Math.max(0, 1.0 - (minDistOut / 20.0));
             if (cavernDecay === 0) return { vx: 0, vy: 0 };
         }
     }
-    
-    const inUpper = y < y_imp;
-    const inLeft = x < cx;
-    
+
     const rxScale = p.relVortexX || 1.0;
     const ryScale = p.relVortexY || 1.0;
-    
     const isRadial = (config.impellerType === 'flat-paddle' || config.impellerType === 'flat-turbine');
-    
-    if (isRadial) {
-        // Double circulation loop
-        const vortexOffset = (D_px / 4) * rxScale;
-        const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
-        
-        const h_upper = y_imp - y_liquid;
-        const h_lower = y_deepest - y_imp;
-        
-        const vy_c = inUpper 
-            ? (y_liquid + (h_upper / 2) * ryScale) 
-            : (y_imp + (h_lower / 2) * ryScale);
-        
-        const rx_v = x - vx_c;
-        const ry_v = y - vy_c;
-        const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-        
-        let vx_dir = 0;
-        let vy_dir = 0;
-        
-        if (inUpper) {
-            if (inLeft) {
-                vx_dir = -ry_v / dist;
-                vy_dir = rx_v / dist;
+    const inLeft = x < cx;
+
+    // --- Accumulate velocity contributions from all stages ---
+    // For each stage, define the circulation zones above/below that stage
+    // (bounded between adjacent stages or liquid surface / vessel bottom)
+    let totalVx = 0;
+    let totalVy = 0;
+    let totalWeight = 0;
+
+    for (let si = 0; si < stages_y.length; si++) {
+        const y_imp = stages_y[si];
+
+        // Zone boundaries for this stage
+        // Upper boundary: midpoint to stage above (or liquid surface)
+        const y_upper_bound = si < stages_y.length - 1
+            ? (stages_y[si] + stages_y[si + 1]) / 2  // midpoint between this and upper stage
+            : y_liquid;
+        // Lower boundary: midpoint to stage below (or vessel bottom)
+        const y_lower_bound = si > 0
+            ? (stages_y[si] + stages_y[si - 1]) / 2  // midpoint between this and lower stage
+            : y_deepest;
+
+        // How much this stage influences the current point:
+        // Use a soft distance weight — stronger when inside this stage's zone
+        const zone_h = (y_lower_bound - y_upper_bound) || 1;
+        const dist_to_stage_y = Math.abs(y - y_imp);
+        // Gaussian weight based on distance to impeller in y, clamped at half zone height
+        const sigma = zone_h / 2;
+        const weight = Math.exp(-(dist_to_stage_y * dist_to_stage_y) / (2 * sigma * sigma));
+
+        if (weight < 0.001) continue;
+
+        const inUpper = y < y_imp;
+
+        let vx_dir = 0, vy_dir = 0;
+
+        if (isRadial) {
+            // Radial (flat-turbine / flat-paddle): double-loop per stage
+            const h_upper = y_imp - y_upper_bound;
+            const h_lower = y_lower_bound - y_imp;
+            const vortexOffset = (D_px / 4) * rxScale;
+            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
+            const vy_c = inUpper
+                ? (y_upper_bound + (h_upper / 2) * ryScale)
+                : (y_imp + (h_lower / 2) * ryScale);
+            const rx_v = x - vx_c;
+            const ry_v = y - vy_c;
+            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+
+            if (inUpper) {
+                vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
+                vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
             } else {
-                vx_dir = ry_v / dist;
-                vy_dir = -rx_v / dist;
+                vx_dir = inLeft ? (ry_v / dist) : (-ry_v / dist);
+                vy_dir = inLeft ? (-rx_v / dist) : (rx_v / dist);
             }
+
+            const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+            const wallFactor = Math.min(1.0, wallDist / 10);
+            const centerFactor = Math.min(1.0, dist / 8);
+
+            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
+            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
+
         } else {
-            if (inLeft) {
-                vx_dir = ry_v / dist;
-                vy_dir = -rx_v / dist;
-            } else {
-                vx_dir = -ry_v / dist;
-                vy_dir = rx_v / dist;
-            }
+            // Axial flow (propeller, pitched-paddle, faudler): single loop per stage zone
+            const h_zone = y_lower_bound - y_upper_bound;
+            const vy_c = y_upper_bound + (h_zone / 2) * ryScale;
+            const vortexOffset = (D_px / 4) * rxScale;
+            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
+            const rx_v = x - vx_c;
+            const ry_v = y - vy_c;
+            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+
+            vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
+            vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
+
+            const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+            const wallFactor = Math.min(1.0, wallDist / 10);
+            const centerFactor = Math.min(1.0, dist / 12);
+
+            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
+            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
         }
-        
-        const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
-        const wallFactor = Math.min(1.0, wallDist / 10);
-        const centerFactor = Math.min(1.0, dist / 8);
-        
-        return {
-            vx: vx_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay,
-            vy: vy_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay
-        };
-    } else {
-        // Axial flow (downward pumping center sweep)
-        const h_total = y_deepest - y_liquid;
-        const vy_c = y_liquid + (h_total / 2) * ryScale;
-        const vortexOffset = (D_px / 4) * rxScale;
-        const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
-        
-        const rx_v = x - vx_c;
-        const ry_v = y - vy_c;
-        const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-        
-        let vx_dir = 0;
-        let vy_dir = 0;
-        
-        if (inLeft) {
-            vx_dir = -ry_v / dist;
-            vy_dir = rx_v / dist;
-        } else {
-            vx_dir = ry_v / dist;
-            vy_dir = -rx_v / dist;
-        }
-        
-        const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
-        const wallFactor = Math.min(1.0, wallDist / 10);
-        const centerFactor = Math.min(1.0, dist / 12);
-        
-        return {
-            vx: vx_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay,
-            vy: vy_dir * speedMagnitude * wallFactor * centerFactor * cavernDecay
-        };
+
+        totalWeight += weight;
     }
+
+    if (totalWeight < 0.001) return { vx: 0, vy: 0 };
+
+    // Normalize by total weight so total speed ≈ speedMagnitude
+    const normFactor = Math.min(1.5, totalWeight) / totalWeight;
+
+    return {
+        vx: totalVx * normFactor * cavernDecay,
+        vy: totalVy * normFactor * cavernDecay
+    };
 }
+
 
 function switchMainTab(tab) {
     config.activeTab = tab;
