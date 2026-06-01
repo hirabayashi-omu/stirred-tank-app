@@ -171,7 +171,6 @@ let config = {
 };
 let expBlocks=[], rheologyData=null;
 let animId=null, impAngle=0, lastFrameT=null;
-let lastSavedStateJSON = localStorage.getItem('agitator_current_state');
 
 const headTypeMap = { flat:'平底', 'semi-elliptical':'半楕円形(2:1)', dish:'皿型', hemispherical:'全半球形' };
 const impellerMap = { 'pitched-paddle':'傾斜パドル','flat-paddle':'平板パドル','flat-turbine':'平板タービン(Rushton)','propeller':'プロペラ','faudler':'ファウドラー' };
@@ -329,14 +328,7 @@ function buildBladePts(phi, rIn, rOut, bHalf, type) {
 }
 
 function drawBlades(ctx, rImp, bHalf, type, angle, zCenter) {
-    let nB = bladeCountMap[type]||2;
-    // Allow override from config.np (real-time sync). Ensure integer >= 2.
-    try {
-        const requested = parseInt(config.np);
-        if (!Number.isNaN(requested) && requested >= 2) {
-            nB = requested;
-        }
-    } catch (e) { /* ignore and use default */ }
+    const nB = bladeCountMap[type]||2;
     const rHub = 6;
     const elems=[];
 
@@ -747,50 +739,16 @@ function updateUI() {
 }
 
 function loadState() {
-    const params = new URLSearchParams(window.location.search);
-    let loadedFromQuery = false;
-    const numericKeys = ['DT','H','d','clearance','b','n_stage','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc'];
-    const boolKeys = ['baffleActive'];
-    const stringKeys = ['headType','impellerType','cavernModel'];
-
-    numericKeys.forEach(key => {
-        if (params.has(key)) {
-            const val = parseFloat(params.get(key));
-            if (!Number.isNaN(val)) {
-                config[key] = val;
-                loadedFromQuery = true;
-            }
-        }
-    });
-    boolKeys.forEach(key => {
-        if (params.has(key)) {
-            config[key] = params.get(key) === 'true';
-            loadedFromQuery = true;
-        }
-    });
-    stringKeys.forEach(key => {
-        if (params.has(key)) {
-            config[key] = params.get(key);
-            loadedFromQuery = true;
-        }
-    });
-
-    if (loadedFromQuery) {
-        updateUI();
-        return;
-    }
-
     const saved = localStorage.getItem('agitator_current_state');
-    if (saved && saved !== lastSavedStateJSON) {
-        lastSavedStateJSON = saved;
+    if (saved) {
         try {
             const p = JSON.parse(saved);
             if (p.config) { config = {...config,...p.config}; }
             if (p.expBlocks) expBlocks=p.expBlocks;
             if (p.rheologyData) rheologyData=p.rheologyData;
         } catch(e) { console.error(e); }
-        updateUI();
     }
+    updateUI();
 }
 
 // ─── Mouse Interaction ────────────────────────────────────
@@ -820,45 +778,12 @@ window.addEventListener('mousemove', (e) => {
 });
 canvas.style.cursor = 'grab';
 
-window.addEventListener('message', (event) => {
-    if (!event.data || event.data.type !== 'AgitatorSimRealtimeSync') return;
-    const incoming = event.data.config;
-    if (!incoming || typeof incoming !== 'object') return;
-
-    // Apply incoming config updates immediately
-    const keys = [
-        'DT','H','d','clearance','b','n_stage','headType','impellerType',
-        'baffleActive','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc','cavernModel'
-    ];
-    let updated = false;
-    keys.forEach(key => {
-        if (incoming.hasOwnProperty(key) && config[key] !== incoming[key]) {
-            config[key] = incoming[key];
-            updated = true;
-        }
-    });
-    if (updated) {
-        updateUI();
-    }
-});
 window.addEventListener('storage', e => { if (e.key==='agitator_current_state') { loadState(); } });
 window.addEventListener('load', () => {
     loadState();
     if (animId) cancelAnimationFrame(animId);
     impAngle=0; lastFrameT=null;
     draw();
-
-    if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
-    }
-
-    // Fallback polling for environments where storage events may not fire reliably
-    setInterval(() => {
-        const current = localStorage.getItem('agitator_current_state');
-        if (current !== lastSavedStateJSON) {
-            loadState();
-        }
-    }, 1000);
 });
 </script>
 </body>

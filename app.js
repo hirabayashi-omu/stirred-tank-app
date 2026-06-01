@@ -360,8 +360,13 @@ function initEventListeners() {
             config.simSpeedSync = false;
             document.getElementById('sim-speed-sync').checked = false;
         }
+        if (simAnimId) {
+            simLastFrameTime = performance.now();
+        }
+    });
+    document.getElementById('sim-speed-slider').addEventListener('change', () => {
         updateSimulatorResultsOnly();
-        saveCurrentState(); // 同期用に追加
+        saveCurrentState();
     });
     document.getElementById('sim-speed-sync').addEventListener('change', (e) => {
         config.simSpeedSync = e.target.checked;
@@ -641,6 +646,7 @@ function recalculateAll() {
     }
     
     updateChart();
+    updateLowReWarning();
     updateSimulatorResults();
     saveCurrentState();
 }
@@ -755,6 +761,7 @@ function renderBlockHTML(block) {
                         <th>トルク Tb (ブランク) (N·m)</th>
                         <th>攪拌所要動力 P (W)</th>
                         <th>正味動力 Pv (W/m³)</th>
+                        <th class="col-mu-eff">μ_eff (Pa·s)</th>
                         <th>レイノルズ数 Re (-)</th>
                         <th>動力数 Np (-)</th>
                         <th>フルード数 Fr (-)</th>
@@ -786,6 +793,7 @@ function createRowHTML(row, idx, blockId) {
             <td><input type="number" value="${row.Tb}" step="0.001" oninput="updateRowCell('${blockId}', ${idx}, 'Tb', this.value)"></td>
             <td id="${blockId}-${idx}-P" class="calculated-cell">0.00</td>
             <td id="${blockId}-${idx}-Pv" class="calculated-cell">0.00</td>
+            <td id="${blockId}-${idx}-mu_eff" class="calculated-cell col-mu-eff">0.00</td>
             <td id="${blockId}-${idx}-Re" class="calculated-cell font-weight-bold">0.00</td>
             <td id="${blockId}-${idx}-Np" class="calculated-cell font-weight-bold">0.00</td>
             <td id="${blockId}-${idx}-Fr" class="calculated-cell">0.00</td>
@@ -880,6 +888,7 @@ function recalculateBlock(blockId) {
 
     block.rows.forEach((row, idx) => {
         const n = row.N / 60;
+        const mu_eff = calcEffectiveViscosity(n);
         const T_net = row.T - row.Tb;
         const P = 2 * Math.PI * n * T_net;
         const Pv = P / V;
@@ -896,6 +905,7 @@ function recalculateBlock(blockId) {
         document.getElementById(`${blockId}-${idx}-n`).textContent = n.toFixed(3);
         document.getElementById(`${blockId}-${idx}-P`).textContent = P.toFixed(3);
         document.getElementById(`${blockId}-${idx}-Pv`).textContent = Pv.toFixed(1);
+        document.getElementById(`${blockId}-${idx}-mu_eff`).textContent = mu_eff.toFixed(4);
         document.getElementById(`${blockId}-${idx}-Re`).textContent = Math.round(Re);
         document.getElementById(`${blockId}-${idx}-Np`).textContent = Np.toFixed(3);
         document.getElementById(`${blockId}-${idx}-Fr`).textContent = Fr.toFixed(3);
@@ -912,6 +922,7 @@ function recalculateBlock(blockId) {
 
     const ave_n = aveN / 60;
     const ave_Tnet = aveT - aveTb;
+    const ave_mu_eff = calcEffectiveViscosity(ave_n);
     const ave_P = 2 * Math.PI * ave_n * ave_Tnet;
     const ave_Pv = ave_P / V;
     const ave_Re = calculateReVal(ave_n);
@@ -941,6 +952,7 @@ function recalculateBlock(blockId) {
         <td class="highlight-amber">${aveTb.toFixed(5)}</td>
         <td class="highlight-green">${ave_P.toFixed(3)}</td>
         <td>${ave_Pv.toFixed(1)}</td>
+        <td class="calculated-cell highlight-blue">${ave_mu_eff.toFixed(4)}</td>
         <td class="calculated-cell highlight-blue">${Math.round(ave_Re)}</td>
         <td class="calculated-cell highlight-blue">${ave_Np.toFixed(2)}</td>
         <td class="calculated-cell highlight-blue">${ave_Fr.toFixed(2)}</td>
@@ -951,6 +963,21 @@ function recalculateBlock(blockId) {
     document.getElementById(`${blockId}-meta-re`).innerHTML = `Re: <strong>${Math.round(ave_Re)}</strong>`;
     document.getElementById(`${blockId}-meta-np`).innerHTML = `Np: <strong>${ave_Np.toFixed(2)}</strong>`;
     document.getElementById(`${blockId}-meta-fr`).innerHTML = `Fr: <strong>${ave_Fr.toFixed(2)}</strong>`;
+    updateLowReWarning();
+}
+
+function updateLowReWarning() {
+    const warningEl = document.getElementById('low-re-warning');
+    if (!warningEl) return;
+
+    const hasLowRe = expBlocks.some(block => block.rows.some(row => {
+        const n = row.N / 60;
+        if (n <= 0) return false;
+        const Re = calculateReVal(n);
+        return Re > 0 && Re < 10;
+    }));
+
+    warningEl.style.display = hasLowRe ? 'flex' : 'none';
 }
 
 // chartAreaBorder plugin to draw chart outer frame
@@ -1427,6 +1454,17 @@ function updateRheologyUI() {
     modelSel.innerHTML = opts;
 
     const isNewt = rheologyData.activeModel === 'newtonian';
+    // ニュートン流体が選択されている場合は、UI の mu 入力値を保持（CSV の eta_0 は使わない）
+    // 非ニュートン流体が選択されている場合も、config.mu は上書きしない（ベース液粘度として保持）
+    const selectedModelInfo = rheologyData.samples[rheologyData.activeSample]?.find(r => r.modelId === rheologyData.activeModel);
+    // NOTE: config.mu はユーザー入力値として保持し、レオロジーデータ選択時に上書きしない
+    
+    // μ_eff 列の表示/非表示を制御
+    const muEffCells = document.querySelectorAll('.col-mu-eff');
+    muEffCells.forEach(cell => {
+        cell.style.display = isNewt ? 'none' : 'table-cell';
+    });
+    
     const cavernModelGroup = document.getElementById('cavern-model-group');
     if (cavernModelGroup) {
         const isYieldFluid = rheologyData.activeModel === 'bingham' || rheologyData.activeModel === 'casson' || rheologyData.activeModel === 'hb';
@@ -3256,10 +3294,30 @@ function saveCurrentState() {
             rheologyData: rheologyData
         };
         localStorage.setItem('agitator_current_state', JSON.stringify(state));
+        syncDiagramWindow();
     } catch (e) {
         console.error("Failed to save current state to localStorage", e);
     }
 }
+
+function syncDiagramWindow() {
+    if (!window.diagramWindow || window.diagramWindow.closed) {
+        return;
+    }
+    try {
+        window.diagramWindow.postMessage({
+            type: 'AgitatorSimRealtimeSync',
+            config: {...config}
+        }, '*');
+    } catch (e) {
+        console.warn('Failed to postMessage to diagram window', e);
+    }
+}
+
+window.addEventListener('message', (event) => {
+    if (!event.data || event.data.type !== 'AgitatorDiagramReady') return;
+    syncDiagramWindow();
+});
 
 // -----------------------------------------------------------
 // Solid-Liquid Particle Suspension (Zwietering Njs) Calculations
@@ -3447,6 +3505,7 @@ function updateSimulatorResults() {
     
     updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
     updateCavernDiameter();
+    if (typeof _updateNjsCache === 'function') _updateNjsCache();
 }
 
 function updateSimulatorResultsOnly() {
@@ -3455,6 +3514,7 @@ function updateSimulatorResultsOnly() {
         updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
     }
     updateCavernDiameter();
+    if (typeof _updateNjsCache === 'function') _updateNjsCache();
 }
 
 // 降伏応力流体用キャバーン径（流動領域）の推算 (Elson et al.)
@@ -3559,6 +3619,8 @@ let simParticles = [];
 let simAnimId = null;
 let simImpellerAngle = 0;    // accumulated rotation angle [rad]
 let simLastFrameTime = null; // performance.now() at last frame
+let _cachedNjsResult = { error: 'not initialized', Njs_rpm: 0 };
+function _updateNjsCache() { _cachedNjsResult = calculateNjs(); }
 
 function getVesselVisualCoords() {
     const cx = 225;
@@ -3837,6 +3899,7 @@ function initParticleSimulation() {
     }
     simImpellerAngle = 0;
     simLastFrameTime = null;
+    _cachedNjsResult = calculateNjs(); // 初期化時にNjsをキャッシュ
     
     const coords = getVesselVisualCoords();
     const { lx, D_px } = coords;
@@ -3947,6 +4010,7 @@ function drawParticleSimulation() {
     const coords = getVesselVisualCoords();
     const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
     
+    if (document.hidden) { simLastFrameTime = null; return; }
     simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
     
     // 1. Draw Liquid Region Fill
@@ -4070,7 +4134,7 @@ function drawParticleSimulation() {
     }
 
     // 3. Draw Particles (under physics)
-    const njsResult = calculateNjs();
+    const njsResult = _cachedNjsResult;
     const njs_rpm = njsResult.error ? 1000 : njsResult.Njs_rpm;
     const liftOffThreshold = 0.15 * njs_rpm;
     
@@ -4161,7 +4225,7 @@ function drawParticleSimulation() {
     // (avoids float precision loss from large Date.now() values)
     const nowPerfMs = performance.now();
     if (simLastFrameTime !== null) {
-        const dtSec = (nowPerfMs - simLastFrameTime) / 1000;
+        const dtSec = Math.min((nowPerfMs - simLastFrameTime) / 1000, 0.05); // 上限50ms
         const omega = (config.simSpeed > 5) ? (config.simSpeed * Math.PI / 30) : 0;
         simImpellerAngle += omega * dtSec;
         // Keep angle in [0, 2π) to avoid unbounded growth
@@ -4170,7 +4234,8 @@ function drawParticleSimulation() {
     simLastFrameTime = nowPerfMs;
     const angle = simImpellerAngle;
     
-    // Determine blade count per impeller type
+    // Determine blade count per impeller type.
+    // Allow the configured np to override default blade counts.
     const bladeCountMap = {
         'flat-turbine':   6,
         'pitched-paddle': 4,
@@ -4178,7 +4243,8 @@ function drawParticleSimulation() {
         'propeller':      3,
         'faudler':        3,
     };
-    const nBlades = bladeCountMap[config.impellerType] || 2;
+    const defaultBlades = bladeCountMap[config.impellerType] || 2;
+    const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
     
     // Multi-stage Y positions
     const n_stages = parseInt(config.n_stage) || 1;
@@ -4242,6 +4308,29 @@ function drawParticleSimulation() {
                 simCtx.beginPath();
                 simCtx.arc(cx, y_imp, r_hub, 0, Math.PI * 2);
                 simCtx.fill();
+                simCtx.stroke();
+
+                // Non-symmetric hub marker to avoid strobing/aliasing at certain RPMs
+                const markerRadius = 2.5;
+                const markerAngle = angle * 1.0;
+                const mx = cx + Math.cos(markerAngle) * (r_hub - 3);
+                const my = y_imp + Math.sin(markerAngle) * (r_hub - 3);
+                simCtx.fillStyle = '#fde047';
+                simCtx.beginPath();
+                simCtx.arc(mx, my, markerRadius, 0, Math.PI * 2);
+                simCtx.fill();
+
+                // Visible rotation pointer line
+                simCtx.strokeStyle = '#fde047';
+                simCtx.lineWidth = 2;
+                simCtx.beginPath();
+                simCtx.moveTo(cx, y_imp);
+                simCtx.lineTo(mx, my);
+                simCtx.stroke();
+
+                // Add a short bright arc segment on the hub to further break symmetry
+                simCtx.beginPath();
+                simCtx.arc(cx, y_imp, r_hub - 1.5, markerAngle - 0.35, markerAngle + 0.35);
                 simCtx.stroke();
                 simCtx.restore();
             }

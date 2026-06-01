@@ -301,7 +301,7 @@
                     <a href="formula.html" class="btn btn-secondary">
                         <i data-feather="book-open"></i> 推算式の説明
                     </a>
-                    <a href="diagram.html" class="btn btn-secondary" target="agitator_diagram" onclick="this.href='diagram.html?t=' + Date.now()">
+                    <a href="#" class="btn btn-secondary" onclick="openDiagramWindow(); return false;">
                         <i data-feather="image"></i> 槽模式図
                     </a>
                     <button id="export-pdf-btn" class="btn btn-primary">
@@ -348,6 +348,9 @@
                                 <option value="1000">1000</option>
                                 <option value="10000">10000</option>
                             </select>
+                        </div>
+                        <div id="low-re-warning" style="display:none; padding: 10px 14px; margin-top: 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #b45309; font-size: 0.82rem;">
+                            低 Re 領域を含みます。非ニュートン流体ではこの範囲の推算が不安定になる可能性があります。
                         </div>
                         
                         <!-- Badge for Particle Sim (visible only on Sim tab) -->
@@ -638,6 +641,42 @@
     <script>
         // Initialize Feather Icons
         feather.replace();
+
+        window.diagramWindow = null;
+
+        function openDiagramWindow() {
+            if (typeof config !== 'object') {
+                window.diagramWindow = window.open('diagram.html?t=' + Date.now(), 'agitator-diagram');
+                return;
+            }
+            const params = new URLSearchParams();
+            const fields = {
+                DT: config.DT,
+                H: config.H,
+                d: config.d,
+                clearance: config.clearance,
+                b: config.b,
+                n_stage: config.n_stage,
+                headType: config.headType,
+                impellerType: config.impellerType,
+                baffleActive: config.baffleActive,
+                nB: config.nB,
+                Bw: config.Bw,
+                np: config.np,
+                theta: config.theta,
+                V_act: config.V_act,
+                simSpeed: config.simSpeed,
+                cavern_Dc: config.cavern_Dc || 0,
+                cavernModel: config.cavernModel || 'cylindrical'
+            };
+            Object.entries(fields).forEach(([key, value]) => {
+                params.set(key, String(value));
+            });
+            const url = 'diagram.html?' + params.toString() + '&t=' + Date.now();
+            window.diagramWindow = window.open(url, 'agitator-diagram');
+            setTimeout(() => { if (typeof syncDiagramWindow === 'function') syncDiagramWindow(); }, 250);
+            setTimeout(() => { if (typeof syncDiagramWindow === 'function') syncDiagramWindow(); }, 1000);
+        }
     </script>
 </body>
 </html>
