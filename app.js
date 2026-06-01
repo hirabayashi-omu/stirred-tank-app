@@ -33,6 +33,9 @@ let config = {
     simSpeedSync: true,
     activeTab: 'rushton',
     solidLiquidActive: true
+    ,
+    // Particle simulation start mode: 'near-impeller' | 'suspended' | 'settled' | 'uniform'
+    particleStartMode: 'near-impeller'
 };
 
 // Rheology model state (loaded from viscometer CSV)
@@ -238,6 +241,17 @@ function initEventListeners() {
             recalculateAll();
         });
     });
+
+    // Particle simulation start mode selector
+    const pStartEl = document.getElementById('particle-start-mode');
+    if (pStartEl) {
+        pStartEl.value = config.particleStartMode || 'near-impeller';
+        pStartEl.addEventListener('change', (e) => {
+            config.particleStartMode = e.target.value;
+            // Reinitialize particle simulation to reflect new start distribution
+            initParticleSimulation();
+        });
+    }
 
     document.getElementById('baffle-active').addEventListener('change', (e) => {
         config.baffleActive = e.target.checked;
@@ -3902,14 +3916,60 @@ function initParticleSimulation() {
     _cachedNjsResult = calculateNjs(); // 初期化時にNjsをキャッシュ
     
     const coords = getVesselVisualCoords();
-    const { lx, D_px } = coords;
-    
-    // Initialize target particles at the bottom of the vessel based on concentration
+    const { lx, D_px, cx, scale, hb, y_deepest, y_cyl, y_liquid, rx } = coords;
+
+    // Initialize target particles based on concentration and selected start mode
     const targetCount = Math.min(1200, Math.max(100, Math.round(200 + 400 * Math.log10(1 + 9 * (config.solidConcVal || 1.0)))));
     simParticles = [];
+
+    // Helper: compute impeller stages Y positions (pixels)
+    const clearance_px = config.clearance * scale;
+    const b_px = config.b * scale;
+    const n_stages = parseInt(config.n_stage) || 1;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
+    let stages_y = [];
+    if (n_stages === 1) {
+        stages_y.push(y_bottom_impeller);
+    } else {
+        const y_top_impeller_limit = y_liquid + b_px / 2;
+        const available_span = y_bottom_impeller - y_top_impeller_limit;
+        const ideal_gap = available_span / (n_stages - 1);
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+        for (let i = 0; i < n_stages; i++) stages_y.push(y_bottom_impeller - (i * stage_gap));
+    }
+
+    const rImp_px = (config.d * scale) / 2;
+
     for (let i = 0; i < targetCount; i++) {
-        const px = lx + Math.random() * D_px;
-        const py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+        let px, py;
+        const mode = config.particleStartMode || 'near-impeller';
+        if (mode === 'near-impeller') {
+            // Place near a randomly chosen impeller stage within blade radius
+            const sy = stages_y[Math.floor(Math.random() * stages_y.length)];
+            const ang = Math.random() * Math.PI * 2;
+            const r = rImp_px * (0.25 + Math.random() * 0.6);
+            px = cx + r * Math.cos(ang);
+            py = sy + (Math.random() - 0.5) * (b_px * 0.9);
+            // Clamp inside vessel
+            px = Math.max(lx + 2, Math.min(rx - 2, px));
+            py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 1, py));
+        } else if (mode === 'suspended') {
+            // Prefer mid-liquid (away from surface and bottom)
+            px = lx + Math.random() * D_px;
+            const top = y_liquid + Math.max(8, b_px);
+            const bottom = y_cyl - Math.max(8, b_px);
+            py = top + Math.random() * Math.max(1, bottom - top);
+        } else if (mode === 'settled') {
+            // At bottom (settled)
+            px = lx + Math.random() * D_px;
+            py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+        } else { // uniform
+            px = lx + Math.random() * D_px;
+            const top = y_liquid + 2;
+            const bottom = getVesselBottomY(px, coords) - 2;
+            py = top + Math.random() * Math.max(1, bottom - top);
+        }
+
         simParticles.push({
             x: px,
             y: py,
@@ -3919,7 +3979,7 @@ function initParticleSimulation() {
             relVortexX: 0.75 + Math.random() * 0.5,
             relVortexY: 0.75 + Math.random() * 0.5,
             radius: 1.5,
-            color: '#78350f'
+            color: (config.particleStartMode === 'settled') ? '#78350f' : '#f1c27d'
         });
     }
     

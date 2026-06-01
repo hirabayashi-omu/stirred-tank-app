@@ -355,7 +355,16 @@
                         
                         <!-- Badge for Particle Sim (visible only on Sim tab) -->
                         <div id="partsim-controls" style="display: none;">
-                            <span class="badge" id="sim-status-badge" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">完全沈降</span>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <span class="badge" id="sim-status-badge" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">完全沈降</span>
+                                <label for="particle-start-mode" style="font-size:0.78rem; color:var(--text-secondary);">開始位置:</label>
+                                <select id="particle-start-mode" style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
+                                    <option value="near-impeller">インペラ付近</option>
+                                    <option value="suspended">浮遊</option>
+                                    <option value="settled">沈殿</option>
+                                    <option value="uniform">均一</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
