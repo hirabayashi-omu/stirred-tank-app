@@ -3954,11 +3954,13 @@ function initParticleSimulation() {
             px = Math.max(lx + 2, Math.min(rx - 2, px));
             py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 1, py));
         } else if (mode === 'suspended') {
-            // Prefer mid-liquid (away from surface and bottom)
+            // Prefer near the liquid surface (surface layer)
             px = lx + Math.random() * D_px;
-            const top = y_liquid + Math.max(8, b_px);
-            const bottom = y_cyl - Math.max(8, b_px);
-            py = top + Math.random() * Math.max(1, bottom - top);
+            // Available depth from surface to bottom at this x
+            const availableDepth = Math.max(4, getVesselBottomY(px, coords) - y_liquid - 4);
+            // Surface band: at least 8px, at most 30px, but not deeper than availableDepth
+            const surfaceBand = Math.min(30, Math.max(8, Math.min(Math.floor(b_px || 8), availableDepth)));
+            py = y_liquid + 2 + Math.random() * surfaceBand;
         } else if (mode === 'settled') {
             // At bottom (settled)
             px = lx + Math.random() * D_px;
