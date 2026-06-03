@@ -399,6 +399,14 @@ const CH = canvas.height;  // 660
 // iso origin is computed each frame in draw()
 let ox=0, oy=0;
 
+// Calculate the actual number of stages that physically fit under the liquid level
+// and respect the clearance and the minimum stage gap (1.3 * b)
+function getActiveStages() {
+    const { H, clearance, b, n_stage } = config;
+    const max_stages = Math.max(1, Math.floor((H - clearance - b) / (1.3 * b)) + 1);
+    return Math.min(parseInt(n_stage) || 1, max_stages);
+}
+
 function computeLayout() {
     const R = config.DT/2;
     const H = config.H;
@@ -529,7 +537,7 @@ function draw() {
     ctx2.restore();
 
     // ── 9. Impeller stages ────────────────────────────────
-    const n_stages = parseInt(config.n_stage)||1;
+    const n_stages = getActiveStages();
     const c_Z  = config.clearance*scl;
     const bh_Z = (config.b/2)*scl;
     const rImp = (config.d/2)*scl;
@@ -539,7 +547,7 @@ function draw() {
     if (n_stages===1) {
         stages_z.push(zImp0);
     } else {
-        const gap = Math.max(bh_Z*2.6, (zLiq-zImp0)/(n_stages-1));
+        const gap = (zLiq - bh_Z - zImp0) / (n_stages - 1);
         for (let i=0; i<n_stages; i++) stages_z.push(zImp0 + i*gap);
     }
 
@@ -718,7 +726,11 @@ function updateUI() {
     document.getElementById('val-d').textContent       = `${config.d.toFixed(4)} m`;
     document.getElementById('val-C').textContent       = `${config.clearance.toFixed(4)} m`;
     document.getElementById('val-b').textContent       = `${config.b.toFixed(4)} m`;
-    document.getElementById('val-stages').textContent  = `${config.n_stage} 段`;
+    const n_stages_requested = parseInt(config.n_stage) || 1;
+    const n_stage_active = getActiveStages();
+    document.getElementById('val-stages').textContent = n_stage_active < n_stages_requested
+        ? `${n_stage_active} 段 (設定: ${n_stages_requested} 段)`
+        : `${n_stage_active} 段`;
     document.getElementById('val-head').textContent    = headTypeMap[config.headType]||config.headType;
     document.getElementById('val-baffle').textContent  = config.baffleActive
         ? `${config.Bw.toFixed(4)} m × ${config.nB}枚` : 'なし';

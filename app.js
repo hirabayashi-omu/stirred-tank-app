@@ -577,9 +577,18 @@ function calcLiquidVolumeForPv() {
     return calcLiquidVolume();
 }
 
+// Calculate the actual number of stages that physically fit under the liquid level
+// and respect the clearance and the minimum stage gap (1.3 * b)
+function getActiveStages() {
+    const { H, clearance, b, n_stage } = config;
+    const max_stages = Math.max(1, Math.floor((H - clearance - b) / (1.3 * b)) + 1);
+    return Math.min(parseInt(n_stage) || 1, max_stages);
+}
+
 // Calculate NpMax based on impeller type and multi-stage configuration
 function getNpMax() {
-    const { impellerType, np, b, d, theta, n_stage } = config;
+    const { impellerType, np, b, d, theta } = config;
+    const n_stage_active = getActiveStages();
     const thetaRad = (theta * Math.PI) / 180;
     let NpMax_1 = 0; // 1-stage NpMax
 
@@ -598,7 +607,7 @@ function getNpMax() {
         NpMax_1 = 6.5 * Math.pow(Math.pow(np, 0.7) * b * Math.pow(Math.sin(thetaRad), 1.6) / d, 1.7);
     }
 
-    return NpMax_1 * n_stage;
+    return NpMax_1 * n_stage_active;
 }
 
 // Calculate Np0 (unbaffled) and Np (baffled) for a given Reynolds number
@@ -619,7 +628,7 @@ function calculateNpCurve(Re) {
 
     // Unbaffled Power number Np0
     const volume_factor = 8 * Math.pow(d, 3) / (Math.pow(DT, 2) * H);
-    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f * config.n_stage;
+    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f * getActiveStages();
 
     // Baffled Power number (Kamei Equation)
     if (!baffleActive || nB <= 0 || Bw <= 0) {
@@ -650,7 +659,23 @@ function calculateNpCurve(Re) {
 // UI Logic & Recalculations
 // ----------------------------------------------------
 
+function updateNStageWarning() {
+    const n_stages_requested = parseInt(config.n_stage) || 1;
+    const n_stage_active = getActiveStages();
+    const warningEl = document.getElementById('n-stage-warning');
+    const warningValEl = document.getElementById('n-stage-active-val');
+    if (warningEl && warningValEl) {
+        if (n_stage_active < n_stages_requested) {
+            warningEl.style.display = 'block';
+            warningValEl.textContent = n_stage_active;
+        } else {
+            warningEl.style.display = 'none';
+        }
+    }
+}
+
 function recalculateAll() {
+    updateNStageWarning();
     updateIntermediateVarsUI();
     recalculateExperimentalData();
     
@@ -2497,7 +2522,7 @@ function drawVesselForPDF() {
     // RULE: The bottom impeller is always anchored at clearance C above the tank bottom.
     //       Upper stages are stacked upward with a minimum gap of b*1.3.
     //       Bottom clearance is NEVER compromised.
-    const n_stages = parseInt(config.n_stage) || 1;
+    const n_stages = getActiveStages();
     let stages_y = [];
     if (n_stages === 1) {
         stages_y.push(y_bottom_impeller);
@@ -2732,7 +2757,7 @@ function generatePDFReport() {
     document.getElementById('pdf-val-theta').textContent = config.theta;
     document.getElementById('pdf-val-d').textContent = config.d.toFixed(3);
     document.getElementById('pdf-val-b').textContent = config.b.toFixed(3);
-    document.getElementById('pdf-val-stages').textContent = config.n_stage;
+    document.getElementById('pdf-val-stages').textContent = getActiveStages();
 
     document.getElementById('pdf-val-baffle').textContent = config.baffleActive ? 'あり' : 'なし';
     document.getElementById('pdf-val-nb').textContent = config.nB;
@@ -3697,7 +3722,7 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     const b_px = config.b * scale;
 
     // --- Compute multi-stage Y positions (same logic as drawParticleSimulation) ---
-    const n_stages = parseInt(config.n_stage) || 1;
+    const n_stages = getActiveStages();
     const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
     let stages_y = [];
     if (n_stages === 1) {
@@ -3925,7 +3950,7 @@ function initParticleSimulation() {
     // Helper: compute impeller stages Y positions (pixels)
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
-    const n_stages = parseInt(config.n_stage) || 1;
+    const n_stages = getActiveStages();
     const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
     let stages_y = [];
     if (n_stages === 1) {
@@ -4212,17 +4237,21 @@ function drawParticleSimulation() {
 
         const fluidVel = getFluidVelocity(p.x, p.y, config.simSpeed, coords, p);
         
-        // Fluid drag coupling - responsiveness (inertia) decreases with particle density and size
+        // Stokes terminal velocity for a spherical particle in low-Re flow
         const dp = config.dp_um || 150;
-        const inertia = Math.max(0.015, 0.3 / (1.0 + 0.6 * (config.rho_S / 1000) * Math.sqrt(dp / 150)));
-        p.vx += (fluidVel.vx - p.vx) * inertia;
-        p.vy += (fluidVel.vy - p.vy) * inertia;
-        
-        // Sedimentation gravity force
-        const delta_rho = Math.max(0, config.rho_S - config.rho);
-        const settling = 0.04 * (delta_rho / 1500) * Math.pow(dp / 150, 1.5);
-        p.vy += settling;
-        
+        const dp_m = dp * 1e-6; // convert microns to meters
+        const R = dp_m * 0.5;
+        const mu_f = Math.max(0.001, config.mu || 0.001);
+        const g_acc = config.g || 9.806;
+        const delta_rho = config.rho_S - config.rho;
+        const vt_m_s = (2 / 9) * (delta_rho * g_acc * R * R) / mu_f;
+        const vt_px = vt_m_s * scale * 0.36; // meter→pixel scaling adjustment for animation
+
+        // Relax the particle velocity toward the fluid velocity plus Stokes terminal rise/sink speed
+        const stokesRelax = Math.max(0.02, 0.18 * Math.sqrt(150 / dp));
+        p.vx += (fluidVel.vx - p.vx) * stokesRelax;
+        p.vy += (fluidVel.vy + vt_px - p.vy) * stokesRelax;
+
         // Turbulent fluctuations (scales with rpm)
         const turb = 0.35 * (config.simSpeed / 300) * (p.relSize || 1.0);
         p.vx += (Math.random() - 0.5) * turb;
@@ -4242,12 +4271,18 @@ function drawParticleSimulation() {
         
         if (p.y > y_bot - p.radius - 1) {
             p.y = y_bot - p.radius - 1;
-            
-            if (config.simSpeed < liftOffThreshold) {
-                // Completely settled
+            const isBuoyant = delta_rho < 0;
+
+            if (!isBuoyant && config.simSpeed < liftOffThreshold) {
+                // Completely settled for heavy particles
                 p.vx = 0;
                 p.vy = 0;
                 p.color = '#78350f'; // resting: dark amber
+            } else if (isBuoyant) {
+                // Light particles should detach and rise
+                p.vy = Math.min(p.vy, -Math.max(0.35, Math.abs(vt_px) * 3));
+                p.vx *= 0.4;
+                p.color = '#38bdf8'; // buoyant: sky blue
             } else {
                 // Rolling/bouncing at bottom
                 p.vy = -Math.abs(p.vy) * 0.05;
@@ -4261,6 +4296,8 @@ function drawParticleSimulation() {
             // Suspended
             if (config.simSpeed >= njs_rpm) {
                 p.color = '#f59e0b'; // fully suspended: bright orange
+            } else if (delta_rho < 0) {
+                p.color = '#38bdf8'; // buoyant but not fully lifted yet
             } else {
                 p.color = '#d97706'; // partially suspended: medium orange
             }
@@ -4309,7 +4346,7 @@ function drawParticleSimulation() {
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
     
     // Multi-stage Y positions
-    const n_stages = parseInt(config.n_stage) || 1;
+    const n_stages = getActiveStages();
     let stages_y = [];
     if (n_stages === 1) {
         stages_y.push(y_bottom_impeller);

@@ -220,6 +220,10 @@
                             <label for="n_stage">翼段数 N<sub>stage</sub></label>
                             <input type="number" id="n_stage" value="1" step="1" min="1">
                         </div>
+                        <div id="n-stage-warning" style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
+                            <i data-feather="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>
+                            液面・クリアランス制限により、実際に液面下に入るインペラ数は <span id="n-stage-active-val" style="font-weight:bold;"></span> 段として推算・描画しています。
+                        </div>
                     </div>
                 </section>
 
