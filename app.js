@@ -3710,6 +3710,48 @@ function getVesselBottomY(x, coords) {
     }
 }
 
+function getCavernDecay(x, y, coords) {
+    if (config.cavern_Dc <= 0) return 1.0;
+    
+    const { cx, D_px, scale, y_deepest, y_liquid } = coords;
+    const cavernRadius = (config.cavern_Dc / 2) * scale;
+    const b_px = config.b * scale;
+    const clearance_px = config.clearance * scale;
+    
+    const n_stages = getActiveStages();
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
+    let stages_y = [];
+    if (n_stages === 1) {
+        stages_y.push(y_bottom_impeller);
+    } else {
+        const y_top_impeller_limit = y_liquid + b_px / 2;
+        const available_span = y_bottom_impeller - y_top_impeller_limit;
+        const ideal_gap = available_span / (n_stages - 1);
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+        for (let i = 0; i < n_stages; i++) {
+            stages_y.push(y_bottom_impeller - (i * stage_gap));
+        }
+    }
+    
+    let minDistOut = Infinity;
+    for (const y_imp_s of stages_y) {
+        let distOut = 0;
+        if (config.cavernModel === 'cylindrical') {
+            const hc = cavernRadius * 1.5;
+            distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp_s) - hc / 2));
+        } else {
+            const dist3d = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp_s, 2));
+            distOut = Math.max(0, dist3d - cavernRadius);
+        }
+        if (distOut < minDistOut) minDistOut = distOut;
+    }
+    
+    if (minDistOut <= 0) return 1.0;
+    
+    // Very gradual decay over 75 pixels (about 30% of D_px) to make the boundary soft and ambiguous
+    return Math.max(0, 1.0 - (minDistOut / 75.0));
+}
+
 function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     const { cx, D_px, scale, y_deepest, y_liquid, lx, rx } = coords;
     
@@ -3761,28 +3803,8 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     }
 
     // --- Cavern / dead-zone decay (multi-stage: each stage has its own cavern) ---
-    // For yield-stress fluids, dead zone is tested around the nearest stage
-    let cavernDecay = 1.0;
-    if (config.cavern_Dc > 0) {
-        const cavernRadius = (config.cavern_Dc / 2) * scale;
-        // Find closest stage to this point
-        let minDistOut = Infinity;
-        for (const y_imp_s of stages_y) {
-            let distOut = 0;
-            if (config.cavernModel === 'cylindrical') {
-                const hc = cavernRadius * 1.5;
-                distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp_s) - hc / 2));
-            } else {
-                const dist3d = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp_s, 2));
-                distOut = Math.max(0, dist3d - cavernRadius);
-            }
-            if (distOut < minDistOut) minDistOut = distOut;
-        }
-        if (minDistOut > 0) {
-            cavernDecay = Math.max(0, 1.0 - (minDistOut / 20.0));
-            if (cavernDecay === 0) return { vx: 0, vy: 0 };
-        }
-    }
+    const cavernDecay = getCavernDecay(x, y, coords);
+    if (cavernDecay === 0) return { vx: 0, vy: 0 };
 
     const rxScale = p.relVortexX || 1.0;
     const ryScale = p.relVortexY || 1.0;
@@ -4252,18 +4274,38 @@ function drawParticleSimulation() {
         simCtx.closePath();
         simCtx.fill();
         
-        // キャバーン領域を「くり抜く」 (流動領域) - 境界をさらに曖昧化
+        // キャバーン領域を「くり抜く」 (流動領域) - グラデーションとぼかしフィルターの両方を用いて境界を非常に曖昧にする
         simCtx.globalCompositeOperation = 'destination-out';
-        simCtx.fillStyle = 'rgba(255, 255, 255, 1)';
-        simCtx.filter = 'blur(24px)';
-        simCtx.beginPath();
+        
+        // Use filter blur (if supported) for extra softness
+        simCtx.filter = 'blur(32px)';
+        
         if (config.cavernModel === 'cylindrical') {
-            const h = cavernRadius * 1.5; // 円筒モデルの高さ（概算）
-            simCtx.fillRect(cx - cavernRadius, y_imp - h/2, cavernRadius * 2, h);
+            // 円筒モデル: 縦横比を調整した楕円グラデーションでくり抜く
+            simCtx.save();
+            simCtx.translate(cx, y_imp);
+            simCtx.scale(1, 1.4); // 縦に少し伸ばして円筒形状に近似
+            const grad = simCtx.createRadialGradient(0, 0, cavernRadius * 0.2, 0, 0, cavernRadius * 1.2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.7)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+            simCtx.fillStyle = grad;
+            simCtx.beginPath();
+            simCtx.arc(0, 0, cavernRadius * 1.2, 0, 2 * Math.PI);
+            simCtx.fill();
+            simCtx.restore();
         } else {
-            simCtx.arc(cx, y_imp, cavernRadius, 0, 2 * Math.PI);
+            // 球形モデル: 円形グラデーションでくり抜く
+            const grad = simCtx.createRadialGradient(cx, y_imp, cavernRadius * 0.2, cx, y_imp, cavernRadius * 1.2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.7)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+            simCtx.fillStyle = grad;
+            simCtx.beginPath();
+            simCtx.arc(cx, y_imp, cavernRadius * 1.2, 0, 2 * Math.PI);
             simCtx.fill();
         }
+        
         simCtx.filter = 'none';
         
         // 通常の描画モードに戻す
@@ -4317,6 +4359,7 @@ function drawParticleSimulation() {
         }
         p.radius = baseRadius * p.relSize;
 
+        const decay = getCavernDecay(p.x, p.y, coords);
         const fluidVel = getFluidVelocity(p.x, p.y, config.simSpeed, coords, p);
         
         // Stokes terminal velocity for a spherical particle in low-Re flow
@@ -4331,12 +4374,13 @@ function drawParticleSimulation() {
 
         // Relax the particle velocity toward the fluid velocity plus Stokes terminal rise/sink speed
         // Clamp stokesRelax to max 0.9 to prevent numerical divergence/oscillations at small particle sizes (dp)
+        // Stokes gravity settling/buoyancy remains active across the entire tank and at 0 RPM
         const stokesRelax = Math.min(0.9, Math.max(0.02, 0.18 * Math.sqrt(150 / dp)));
         p.vx += (fluidVel.vx - p.vx) * stokesRelax;
         p.vy += (fluidVel.vy + vt_px - p.vy) * stokesRelax;
 
-        // Turbulent fluctuations (scales with rpm)
-        const turb = 0.35 * (config.simSpeed / 300) * (p.relSize || 1.0);
+        // Turbulent fluctuations (scales with rpm, and decays to 0 inside the dead zone)
+        const turb = 0.35 * (config.simSpeed / 300) * (p.relSize || 1.0) * decay;
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
         
