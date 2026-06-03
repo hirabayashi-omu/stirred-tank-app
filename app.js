@@ -3713,7 +3713,30 @@ function getVesselBottomY(x, coords) {
 function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     const { cx, D_px, scale, y_deepest, y_liquid, lx, rx } = coords;
     
-    if (speed_rpm <= 5 || y < y_liquid || y > getVesselBottomY(x, coords)) {
+    // Calculate local parabolic vortex surface height
+    const rpm = speed_rpm || 0;
+    let vortexDepth = Math.pow(rpm / 600, 2) * D_px * 0.05;
+    if (config.baffleActive) {
+        vortexDepth *= 0.12; // Baffled vortex is very shallow
+    }
+    const maxAllowedDepth = Math.max(0, (y_deepest - y_liquid) * 0.6);
+    vortexDepth = Math.min(vortexDepth, maxAllowedDepth);
+    
+    // Wave calculation matching drawParticleSimulation
+    let waveOffset = 0;
+    if (rpm > 5) {
+        const t = performance.now() / 1000;
+        const waveAmp = (rpm / 600) * (config.baffleActive ? 0.7 : 2.2);
+        const waveFreq = 2.0 + (rpm / 300) * 5.0;
+        const w1 = Math.sin(waveFreq * t - (2 * Math.PI / D_px) * (x - lx));
+        const w2 = Math.cos(waveFreq * 1.7 * t + (4 * Math.PI / D_px) * (x - lx));
+        waveOffset = waveAmp * (w1 + 0.35 * w2);
+    }
+    
+    const u = (x - cx) / (D_px / 2);
+    const y_surf = Math.max(y_liquid - 10, y_liquid + vortexDepth * (0.5 - u * u) + waveOffset);
+    
+    if (speed_rpm <= 5 || y < y_surf || y > getVesselBottomY(x, coords)) {
         return { vx: 0, vy: 0 };
     }
     
@@ -3780,7 +3803,7 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
         // Upper boundary: midpoint to stage above (or liquid surface)
         const y_upper_bound = si < stages_y.length - 1
             ? (stages_y[si] + stages_y[si + 1]) / 2  // midpoint between this and upper stage
-            : y_liquid;
+            : y_surf;
         // Lower boundary: midpoint to stage below (or vessel bottom)
         const y_lower_bound = si > 0
             ? (stages_y[si] + stages_y[si - 1]) / 2  // midpoint between this and lower stage
@@ -3821,7 +3844,7 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
                 vy_dir = inLeft ? (-rx_v / dist) : (rx_v / dist);
             }
 
-            const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
             const wallFactor = Math.min(1.0, wallDist / 10);
             const centerFactor = Math.min(1.0, dist / 8);
 
@@ -3841,7 +3864,7 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
             vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
             vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
 
-            const wallDist = Math.min(x - lx, rx - x, y - y_liquid, getVesselBottomY(x, coords) - y);
+            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
             const wallFactor = Math.min(1.0, wallDist / 10);
             const centerFactor = Math.min(1.0, dist / 12);
 
@@ -4100,53 +4123,103 @@ function drawParticleSimulation() {
     if (document.hidden) { simLastFrameTime = null; return; }
     simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
     
+    // Calculate local parabolic vortex surface height based on rotation speed
+    const rpm = config.simSpeed || 0;
+    let vortexDepth = Math.pow(rpm / 600, 2) * D_px * 0.05;
+    if (config.baffleActive) {
+        vortexDepth *= 0.12; // Baffled vortex is significantly suppressed
+    }
+    const maxAllowedDepth = Math.max(0, (y_deepest - y_liquid) * 0.6);
+    vortexDepth = Math.min(vortexDepth, maxAllowedDepth);
+    
+    // Wave parameters
+    const t = performance.now() / 1000;
+    const waveAmp = (rpm / 600) * (config.baffleActive ? 0.7 : 2.2);
+    const waveFreq = 2.0 + (rpm / 300) * 5.0;
+    
+    // Helper to get local surface Y coordinate at any X
+    const getLocalSurfaceY = (x_val) => {
+        const u = (x_val - cx) / (D_px / 2);
+        let waveOffset = 0;
+        if (rpm > 5) {
+            const w1 = Math.sin(waveFreq * t - (2 * Math.PI / D_px) * (x_val - lx));
+            const w2 = Math.cos(waveFreq * 1.7 * t + (4 * Math.PI / D_px) * (x_val - lx));
+            waveOffset = waveAmp * (w1 + 0.35 * w2);
+        }
+        const y_surf = y_liquid + vortexDepth * (0.5 - u * u) + waveOffset;
+        return Math.max(y_liquid - 10, y_surf);
+    };
+    
     // 1. Draw Liquid Region Fill
     simCtx.save();
     simCtx.fillStyle = 'rgba(6, 182, 212, 0.05)';
     simCtx.beginPath();
-    simCtx.moveTo(lx, y_liquid);
-    simCtx.lineTo(lx, y_cyl);
     
-    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
-        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
-    } else if (config.headType === 'hemispherical') {
-        simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
-    } else {
-        simCtx.lineTo(rx, y_cyl);
+    // Draw curved top surface from left (lx) to right (rx)
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const px = lx + t * D_px;
+        const py = getLocalSurfaceY(px);
+        if (i === 0) {
+            simCtx.moveTo(px, py);
+        } else {
+            simCtx.lineTo(px, py);
+        }
     }
-    simCtx.lineTo(rx, y_liquid);
+    
+    // Go down to bottom right cylindrical wall
+    simCtx.lineTo(rx, y_cyl);
+    
+    // Trace the bottom vessel head from right to left
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
+    } else if (config.headType === 'hemispherical') {
+        simCtx.arc(cx, y_cyl, D_px / 2, 0, Math.PI, false);
+    } else {
+        simCtx.lineTo(lx, y_cyl);
+    }
     simCtx.closePath();
     simCtx.fill();
     
-    // Draw Liquid Surface
+    // Draw Liquid Surface Outline (parabolic curve)
     simCtx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
     simCtx.lineWidth = 1.5;
     simCtx.beginPath();
-    simCtx.moveTo(lx, y_liquid);
-    simCtx.lineTo(rx, y_liquid);
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const px = lx + t * D_px;
+        const py = getLocalSurfaceY(px);
+        if (i === 0) {
+            simCtx.moveTo(px, py);
+        } else {
+            simCtx.lineTo(px, py);
+        }
+    }
     simCtx.stroke();
     simCtx.restore();
     
-    // 2. Draw Baffles
+    // 2. Draw Baffles (adaptive height to local liquid surface at walls)
     if (config.baffleActive) {
         simCtx.save();
         simCtx.fillStyle = 'rgba(16, 185, 129, 0.08)';
         simCtx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
         simCtx.lineWidth = 1;
         const bw_px = Math.max(4, config.Bw * scale);
-        const baffle_h = y_cyl - y_liquid;
+        const y_surf_wall = getLocalSurfaceY(lx); // liquid level at the wall
+        const baffle_h = y_cyl - y_surf_wall;
         
-        simCtx.fillRect(lx, y_liquid, bw_px, baffle_h);
-        simCtx.strokeRect(lx, y_liquid, bw_px, baffle_h);
+        simCtx.fillRect(lx, y_surf_wall, bw_px, baffle_h);
+        simCtx.strokeRect(lx, y_surf_wall, bw_px, baffle_h);
         
         if (config.nB > 1) {
-            simCtx.fillRect(rx - bw_px, y_liquid, bw_px, baffle_h);
-            simCtx.strokeRect(rx - bw_px, y_liquid, bw_px, baffle_h);
+            simCtx.fillRect(rx - bw_px, y_surf_wall, bw_px, baffle_h);
+            simCtx.strokeRect(rx - bw_px, y_surf_wall, bw_px, baffle_h);
         }
         simCtx.restore();
     }
     
-    // 2.5 Draw Dead Water Zone and Cavern (for Yield Stress Fluids)
+    // 2.5 Draw Dead Water Zone and Cavern (for Yield Stress Fluids, respects curved surface)
     if (config.cavern_Dc > 0) {
         simCtx.save();
         const cavernRadius = (config.cavern_Dc / 2) * scale;
@@ -4157,16 +4230,25 @@ function drawParticleSimulation() {
         // タンク全体を暗くして死水域を表現
         simCtx.fillStyle = 'rgba(15, 23, 42, 0.5)';
         simCtx.beginPath();
-        simCtx.moveTo(lx, y_liquid);
-        simCtx.lineTo(lx, y_cyl);
-        if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
-            simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
-        } else if (config.headType === 'hemispherical') {
-            simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
-        } else {
-            simCtx.lineTo(rx, y_cyl);
+        // Trace curved surface from left to right
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const px = lx + t * D_px;
+            const py = getLocalSurfaceY(px);
+            if (i === 0) {
+                simCtx.moveTo(px, py);
+            } else {
+                simCtx.lineTo(px, py);
+            }
         }
-        simCtx.lineTo(rx, y_liquid);
+        simCtx.lineTo(rx, y_cyl);
+        if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+            simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
+        } else if (config.headType === 'hemispherical') {
+            simCtx.arc(cx, y_cyl, D_px / 2, 0, Math.PI, false);
+        } else {
+            simCtx.lineTo(lx, y_cyl);
+        }
         simCtx.closePath();
         simCtx.fill();
         
@@ -4274,7 +4356,11 @@ function drawParticleSimulation() {
         if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.2; }
         if (p.x > rx - p.radius) { p.x = rx - p.radius; p.vx = -p.vx * 0.2; }
         
-        if (p.y < y_liquid + p.radius) { p.y = y_liquid + p.radius; p.vy = Math.abs(p.vy) * 0.1; }
+        const y_surf = getLocalSurfaceY(p.x);
+        if (p.y < y_surf + p.radius) {
+            p.y = y_surf + p.radius;
+            p.vy = Math.abs(p.vy) * 0.1;
+        }
         
         const y_bot = getVesselBottomY(p.x, coords);
         

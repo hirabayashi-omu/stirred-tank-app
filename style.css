@@ -574,6 +574,19 @@ body {
     .results-card {
         grid-column: span 12;
     }
+    .top-nav .actions .btn span {
+        display: none;
+    }
+    .top-nav .actions .btn {
+        padding: 0;
+        width: 44px;
+        height: 44px;
+        justify-content: center;
+        border-radius: var(--border-radius-md);
+    }
+    .top-nav .actions {
+        gap: 8px;
+    }
 }
 
 /* Editable Block Title Input */

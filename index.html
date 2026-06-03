@@ -302,20 +302,20 @@
             <header class="top-nav">
                 <h1>攪拌槽 動力特性解析システム</h1>
                 <div class="actions">
-                    <a href="formula.html" class="btn btn-secondary">
-                        <i data-feather="book-open"></i> 推算式の説明
+                    <a href="formula.html" class="btn btn-secondary" title="推算式の説明">
+                        <i data-feather="book-open"></i><span>推算式の説明</span>
                     </a>
-                    <a href="#" class="btn btn-secondary" onclick="openDiagramWindow(); return false;">
-                        <i data-feather="image"></i> 槽模式図
+                    <a href="#" class="btn btn-secondary" onclick="openDiagramWindow(); return false;" title="槽模式図">
+                        <i data-feather="image"></i><span>槽模式図</span>
                     </a>
-                    <button id="export-pdf-btn" class="btn btn-primary">
-                        <i data-feather="file-text"></i> PDFレポート作成
+                    <button id="export-pdf-btn" class="btn btn-primary" title="PDFレポート作成">
+                        <i data-feather="file-text"></i><span>PDFレポート作成</span>
                     </button>
-                    <button id="export-csv-btn" class="btn btn-secondary">
-                        <i data-feather="download"></i> CSVエクスポート
+                    <button id="export-csv-btn" class="btn btn-secondary" title="CSVエクスポート">
+                        <i data-feather="download"></i><span>CSVエクスポート</span>
                     </button>
-                    <button id="import-csv-btn" class="btn btn-secondary" onclick="document.getElementById('csv-file-input').click()">
-                        <i data-feather="upload"></i> CSVインポート
+                    <button id="import-csv-btn" class="btn btn-secondary" onclick="document.getElementById('csv-file-input').click()" title="CSVインポート">
+                        <i data-feather="upload"></i><span>CSVインポート</span>
                     </button>
                     <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
                 </div>
