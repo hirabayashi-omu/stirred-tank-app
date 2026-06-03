@@ -4238,17 +4238,18 @@ function drawParticleSimulation() {
         const fluidVel = getFluidVelocity(p.x, p.y, config.simSpeed, coords, p);
         
         // Stokes terminal velocity for a spherical particle in low-Re flow
-        const dp = config.dp_um || 150;
+        const dp = Math.max(0.1, config.dp_um || 150);
         const dp_m = dp * 1e-6; // convert microns to meters
         const R = dp_m * 0.5;
         const mu_f = Math.max(0.001, config.mu || 0.001);
         const g_acc = config.g || 9.806;
         const delta_rho = config.rho_S - config.rho;
         const vt_m_s = (2 / 9) * (delta_rho * g_acc * R * R) / mu_f;
-        const vt_px = vt_m_s * scale * 0.36; // meter→pixel scaling adjustment for animation
+        const vt_px = Math.max(-15, Math.min(15, vt_m_s * scale * 0.36)); // meter→pixel scaling adjustment for animation
 
         // Relax the particle velocity toward the fluid velocity plus Stokes terminal rise/sink speed
-        const stokesRelax = Math.max(0.02, 0.18 * Math.sqrt(150 / dp));
+        // Clamp stokesRelax to max 0.9 to prevent numerical divergence/oscillations at small particle sizes (dp)
+        const stokesRelax = Math.min(0.9, Math.max(0.02, 0.18 * Math.sqrt(150 / dp)));
         p.vx += (fluidVel.vx - p.vx) * stokesRelax;
         p.vy += (fluidVel.vy + vt_px - p.vy) * stokesRelax;
 
@@ -4260,6 +4261,14 @@ function drawParticleSimulation() {
         // Update coordinates
         p.x += p.vx;
         p.y += p.vy;
+
+        // Fail-safe check in case particle coordinates or velocities diverge to NaN or Infinity
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.vx) || !Number.isFinite(p.vy)) {
+            p.x = cx + (Math.random() - 0.5) * D_px * 0.5;
+            p.y = y_liquid + 5 + Math.random() * (y_deepest - y_liquid - 10);
+            p.vx = 0;
+            p.vy = 0;
+        }
         
         // Boundary collision
         if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.2; }
