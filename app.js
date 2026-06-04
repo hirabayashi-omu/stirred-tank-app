@@ -4518,8 +4518,12 @@ function drawParticleSimulation() {
         p.vx += (fluidVel.vx - p.vx) * stokesRelax;
         p.vy += (fluidVel.vy + vt_px - p.vy) * stokesRelax;
 
-        // Turbulent fluctuations (scales with rpm, and decays to 0 inside the dead zone)
-        const turb = 0.35 * (config.simSpeed / 300) * (p.relSize || 1.0) * decay;
+        // 乱流ゆらぎ（キャバーン境界のせん断層で乱流強度が極大化し、死水域深部でもわずかな微小拡散を残す）
+        // decay が 0.5 付近（境界）で極大化する補正係数: 1.0 + 4.0 * decay * (1.0 - decay)
+        const shearTurb = 1.0 + 4.0 * decay * (1.0 - decay);
+        // 死水域深部（decay=0）でも完全停止せず、微小なブラウン運動的拡散（下限0.15）を残すことでスタックを防ぐ
+        const turbFactor = Math.max(0.15, decay * shearTurb);
+        const turb = 0.45 * (config.simSpeed / 300) * (p.relSize || 1.0) * turbFactor;
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
         
