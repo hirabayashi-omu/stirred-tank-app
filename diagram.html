@@ -140,6 +140,10 @@
                     <div class="dim-label"><span class="dim-name">邪魔板仕様</span><span class="dim-desc">邪魔板幅 Bw × 枚数 nB</span></div>
                     <div class="dim-val" id="val-baffle" style="font-size:0.95rem;">--</div>
                 </div>
+                <div class="dim-item" id="dim-coil" style="display:none;">
+                    <div class="dim-label"><span class="dim-name">伝熱コイル</span><span class="dim-desc">外径 d<sub>co</sub> / ピッチ p<sub>c</sub> / 中心径 D<sub>c</sub></span></div>
+                    <div class="dim-val" id="val-coil" style="font-size:0.85rem;">--</div>
+                </div>
                 <div class="dim-item">
                     <div class="dim-label"><span class="dim-name">V<sub>液</sub> 概算値</span><span class="dim-desc">鏡板形状を考慮した液体積の概算</span></div>
                     <div class="dim-val" id="val-V-est" style="font-size:0.9rem;">-- L</div>
@@ -167,7 +171,8 @@ let config = {
     n_stage:1, headType:'semi-elliptical',
     impellerType:'pitched-paddle',
     baffleActive:true, nB:4, Bw:0.010,
-    np:4, theta:45, V_act:0.7295, simSpeed:300
+    np:4, theta:45, V_act:0.7295, simSpeed:300,
+    coilActive:false, coilOuterDia:0.010, coilPitch:0.025, coilCenterDia:0
 };
 let expBlocks=[], rheologyData=null;
 let animId=null, impAngle=0, lastFrameT=null;
@@ -646,6 +651,51 @@ function draw() {
             ctx2.restore();
         }
 
+        if (config.coilActive) {
+            ctx2.save();
+            const d_co = config.coilOuterDia ?? 0.010;
+            const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
+            const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
+            const R_c = (D_c_real / 2) * scl;
+            const coilSpan = (zCyl - zBot) + (zLiq - zCyl) - 20; 
+            const N_t = Math.max(1, Math.floor(coilSpan / (p_c * scl)));
+            const pitch = coilSpan / N_t;
+            
+            ctx2.strokeStyle = 'rgba(2,120,150,0.8)';
+            ctx2.lineWidth = Math.max(2, (d_co / 2) * scl);
+            ctx2.lineCap = 'round';
+            ctx2.lineJoin = 'round';
+            
+            ctx2.beginPath();
+            const pts = [];
+            for (let j = 0; j <= N_t * 64; j++) {
+                const t = (j / 64) * Math.PI * 2;
+                const cz = zBot + 10 + (j / 64) * pitch;
+                if (cz > zLiq) break;
+                pts.push(iso(R_c * Math.cos(t), R_c * Math.sin(t), cz, ox, oy));
+            }
+            if (pts.length > 0) {
+                ctx2.moveTo(pts[0].x, pts[0].y);
+                for(let k = 1; k < pts.length; k++) {
+                    ctx2.lineTo(pts[k].x, pts[k].y);
+                }
+                ctx2.stroke();
+            }
+            ctx2.restore();
+            
+            // Coil Dimensions Annotation
+            const cR = iso( R_c*Math.cos(-camAzimuth), R_c*Math.sin(-camAzimuth), zBot+10+pitch*N_t, ox, oy);
+            const cL = iso( R_c*Math.cos(Math.PI-camAzimuth), R_c*Math.sin(Math.PI-camAzimuth), zBot+10+pitch*N_t, ox, oy);
+            const cM = iso( 0, 0, zBot+10+pitch*N_t, ox, oy);
+            dimLine(ctx2, cR.x, cR.y, cL.x, cL.y);
+            dimLabel(ctx2, `Dc = ${D_c_real.toFixed(3)} m`, cM.x, cM.y - 10);
+            
+            const pTop = iso( R_c*Math.cos(-camAzimuth), R_c*Math.sin(-camAzimuth), zBot+10+pitch*2, ox, oy);
+            const pBot = iso( R_c*Math.cos(-camAzimuth), R_c*Math.sin(-camAzimuth), zBot+10+pitch, ox, oy);
+            dimLine(ctx2, pTop.x, pTop.y, pBot.x, pBot.y);
+            dimLabel(ctx2, `pc = ${p_c.toFixed(3)} m`, pTop.x+15, (pTop.y+pBot.y)/2);
+        }
+
         if (config.impellerType==='flat-turbine') {
             drawEllipse(ctx2, rImp*0.72, zI, ox, oy, '#9ca3af', '#6b7280', 1);
         }
@@ -734,6 +784,17 @@ function updateUI() {
     document.getElementById('val-head').textContent    = headTypeMap[config.headType]||config.headType;
     document.getElementById('val-baffle').textContent  = config.baffleActive
         ? `${config.Bw.toFixed(4)} m × ${config.nB}枚` : 'なし';
+        
+    const coilEl = document.getElementById('dim-coil');
+    if (config.coilActive) {
+        coilEl.style.display = 'flex';
+        const d_co = config.coilOuterDia ?? 0.010;
+        const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
+        const D_c = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
+        document.getElementById('val-coil').innerHTML = `${(d_co*1000).toFixed(1)} mm / ${(p_c*1000).toFixed(1)} mm / ${(D_c).toFixed(3)} m`;
+    } else {
+        coilEl.style.display = 'none';
+    }
 
     const R=config.DT/2, H=config.H;
     let h_dish=0,V_dish=0;
@@ -761,8 +822,8 @@ function updateUI() {
 function loadState() {
     const params = new URLSearchParams(window.location.search);
     let loadedFromQuery = false;
-    const numericKeys = ['DT','H','d','clearance','b','n_stage','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc'];
-    const boolKeys = ['baffleActive'];
+    const numericKeys = ['DT','H','d','clearance','b','n_stage','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc', 'coilOuterDia', 'coilPitch', 'coilCenterDia'];
+    const boolKeys = ['baffleActive', 'coilActive'];
     const stringKeys = ['headType','impellerType','cavernModel'];
 
     numericKeys.forEach(key => {
@@ -840,7 +901,8 @@ window.addEventListener('message', (event) => {
     // Apply incoming config updates immediately
     const keys = [
         'DT','H','d','clearance','b','n_stage','headType','impellerType',
-        'baffleActive','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc','cavernModel'
+        'baffleActive','nB','Bw','np','theta','V_act','simSpeed','cavern_Dc','cavernModel',
+        'coilActive','coilOuterDia','coilPitch','coilCenterDia'
     ];
     let updated = false;
     keys.forEach(key => {
@@ -860,8 +922,15 @@ window.addEventListener('load', () => {
     impAngle=0; lastFrameT=null;
     draw();
 
-    if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+    try {
+        if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+        }
+    } catch(e) {
+        // Fallback for file:// protocol cross-origin restrictions
+        if (window.opener) {
+            window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+        }
     }
 
     // Fallback polling for environments where storage events may not fire reliably

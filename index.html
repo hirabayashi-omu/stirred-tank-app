@@ -92,10 +92,6 @@
                     <h3><i data-feather="droplet"></i> 攪拌液データ・物性</h3>
                     <div class="input-grid">
                         <div class="input-group">
-                            <label for="liquid-temp">現在温度 T (°C)</label>
-                            <input type="number" id="liquid-temp" value="25" step="0.1">
-                        </div>
-                        <div class="input-group">
                             <label for="rho">液密度 ρ (kg/m³)</label>
                             <input type="number" id="rho" value="998" step="0.1">
                         </div>
@@ -707,43 +703,57 @@
                                 </div>
                                 
                                 <div class="results-table-container" style="flex-grow: 0.5; overflow-y: auto;">
-                                    <table class="results-table" style="font-size: 0.78rem;">
+                                    <h4 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; padding-left: 0.25rem;">伝熱パラメータ（並列計算）</h4>
+                                    <table class="results-table" style="font-size: 0.7rem; margin-bottom: 0.5rem; text-align: center;">
                                         <thead>
                                             <tr>
-                                                <th>項目</th>
-                                                <th>定義</th>
-                                                <th style="text-align: right;">計算値</th>
+                                                <th>部位</th>
+                                                <th>液側 h₁</th>
+                                                <th>熱媒側 h₂</th>
+                                                <th>汚れ r_d</th>
+                                                <th>壁抵抗 R_w</th>
+                                                <th>総括 U</th>
+                                                <th>面積 A</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td><strong>液側境膜伝熱係数 h<sub>1</sub></strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.65rem;">槽内液側伝熱係数</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);" id="heat-res-h1">-- W/(m²·K)</td>
+                                                <td style="text-align: left;">壁(ｼﾞｬｹｯﾄ)</td>
+                                                <td id="heat-res-h1-j" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-h2-j" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-rd-j" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-Rw-j" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-U-j" style="font-family: monospace; font-weight: 600; color: var(--accent-color);">--</td>
+                                                <td id="heat-res-A-j" style="font-family: monospace;">--</td>
                                             </tr>
                                             <tr>
-                                                <td><strong>熱媒側境膜伝熱係数 h<sub>2</sub></strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.65rem;">ジャケット/コイル内伝熱</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-h2">-- W/(m²·K)</td>
+                                                <td style="text-align: left;">コイル</td>
+                                                <td id="heat-res-h1-c" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-h2-c" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-rd-c" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-Rw-c" style="font-family: monospace;">--</td>
+                                                <td id="heat-res-U-c" style="font-family: monospace; font-weight: 600; color: var(--accent-color);">--</td>
+                                                <td id="heat-res-A-c" style="font-family: monospace;">--</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <table class="results-table" style="font-size: 0.75rem;">
+                                        <tbody>
+                                            <tr style="background: rgba(16, 185, 129, 0.04);">
+                                                <td><strong>総伝熱容量 (ΣUA)</strong></td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-UA-total">-- W/K</td>
                                             </tr>
                                             <tr>
-                                                <td><strong>総括伝熱係数 U</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.65rem;">汚れ・壁抵抗含む全体U</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="heat-res-U">-- W/(m²·K)</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>伝熱面積 A</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.65rem;">接液またはコイル表面積</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-Area">-- m²</td>
+                                                <td><strong>平均総括伝熱係数 U<sub>avg</sub></strong></td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-U-avg">-- W/(m²·K)</td>
                                             </tr>
                                             <tr style="background: rgba(16, 185, 129, 0.04);">
-                                                <td><strong>伝熱速度 Q</strong></td>
-                                                <td style="color: var(--text-secondary); font-size: 0.65rem;">全伝熱速度 (Q<sub>j</sub> + Q<sub>c</sub>)</td>
+                                                <td><strong>全伝熱速度 Q</strong></td>
                                                 <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-Q">-- W</td>
                                             </tr>
                                             <tr style="background: rgba(239, 68, 68, 0.04);">
                                                 <td><strong>媒体出口温度 T<sub>out</sub></strong></td>
-                                                <td style="color: var(--text-secondary); font-size: 0.65rem;">流出時の熱媒体温度</td>
                                                 <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;" id="heat-res-Tout">-- °C</td>
                                             </tr>
                                         </tbody>

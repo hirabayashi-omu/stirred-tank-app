@@ -112,9 +112,6 @@
             <!-- Navigation -->
             <div class="back-nav">
                 <h1>動力特性の算出根拠・推算式説明</h1>
-                <a href="index.html" class="btn btn-primary" style="width: auto;">
-                    <i data-feather="arrow-left"></i> シミュレーターに戻る
-                </a>
             </div>
 
             <!-- Card 1: Experimental Quantities -->
@@ -550,11 +547,6 @@
             </div>
 
 
-            <div style="text-align: center; margin-bottom: 40px;">
-                <a href="index.html" class="btn btn-secondary" style="width: auto; display: inline-flex;">
-                    <i data-feather="arrow-left"></i> シミュレーターへ戻る
-                </a>
-            </div>
 
             <!-- Card 8: Zwietering Solid-Liquid Correlation -->
             <div class="formula-card">
@@ -674,8 +666,157 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Card 9: Heat Transfer -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="thermometer"></i>
+                    <span>9. 冷却・加熱（伝熱）シミュレーションの推算式</span>
+                </div>
+                <p>
+                    伝熱シミュレーションでは、槽壁（ジャケット）および伝熱コイルにおける伝熱面積、液側および熱媒体側の境膜伝熱係数から総括伝熱係数を求め、熱収支式を解くことで液温の経時変化を予測します。
+                </p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 24px 0 12px 0;">(1) 伝熱面積 ($A$)</h3>
+                <p>槽内液が接する有効伝熱面積を算出します。鏡板形状によって底面面積 $A_{dish}$ が異なります。</p>
+                <div class="formula-block">
+                    $$\text{ジャケット側: } A_j = \pi D_T h_{cyl} + A_{dish}$$
+                </div>
+                <div class="formula-block">
+                    $$\text{コイル側: } A_c = \pi d_{co} L_c = \pi d_{co} (N_t \pi D_c)$$
+                </div>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(2) 槽内液側（攪拌液側）境膜伝熱係数 ($h_1$)</h3>
+                <p>攪拌による強制対流の式（Nagataらの式等に準拠）を使用し、層壁とコイルそれぞれについてヌセルト数 $Nu_L$ を求めます。</p>
+                <div class="formula-block">
+                    $$\text{ジャケット壁面: } Nu_{Lj} = \frac{h_{1,j} D_T}{k_L} = K_j \cdot Re^{2/3} \cdot Pr^{1/3}$$
+                </div>
+                <div class="formula-block">
+                    $$\text{コイル外表面: } Nu_{Lc} = \frac{h_{1,c} D_T}{k_L} = K_c \cdot Re^{0.62} \cdot Pr^{1/3}$$
+                </div>
+                <p>※ $K_j, K_c$ は翼形状および邪魔板の有無によって決まる定数です。プラントル数 $Pr = \frac{C_{p,L} \mu_L}{k_L}$ です。</p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(3) 熱媒体側 境膜伝熱係数 ($h_2$)</h3>
+                <p>選択された熱媒体（温水/冷水 または スチーム）によって伝熱モデルを切り替えます。</p>
+                
+                <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+                    <h4 style="font-size: 0.95rem; color: var(--text-primary); margin-bottom: 8px;">A. 温水・冷水の場合（強制対流）</h4>
+                    <p style="margin-bottom: 8px; font-size: 0.9rem;">Dittus-Boelter の式を使用します。コイル管内では遠心力による二次流れ（ディーン渦）の効果を補正します。</p>
+                    <div class="formula-block" style="margin-top: 0;">
+                        $$\text{ジャケット側: } Nu_j = 0.023 \, Re_j^{0.8} Pr_j^{1/3}$$
+                        $$\text{コイル管内: } Nu_c = 0.023 \, Re_c^{0.8} Pr_c^{1/3} \left( 1 + 3.5 \frac{d_{ci}}{D_c} \right)$$
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+                    <h4 style="font-size: 0.95rem; color: var(--text-primary); margin-bottom: 8px;">B. スチームの場合（凝縮伝熱）</h4>
+                    <p style="margin-bottom: 8px; font-size: 0.9rem;">水蒸気の膜状凝縮伝熱式（新潟大学晶析工学研究室資料に基づく）を使用します。<br>液膜のレイノルズ数 $Re_f = 4\Gamma / \mu_{cl}$ に対して以下の式を用います。</p>
+                    <div class="formula-block" style="margin-top: 0;">
+                        $$\text{層流 } (Re_f < 2100)\text{: } h = 1.88 \left( \frac{k_{cl}^3 \rho_{cl}^2 g}{\mu_{cl}^2} \right)^{1/3} Re_f^{-1/3}$$
+                        $$\text{乱流 } (Re_f \ge 2100)\text{: } h = 0.0077 \left( \frac{k_{cl}^3 \rho_{cl}^2 g}{\mu_{cl}^2} \right)^{1/3} Re_f^{0.4}$$
+                        $$\text{コイル水平管内: } h = 0.76 \left( \frac{k_{cl}^3 \rho_{cl}^2 g}{\mu_{cl}^2} \right)^{1/3} Re_f^{-1/3}$$
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(4) 総括伝熱係数 ($U$) と 伝熱速度 ($Q$)</h3>
+                <p>各境膜伝熱係数、壁の熱伝導抵抗、および汚れ係数（ファウリングファクター）$r_d$ から総括伝熱係数 $U$ を計算し、対数平均温度差 $\Delta T_{lm}$ を用いて伝熱量 $Q$ を求めます。</p>
+                <div class="formula-block">
+                    $$\frac{1}{U} = \frac{1}{h_1} + \frac{t_w}{k_w} + \frac{1}{h_2} + r_d$$
+                </div>
+                <div class="formula-block">
+                    $$Q_j = U_j A_j \Delta T_{lm, j} \quad , \quad Q_c = U_c A_c \Delta T_{lm, c}$$
+                </div>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(5) 液温変化の微分方程式</h3>
+                <p>外部からの総伝熱量 $Q_{total} = Q_j + Q_c$ と、攪拌動力による発熱 $P$ を合算し、槽内液の温度変化を計算します。</p>
+                <div class="formula-block">
+                    $$\frac{dT_L}{dt} = \frac{Q_{total} + P}{\rho_L \, V_L \, C_{p,L}}$$
+                </div>
+
+            </div>
+
+            <!-- Card 10: Particle Simulation Physics -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="loader"></i>
+                    <span>10. 粒子法ベースの2D挙動シミュレーション</span>
+                </div>
+                <p>
+                    メイン画面の「浮遊・流動状態アニメーション」では、計算された流動領域（キャバーン）やマクロな循環流速場を背景とし、オイラー・ラグランジュ法に似た簡易的な運動方程式（疑似物理演算）を解くことで粒子の軌跡をリアルタイムに描画しています。
+                </p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 24px 0 12px 0;">(1) 粒子の終端沈降速度（Stokesの式）</h3>
+                <p>
+                    重力と浮力、および流体からの粘性抗力が釣り合う状態での終端速度 $v_t$ は、微小粒子を仮定しストークスの法則（Stokes' Law）に従って以下のように計算されます。
+                </p>
+                <div class="formula-block">
+                    $$v_t = \frac{(\rho_S - \rho_L) \, g \, d_p^2}{18 \, \mu_L}$$
+                </div>
+                <p style="font-size: 0.9rem;">※ $\rho_S > \rho_L$ の場合は沈降（下向き）、$\rho_S < \rho_L$ の場合は浮上（上向き）となります。</p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(2) 運動方程式（速度更新則）</h3>
+                <p>
+                    各タイムステップにおいて、粒子の速度ベクトル $\mathbf{v} = (v_x, v_y)$ は、周囲のマクロな流体速度場 $\mathbf{u} = (u_x, u_y)$ に対して緩和するように更新されます。また、流体の乱れ（Turbulent fluctuation）をランダムウォークとして付加しています。
+                </p>
+                <div class="formula-block">
+                    $$\begin{aligned}
+                    &v_x^{(new)} = v_x + \alpha_{relax} (u_x - v_x) + v'_{turb, x} \\
+                    &v_y^{(new)} = v_y + \alpha_{relax} (u_y + v_t - v_y) + v'_{turb, y}
+                    \end{aligned}$$
+                </div>
+                <p style="font-size: 0.9rem;">
+                    ここで、$\alpha_{relax}$ は粒子径 $d_p$ に依存する緩和係数（ストークス数に反比例する応答性指標）です。小粒子ほど流体に素早く追随し、大粒子ほど慣性により元の速度を保とうとします。
+                </p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(3) せん断領域での乱流拡散モデリング</h3>
+                <p>
+                    乱れ成分 $\mathbf{v}'_{turb}$ の強度は一定ではありません。キャバーン（流動領域）と死水域の境界において流体のせん断が最も強くなる現象を再現するため、境界近傍で乱れが極大となるような重み付け関数を適用しています。
+                </p>
+
+            </div>
+
+            <!-- Card 11: Coil Baffle Effect -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="activity"></i>
+                    <span>11. コイルによる動力特性への影響（Kato et al., 2013）</span>
+                </div>
+                <p>
+                    槽内に冷却・加熱用コイルを設置した場合、コイル自体が一種の邪魔板として作用し、撹拌所要動力が増加します。本シミュレーターでは、Kato et al. (2013) の知見に基づき、コイルを「等価的な邪魔板」として亀井・平岡の動力推算式に組み込んでいます。
+                </p>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 24px 0 12px 0;">(1) 邪魔板効果項の拡張</h3>
+                <p>
+                    本来の邪魔板幅 $B_w$、邪魔板枚数 $n_B$ による邪魔板効果項に対して、コイルによる等価邪魔板幅 $B_{w,coil}$ を1枚分 ($n_{B,coil} = 1$) として加算します。
+                </p>
+                <div class="formula-block">
+                    $$ \text{BaffleTerm} = \frac{B_w}{D_T} n_B^{0.8} + \frac{B_{w,coil}}{D_T} 1^{0.8} $$
+                </div>
+
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(2) コイル設置位置による等価邪魔板幅 $B_{w,coil}$ の変化</h3>
+                <p>
+                    コイルの中心径 $D_c$ と槽径 $D_T$ の比によって、コイルが動力に与える影響の大きさが変わります。壁面に近い場合（壁面邪魔板に近い挙動）と、内部に寄っている場合で等価邪魔板幅を切り替えています。
+                </p>
+                <div class="formula-block">
+                    $$
+                    B_{w,coil} = 
+                    \begin{cases} 
+                    0.25 \, d_{co} & (\text{if } D_c / D_T > 0.85) \\
+                    0.05 \, D_T & (\text{otherwise})
+                    \end{cases}
+                    $$
+                </div>
+                <p style="font-size: 0.9rem;">
+                    ※ $d_{co}$ はコイル管の外径です。壁面に近接する場合はコイル外径に比例する小さな抵抗として働き、槽内部（流速が比較的高い領域）に設置された場合は槽径の約5%に相当する大きな抵抗として働くことを意味します。
+                </p>
+            </div>
         </div>
     </div>
+
+    <!-- Floating Back Button -->
+    <a href="index.html" class="btn btn-primary" style="position: fixed; top: 20px; right: 20px; width: auto; border-radius: 30px; padding: 8px 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); z-index: 1000; display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 0.85rem; background-color: rgba(6, 182, 212, 0.85); backdrop-filter: blur(4px);">
+        <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i> シミュレーターへ戻る
+    </a>
 
     <script>
         // Initialize Feather Icons
