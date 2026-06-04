@@ -98,6 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Bind UI inputs to State
 function initInputs() {
+    // もし localStorage から古い "攻拈 太郎" が読み込まれた場合は "攪拌 太郎" に置換
+    if (config.expAuthor === '攻拈 太郎') {
+        config.expAuthor = '攪拌 太郎';
+    }
+
     // Set default date to today if empty
     if (!config.expDate) {
         const today = new Date().toISOString().split('T')[0];
