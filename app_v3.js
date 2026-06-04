@@ -86,9 +86,169 @@ let rheologyData = {
 let expBlocks = [];
 let chart = null;
 
+// -------------------------------------------------------
+// Default scale presets (seeded once into localStorage)
+// -------------------------------------------------------
+// Geometric similarity: D_T : H : d : b : C ≈ 1 : 1.1 : 0.6 : 0.2 : 0.2
+// Wall thickness and jacket gap scale with D_T.
+// Solid particles, baffle settings, and heat-transfer media
+// are kept at typical laboratory values across all scales.
+
+const DEFAULT_SCALE_PRESETS = [
+    {
+        name: "【極小】Lab Scale – 0.1 L (DT=60 mm)",
+        config: {
+            g: 9.806,
+            rho: 998, mu: 0.001,
+            V_act: 0.17,
+            liquidTempInit: 20, liquidCp: 4184, liquidK: 0.60,
+            DT: 0.060, H: 0.065, headType: 'semi-elliptical',
+            wallThickness: 0.002, wallK: 16.3,
+            impellerType: 'pitched-paddle', np: 4, theta: 45,
+            d: 0.036, b: 0.012, clearance: 0.012, n_stage: 1,
+            baffleActive: true, nB: 1, Bw: 0.008,
+            jacketType: 'flat', jacketGap: 0.006,
+            coilActive: false, coilOuterDia: 0.006, coilInnerDia: 0.004,
+            coilPitch: 0.015, coilCenterDia: null, coilK: 16.3,
+            mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.01,
+            mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
+            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            dp_um: 100, rho_S: 2500, solidLiquidActive: true,
+            solidConcMode: 'wt-ratio', solidConcVal: 1.0,
+            sFactorMode: 'auto', sFactorCustom: 5.0,
+            simSpeed: 600, simSpeedSync: false, activeTab: 'rushton'
+        }
+    },
+    {
+        name: "【小】Lab Scale – 1 L (DT=105 mm)",
+        config: {
+            g: 9.806,
+            rho: 998, mu: 0.417,
+            V_act: 0.7295,
+            liquidTempInit: 20, liquidCp: 4184, liquidK: 0.60,
+            DT: 0.105, H: 0.093, headType: 'semi-elliptical',
+            wallThickness: 0.003, wallK: 16.3,
+            impellerType: 'pitched-paddle', np: 4, theta: 45,
+            d: 0.060, b: 0.020, clearance: 0.020, n_stage: 1,
+            baffleActive: true, nB: 1, Bw: 0.014,
+            jacketType: 'flat', jacketGap: 0.010,
+            coilActive: false, coilOuterDia: 0.010, coilInnerDia: 0.008,
+            coilPitch: 0.025, coilCenterDia: null, coilK: 16.3,
+            mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.05,
+            mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
+            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            dp_um: 150, rho_S: 2500, solidLiquidActive: true,
+            solidConcMode: 'wt-ratio', solidConcVal: 1.0,
+            sFactorMode: 'auto', sFactorCustom: 5.0,
+            simSpeed: 300, simSpeedSync: false, activeTab: 'rushton'
+        }
+    },
+    {
+        name: "【中】Bench Scale – 10 L (DT=240 mm)",
+        config: {
+            g: 9.806,
+            rho: 998, mu: 0.001,
+            V_act: 9.0,
+            liquidTempInit: 20, liquidCp: 4184, liquidK: 0.60,
+            DT: 0.240, H: 0.260, headType: 'semi-elliptical',
+            wallThickness: 0.004, wallK: 16.3,
+            impellerType: 'pitched-paddle', np: 4, theta: 45,
+            d: 0.144, b: 0.048, clearance: 0.048, n_stage: 1,
+            baffleActive: true, nB: 4, Bw: 0.024,
+            jacketType: 'flat', jacketGap: 0.012,
+            coilActive: false, coilOuterDia: 0.019, coilInnerDia: 0.015,
+            coilPitch: 0.048, coilCenterDia: null, coilK: 16.3,
+            mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.20,
+            mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
+            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            dp_um: 150, rho_S: 2500, solidLiquidActive: true,
+            solidConcMode: 'wt-ratio', solidConcVal: 1.0,
+            sFactorMode: 'auto', sFactorCustom: 5.0,
+            simSpeed: 150, simSpeedSync: false, activeTab: 'rushton'
+        }
+    },
+    {
+        name: "【大】Pilot Scale – 100 L (DT=500 mm)",
+        config: {
+            g: 9.806,
+            rho: 998, mu: 0.001,
+            V_act: 102.0,
+            liquidTempInit: 20, liquidCp: 4184, liquidK: 0.60,
+            DT: 0.500, H: 0.520, headType: 'semi-elliptical',
+            wallThickness: 0.006, wallK: 16.3,
+            impellerType: 'pitched-paddle', np: 4, theta: 45,
+            d: 0.300, b: 0.100, clearance: 0.100, n_stage: 1,
+            baffleActive: true, nB: 4, Bw: 0.050,
+            jacketType: 'flat', jacketGap: 0.015,
+            coilActive: false, coilOuterDia: 0.038, coilInnerDia: 0.030,
+            coilPitch: 0.095, coilCenterDia: null, coilK: 16.3,
+            mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.80,
+            mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
+            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            dp_um: 200, rho_S: 2500, solidLiquidActive: true,
+            solidConcMode: 'wt-ratio', solidConcVal: 1.0,
+            sFactorMode: 'auto', sFactorCustom: 5.0,
+            simSpeed: 80, simSpeedSync: false, activeTab: 'rushton'
+        }
+    },
+    {
+        name: "【極大】Plant Scale – 1000 L (DT=1100 mm)",
+        config: {
+            g: 9.806,
+            rho: 998, mu: 0.001,
+            V_act: 1045.0,
+            liquidTempInit: 20, liquidCp: 4184, liquidK: 0.60,
+            DT: 1.100, H: 1.150, headType: 'semi-elliptical',
+            wallThickness: 0.010, wallK: 16.3,
+            impellerType: 'pitched-paddle', np: 4, theta: 45,
+            d: 0.660, b: 0.220, clearance: 0.220, n_stage: 2,
+            baffleActive: true, nB: 4, Bw: 0.110,
+            jacketType: 'flat', jacketGap: 0.020,
+            coilActive: false, coilOuterDia: 0.076, coilInnerDia: 0.062,
+            coilPitch: 0.200, coilCenterDia: null, coilK: 16.3,
+            mediaType: 'water', mediaTempIn: 80, mediaFlow: 3.0,
+            mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
+            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            dp_um: 250, rho_S: 2500, solidLiquidActive: true,
+            solidConcMode: 'wt-ratio', solidConcVal: 1.0,
+            sFactorMode: 'auto', sFactorCustom: 5.0,
+            simSpeed: 40, simSpeedSync: false, activeTab: 'rushton'
+        }
+    }
+];
+
+/**
+ * Seeds DEFAULT_SCALE_PRESETS into localStorage.
+ * Entries whose name already exists in localStorage are skipped
+ * so that any user customisation is preserved.
+ */
+function seedDefaultPresets() {
+    let presets = [];
+    try {
+        presets = JSON.parse(localStorage.getItem('agitator_presets')) || [];
+    } catch (e) {
+        presets = [];
+    }
+
+    const existingNames = new Set(presets.map(p => p.name));
+    // Collect only new entries (preserving definition order)
+    const toAdd = DEFAULT_SCALE_PRESETS.filter(dp => !existingNames.has(dp.name));
+
+    if (toAdd.length > 0) {
+        // Prepend in reverse so the first entry ends up at index 0
+        toAdd.slice().reverse().forEach(dp => presets.unshift(dp));
+        try {
+            localStorage.setItem('agitator_presets', JSON.stringify(presets));
+        } catch (e) {
+            console.warn('Could not seed default presets:', e);
+        }
+    }
+}
+
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
+    seedDefaultPresets();
     loadPresetList();
 
     // Attempt to load saved state from localStorage
@@ -360,6 +520,19 @@ function initEventListeners() {
         
         addBlock({ name: `測定ブロック (N = ${rpmVal} rpm)`, N_default: rpmVal });
         showToast(`N = ${rpmVal} rpm の測定ブロックを追加しました。`, 'success');
+    });
+
+    document.getElementById('clear-all-blocks-btn').addEventListener('click', () => {
+        if (expBlocks.length === 0) {
+            showToast('削除するブロックがありません。', 'info');
+            return;
+        }
+        const confirmed = confirm(`全 ${expBlocks.length} ブロックを削除します。この操作は元に戻せません。よろしいですか？`);
+        if (!confirmed) return;
+        // Remove all blocks
+        const ids = expBlocks.map(b => b.id);
+        ids.forEach(id => removeBlock(id));
+        showToast('全ブロックを削除しました。', 'success');
     });
 
     document.getElementById('load-sample-btn').addEventListener('click', loadSampleData);
@@ -4473,16 +4646,23 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
     const Nqc = NqcMap[config.impellerType] || 1.4;
     const n_rps = speed_rpm / 60;
     
-    // 物理的な平均液循環速度: v_ave ~ Q_c / A_cross_section = (Nqc * n * d^3) / (pi/4 * DT^2)
-    // ここでは簡易的に: v_phys = (Nqc * n * d^3) / DT^2
+    // 物理的な平均液循環速度: v_ave = (Nqc * n * d^3) / DT^2  [m/s]
     const DT_val = Math.max(0.01, config.DT);
     const d_val = config.d;
     const v_phys = (Nqc * n_rps * Math.pow(d_val, 3)) / Math.pow(DT_val, 2);
-    
-    // 基準条件 (D_T=0.105, d=0.060, N=300rpm(5rps), pitched-paddle(Nqc=1.6)) で 
-    // speedMagnitude が従来と同じ 1.75 になるように調整係数 C = 11.2 を掛ける
-    const C_velocity = 11.2;
-    const speedMagnitude = C_velocity * v_phys;
+
+    // アニメーション速度変換: v [m/s] × scale [px/m] × C → px/frame
+    //
+    // C_velocity は基準条件 (DT=0.105m, d=0.060m, N=300rpm, pitched-paddle, Nqc=1.6,
+    // scale=2286 px/m) で speedMagnitude ≈ 1.75 px/frame になるよう較正。
+    //   v_phys_ref = 1.6×5×0.06³/0.105² = 0.1571 m/s
+    //   C = 1.75 / (0.1571 × 2286) ≈ 0.00487
+    //
+    // ★ scale を含めることで「落下フレーム数 = H_px / vt_px = H/(C×vt_m_s)」となり
+    //   スケールによらず物理的沈降時間と比例する（時間圧縮率が全スケールで一定）。
+    // ★ vt_px も同じ C×scale を使うため比率 speedMagnitude/vt_px = v_phys/vt_m_s が保たれる。
+    const C_velocity = 0.00487;
+    const speedMagnitude = C_velocity * v_phys * scale;
     
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
@@ -4568,8 +4748,13 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
             }
 
             const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
-            const wallFactor = Math.min(1.0, wallDist / 10);
-            const centerFactor = Math.min(1.0, dist / 8);
+            // wallFactor: 壁近傍でゼロへ漸減させるゾーン幅を D_px の割合で定義。
+            // どのスケールでも槽径に対して同じ比率のゾーンが生じる。
+            const wallThresh = D_px * 0.04; // 槽径の4%
+            const wallFactor = Math.min(1.0, wallDist / wallThresh);
+            // centerFactor: 渦心近傍での物理的な速度低下。閾値も D_px 比で定義。
+            const centerThresh = D_px * 0.035;
+            const centerFactor = Math.min(1.0, dist / centerThresh);
 
             totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
             totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
@@ -4588,8 +4773,10 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
             vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
 
             const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
-            const wallFactor = Math.min(1.0, wallDist / 10);
-            const centerFactor = Math.min(1.0, dist / 12);
+            const wallThresh = D_px * 0.04;
+            const wallFactor = Math.min(1.0, wallDist / wallThresh);
+            const centerThresh = D_px * 0.05;
+            const centerFactor = Math.min(1.0, dist / centerThresh);
 
             totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
             totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
@@ -5137,19 +5324,22 @@ function drawParticleSimulation() {
         const decay = getCavernDecay(p.x, p.y, coords);
         const fluidVel = getFluidVelocity(p.x, p.y, config.simSpeed, coords, p);
         
-        // Stokes terminal velocity for a spherical particle in low-Re flow
+        // Stokes 終端沈降速度 [m/s]
         const dp = Math.max(0.1, config.dp_um || 150);
-        const dp_m = dp * 1e-6; // convert microns to meters
+        const dp_m = dp * 1e-6;
         const R = dp_m * 0.5;
         const mu_f = Math.max(0.001, config.mu || 0.001);
         const g_acc = config.g || 9.806;
         const delta_rho = config.rho_S - config.rho;
         const vt_m_s = (2 / 9) * (delta_rho * g_acc * R * R) / mu_f;
-        const vt_px = Math.max(-15, Math.min(15, vt_m_s * scale * 0.36)); // meter→pixel scaling adjustment for animation
 
-        // Relax the particle velocity toward the fluid velocity plus Stokes terminal rise/sink speed
-        // Clamp stokesRelax to max 0.9 to prevent numerical divergence/oscillations at small particle sizes (dp)
-        // Stokes gravity settling/buoyancy remains active across the entire tank and at 0 RPM
+        // vt_px: speedMagnitude と同じ係数 C_velocity×scale を使うことで
+        //  (1) 比率 speedMagnitude/vt_px = v_phys/vt_m_s がスケール不問で保たれる
+        //  (2) 落下フレーム数 = H_px/vt_px = H/(C×vt_m_s) → 物理的沈降時間と正比例
+        //      （スケール間で時間圧縮率が一定になる）
+        const vt_px = Math.max(-5, Math.min(5, 0.00487 * vt_m_s * scale));
+
+        // 粒子速度を流体速度＋Stokes沈降速度に向けて緩和
         const stokesRelax = Math.min(0.9, Math.max(0.02, 0.18 * Math.sqrt(150 / dp)));
         p.vx += (fluidVel.vx - p.vx) * stokesRelax;
         p.vy += (fluidVel.vy + vt_px - p.vy) * stokesRelax;
@@ -5159,6 +5349,7 @@ function drawParticleSimulation() {
         const shearTurb = 1.0 + 4.0 * decay * (1.0 - decay);
         // 死水域深部（decay=0）でも完全停止せず、微小なブラウン運動的拡散（下限0.15）を残すことでスタックを防ぐ
         const turbFactor = Math.max(0.15, decay * shearTurb);
+        // 乱流ゆらぎ幅: speedMagnitude と同じスケーリング（scale不要）
         const turb = 0.45 * (config.simSpeed / 300) * (p.relSize || 1.0) * turbFactor;
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
@@ -5231,9 +5422,10 @@ function drawParticleSimulation() {
             } else {
                 // Rolling/bouncing at bottom
                 p.vy = -Math.abs(p.vy) * 0.05;
+                // 底面掃き: 小さな水平力（回転数比例）でインペラ流れ方向に粒子を動かす
                 const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
-                    ? (p.x < cx ? -0.8 : 0.8) // sweep outwards
-                    : (p.x < cx ? 0.8 : -0.8); // sweep inwards
+                    ? (p.x < cx ? -0.8 : 0.8)  // 軸流: 外向き
+                    : (p.x < cx ? 0.8 : -0.8); // 半径流: 内向き
                 p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
                 p.color = '#b45309'; // rolling: medium gold
             }
@@ -5808,8 +6000,14 @@ function updateHeatCalcUI() {
     }
 
     const elQ = document.getElementById('heat-res-Q');
+    const elQv = document.getElementById('heat-res-Qv');
     const elTout = document.getElementById('heat-res-Tout');
     if (elQ) elQ.textContent = Q.toFixed(1) + " W";
+    if (elQv) {
+        const V_liq = (config.V_act && config.V_act > 0) ? (config.V_act * 1e-3) : (calcLiquidVolumeForPv() || 0.001);
+        const Qv = Q / Math.max(1e-6, V_liq);
+        elQv.textContent = Qv.toFixed(1) + " W/m³";
+    }
     if (elTout) elTout.textContent = T_out.toFixed(1) + " °C";
 
     const tempDisp = document.getElementById('heat-sim-temp-display');
@@ -6021,11 +6219,15 @@ function updateHeatPhysics() {
         const dU = getDensity(rowIdx_init - 1, colIdx_init);
         const dD = getDensity(rowIdx_init + 1, colIdx_init);
 
-        // 密度勾配の逆方向への力（完全分散のための復元速度：対流を邪魔しないようマイルドに調整 0.15 -> 0.035）
-        const diffX = (dL - dR) * 0.035;
-        const diffY = (dU - dD) * 0.035;
+        // 密度勾配の逆方向への力（分散・嵇均化）
+        // speedMagnitude と同じ尺度系の定数にする：典型的な
+        // speedMagnitude(基準条件で 1.75 px/frame) に対して 2% 程度。
+        const diffCoeff = 0.02 * Math.max(0.05, 0.00487 * (1.6 * (N_rpm/60) * Math.pow(config.d,3) / Math.pow(config.DT,2)) * scale);
+        const diffX = (dL - dR) * diffCoeff;
+        const diffY = (dU - dD) * diffCoeff;
 
         const fluidVel = getFluidVelocity(p.x, p.y, N_rpm, coords, p);
+        const Nqc_heat = { 'pitched-paddle':1.6,'flat-paddle':1.2,'flat-turbine':1.4,'propeller':2.0,'faudler':1.3 }[config.impellerType] || 1.4;
 
         // 流速への追従性を高める (0.08 -> 0.16)
         // インペラからの強力な吐出や壁沿いの循環といった「対流の動き（流動パターン）」をダイナミックかつ滑らかに見せる
@@ -6036,19 +6238,23 @@ function updateHeatPhysics() {
         p.vx += diffX;
         p.vy += diffY;
 
-        // 乱流揺らぎ（ランダムウォーク）を適度に抑制し、流れの一貫性を向上させる
-        const turb = (0.35 + 0.25 * (N_rpm / 300)) * (p.relSize || 1.0);
+        // 乱流揺らぎ（ランダムウォーク）
+        // speedMagnitude = C×v_phys×scale なので、乱流も同じ尺度系で表現する。
+        // heatSpeedRef: 現在の運転条件での speedMagnitude 相当値
+        const heatSpeedRef = Math.max(0.05, 0.00487 * (Nqc_heat * (N_rpm/60) * Math.pow(config.d,3) / Math.pow(config.DT,2)) * scale);
+        const turb = (0.20 + 0.10 * (N_rpm / 300)) * (p.relSize || 1.0) * (heatSpeedRef / 1.75);
         
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
 
-        // 壁・底面近傍では弱い引き寄せ力を加える（ジャケットからの伝熱を表現）
-        const wallMargin = 18;
+        // 壁・底面近傍の引き寄せ力（ジャケット伝熱の表現）
+        // wallMargin・wallPull も speedMagnitude と同じ尺度系。
+        const wallMargin = D_px * 0.07; // 槽径の7%（スケール不問で一定割合）
         const distToLeft  = p.x - lx;
         const distToRight = rx - p.x;
         const y_bot_p     = getVesselBottomY(p.x, coords);
         const distToBot   = y_bot_p - p.y;
-        const wallPull    = 0.04 * (N_rpm / 300 + 0.3); // 回転数に比例して僅かに増やす
+        const wallPull    = 0.015 * heatSpeedRef; // speedMagnitude 典型値に対する小数割合
         if (distToLeft  < wallMargin) p.vx -= wallPull * (1 - distToLeft  / wallMargin);
         if (distToRight < wallMargin) p.vx += wallPull * (1 - distToRight / wallMargin);
         if (distToBot   < wallMargin) p.vy += wallPull * (1 - distToBot   / wallMargin);

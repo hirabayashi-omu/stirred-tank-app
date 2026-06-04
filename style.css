@@ -249,6 +249,30 @@ body {
     border-color: var(--text-secondary);
 }
 
+.btn-danger {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+    background-color: rgba(239, 68, 68, 0.25);
+    border-color: var(--danger-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* data-actions: card header button group */
+.data-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.data-actions .btn {
+    width: auto;
+}
+
 /* Main Content Area Styling */
 .main-content {
     flex-grow: 1;
