@@ -4693,8 +4693,8 @@ function drawParticleSimulation() {
     simCtx.fill();
     
     // Draw Liquid Surface Outline (parabolic curve)
-    simCtx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
-    simCtx.lineWidth = 1.5;
+    simCtx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; // Made more visible to match heat sim
+    simCtx.lineWidth = 2;
     simCtx.beginPath();
     for (let i = 0; i <= steps; i++) {
         const t = i / steps;
@@ -4809,55 +4809,31 @@ function drawParticleSimulation() {
         simCtx.restore();
     }
     
-    // --- コイル背面描画（粒子より背面） ---
+    // Update simCoilPositions for collision
+    simCoilPositions = [];
     if (config.coilActive) {
-        simCtx.save();
         const d_co_m   = config.coilOuterDia ?? 0.010;
-        const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
-        const D_c_px_c = D_c_real * scale;
+        const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
+                           ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px   = D_c_real * scale;
         const coilR    = Math.max(4, (d_co_m / 2) * scale);
-        const y_bot_vessel = getVesselBottomY(cx, coords);
-        const coilSpan = y_bot_vessel - y_liquid - 20;
+
+        // Use the outer edge of the coil (cx + D_c_px/2 + coilR) to determine the deepest point it can go
+        // without protruding into the curved bottom head.
+        const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
+        const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
         const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
         const p_c_px   = p_c_m * scale;
-        const N_t_c    = Math.max(1, Math.floor(coilSpan / p_c_px));
-        const pitchC   = coilSpan / N_t_c;
+        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch    = coilSpan / N_t;
 
-        const coilFillBack = 'rgba(4, 140, 160, 1.0)'; // 完全不透明・暗め
-        const coilStrokeBack = 'rgba(2, 100, 120, 1.0)';
-
-        for (let j = 0; j < N_t_c; j++) {
-            const cy_coil = y_liquid + 14 + j * pitchC + pitchC / 2;
-            const cy_mid = cy_coil + pitchC / 2;
-
-            // 背面連結弧 (Right to Left)
-            simCtx.beginPath();
-            simCtx.strokeStyle = coilFillBack;
-            simCtx.lineWidth = coilR * 1.1;
-            simCtx.lineCap = 'round';
-            simCtx.moveTo(cx + D_c_px_c / 2, cy_coil);
-            simCtx.bezierCurveTo(
-                cx + D_c_px_c / 2 - coilR * 0.5, cy_coil + pitchC * 0.15,
-                cx - D_c_px_c / 2 + coilR * 0.5, cy_mid - pitchC * 0.15,
-                cx - D_c_px_c / 2, cy_mid
-            );
-            simCtx.stroke();
-
-            simCtx.beginPath();
-            simCtx.strokeStyle = coilStrokeBack;
-            simCtx.lineWidth = 1;
-            simCtx.lineCap = 'butt';
-            simCtx.moveTo(cx + D_c_px_c / 2, cy_coil);
-            simCtx.bezierCurveTo(
-                cx + D_c_px_c / 2 - coilR * 0.5, cy_coil + pitchC * 0.15,
-                cx - D_c_px_c / 2 + coilR * 0.5, cy_mid - pitchC * 0.15,
-                cx - D_c_px_c / 2, cy_mid
-            );
-            simCtx.stroke();
+        for (let j = 0; j < N_t; j++) {
+            const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
+            const cy_mid = cy_coil + pitch / 2;
+            simCoilPositions.push({ x: cx - D_c_px / 2, y: cy_mid, r: coilR });
+            simCoilPositions.push({ x: cx + D_c_px / 2, y: cy_coil, r: coilR });
         }
-        simCtx.restore();
     }
-
     // Adjust particle count dynamically based on concentration
     const targetCount = Math.min(3000, Math.max(200, Math.round(400 + 1000 * Math.log10(1 + 9 * (config.solidConcVal || 1.0)))));
     if (simParticles.length < targetCount) {
@@ -5018,60 +4994,76 @@ function drawParticleSimulation() {
     });
     simCtx.restore();
 
-    // --- コイル前面描画（粒子より前面・インペラより後面） ---
+    // --- コイル描画（半割表現） ---
     if (config.coilActive) {
         simCtx.save();
-        const coilFill   = 'rgba(6,182,212,1.0)'; // 完全不透明に変更
+        const coilFill   = 'rgba(6,182,212,1.0)'; 
         const coilStroke = 'rgba(2,120,150,1.0)';
+        const coilFillBack = 'rgba(4,140,160,1.0)';
 
         const d_co_m   = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
                            ? config.coilCenterDia : 0.7 * config.DT;
-        const D_c_px_c = D_c_real * scale;
+        const D_c_px   = D_c_real * scale;
         const coilR    = Math.max(4, (d_co_m / 2) * scale);
 
-        const y_bot_vessel = getVesselBottomY(cx, coords);
-        const coilSpan = y_bot_vessel - y_liquid - 20;
+        // Use the outer edge of the coil for the bottom limit
+        const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
+        const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
         const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
         const p_c_px   = p_c_m * scale;
-        const N_t_c    = Math.max(1, Math.floor(coilSpan / p_c_px));
-        const pitchC   = coilSpan / N_t_c;
+        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch    = coilSpan / N_t;
 
-        for (let j = 0; j < N_t_c; j++) {
-            const cy_coil = y_liquid + 14 + j * pitchC + pitchC / 2;
-            const cy_mid = cy_coil + pitchC / 2;
-            const cy_next = y_liquid + 14 + (j + 1) * pitchC + pitchC / 2;
+        for (let j = 0; j < N_t; j++) {
+            const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
+            const cy_mid = cy_coil + pitch / 2;
 
-            // 前面連結弧 (Left to Right)
-            if (j < N_t_c) {
-                simCtx.beginPath();
-                simCtx.strokeStyle = coilFill;
-                simCtx.lineWidth = coilR * 1.1;
-                simCtx.lineCap = 'round';
-                simCtx.moveTo(cx - D_c_px_c / 2, cy_mid);
-                simCtx.bezierCurveTo(
-                    cx - D_c_px_c / 2 + coilR * 0.5, cy_mid + pitchC * 0.15,
-                    cx + D_c_px_c / 2 - coilR * 0.5, cy_next - pitchC * 0.15,
-                    cx + D_c_px_c / 2, cy_next
-                );
-                simCtx.stroke();
-
-                simCtx.beginPath();
-                simCtx.strokeStyle = coilStroke;
-                simCtx.lineWidth = 1;
-                simCtx.lineCap = 'butt';
-                simCtx.moveTo(cx - D_c_px_c / 2, cy_mid);
-                simCtx.bezierCurveTo(
-                    cx - D_c_px_c / 2 + coilR * 0.5, cy_mid + pitchC * 0.15,
-                    cx + D_c_px_c / 2 - coilR * 0.5, cy_next - pitchC * 0.15,
-                    cx + D_c_px_c / 2, cy_next
-                );
-                simCtx.stroke();
-            }
-
-            // 前面・左右の断面（ハイライト付き）
+            // 左側断面（後ろ側）
             simCtx.beginPath();
-            simCtx.ellipse(cx - D_c_px_c / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = coilFillBack;
+            simCtx.fill();
+            simCtx.strokeStyle = coilStroke;
+            simCtx.lineWidth = 1.5;
+            simCtx.stroke();
+
+            // 右側断面（後ろ側）
+            simCtx.beginPath();
+            simCtx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = coilFillBack;
+            simCtx.fill();
+            simCtx.stroke();
+
+            // 右→左の連結（上半分）
+            simCtx.beginPath();
+            simCtx.strokeStyle = coilFill;
+            simCtx.lineWidth = coilR * 1.1;
+            simCtx.lineCap = 'round';
+            simCtx.moveTo(cx + D_c_px / 2, cy_coil);
+            simCtx.bezierCurveTo(
+                cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15,
+                cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15,
+                cx - D_c_px / 2, cy_mid
+            );
+            simCtx.stroke();
+
+            // 連結弧の境界線
+            simCtx.beginPath();
+            simCtx.strokeStyle = coilStroke;
+            simCtx.lineWidth = 1;
+            simCtx.lineCap = 'butt';
+            simCtx.moveTo(cx + D_c_px / 2, cy_coil);
+            simCtx.bezierCurveTo(
+                cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15,
+                cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15,
+                cx - D_c_px / 2, cy_mid
+            );
+            simCtx.stroke();
+
+            // 前面断面（光沢ハイライト付き）
+            simCtx.beginPath();
+            simCtx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFill;
             simCtx.fill();
             simCtx.strokeStyle = coilStroke;
@@ -5079,18 +5071,19 @@ function drawParticleSimulation() {
             simCtx.stroke();
 
             simCtx.beginPath();
-            simCtx.ellipse(cx + D_c_px_c / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFill;
             simCtx.fill();
             simCtx.stroke();
 
             // ハイライト
             simCtx.beginPath();
-            simCtx.ellipse(cx - D_c_px_c / 2 - coilR * 0.15, cy_mid - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            simCtx.ellipse(cx - D_c_px / 2 - coilR * 0.15, cy_mid - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
             simCtx.fillStyle = 'rgba(255,255,255,0.4)';
             simCtx.fill();
+
             simCtx.beginPath();
-            simCtx.ellipse(cx + D_c_px_c / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            simCtx.ellipse(cx + D_c_px / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
             simCtx.fill();
         }
         simCtx.restore();
@@ -5929,8 +5922,9 @@ function drawHeatSimulation() {
         const D_c_px   = D_c_real * scale;
         const coilR    = Math.max(4, (d_co_m / 2) * scale); // 管断面半径 [px]
 
-        const y_bot_vessel = getVesselBottomY(cx, coords);
-        const coilSpan = y_bot_vessel - y_liquid - 20;
+        // Use the outer edge of the coil for the bottom limit
+        const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
+        const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
         const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
         const p_c_px   = p_c_m * scale;
         const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
@@ -5938,10 +5932,11 @@ function drawHeatSimulation() {
 
         for (let j = 0; j < N_t; j++) {
             const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
+            const cy_mid = cy_coil + pitch / 2;
 
             // 左側断面（後ろ側）
             ctx.beginPath();
-            ctx.ellipse(cx - D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             ctx.fillStyle = `hsl(${mediaHue}, 70%, 38%)`;
             ctx.fill();
             ctx.strokeStyle = coilStroke;
@@ -5955,39 +5950,35 @@ function drawHeatSimulation() {
             ctx.fill();
             ctx.stroke();
 
-            // 上の連結弧（前面パス）
-            if (j < N_t - 1) {
-                const cy_next = y_liquid + 14 + (j + 1) * pitch + pitch / 2;
-                // 右→左の連結（上半分）
-                ctx.beginPath();
-                ctx.strokeStyle = coilFill;
-                ctx.lineWidth = coilR * 1.1;
-                ctx.lineCap = 'round';
-                ctx.moveTo(cx + D_c_px / 2, cy_coil);
-                ctx.bezierCurveTo(
-                    cx + D_c_px / 2 + coilR * 3, cy_coil + pitch * 0.25,
-                    cx - D_c_px / 2 - coilR * 3, cy_next - pitch * 0.25,
-                    cx - D_c_px / 2, cy_next
-                );
-                ctx.stroke();
+            // 右→左の連結（上半分）
+            ctx.beginPath();
+            ctx.strokeStyle = coilFill;
+            ctx.lineWidth = coilR * 1.1;
+            ctx.lineCap = 'round';
+            ctx.moveTo(cx + D_c_px / 2, cy_coil);
+            ctx.bezierCurveTo(
+                cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15,
+                cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15,
+                cx - D_c_px / 2, cy_mid
+            );
+            ctx.stroke();
 
-                // 連結弧の境界線
-                ctx.beginPath();
-                ctx.strokeStyle = coilStroke;
-                ctx.lineWidth = 1;
-                ctx.lineCap = 'butt';
-                ctx.moveTo(cx + D_c_px / 2, cy_coil);
-                ctx.bezierCurveTo(
-                    cx + D_c_px / 2 + coilR * 3, cy_coil + pitch * 0.25,
-                    cx - D_c_px / 2 - coilR * 3, cy_next - pitch * 0.25,
-                    cx - D_c_px / 2, cy_next
-                );
-                ctx.stroke();
-            }
+            // 連結弧の境界線
+            ctx.beginPath();
+            ctx.strokeStyle = coilStroke;
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'butt';
+            ctx.moveTo(cx + D_c_px / 2, cy_coil);
+            ctx.bezierCurveTo(
+                cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15,
+                cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15,
+                cx - D_c_px / 2, cy_mid
+            );
+            ctx.stroke();
 
             // 前面断面（光沢ハイライト付き）
             ctx.beginPath();
-            ctx.ellipse(cx - D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             ctx.fillStyle = coilFill;
             ctx.fill();
             ctx.strokeStyle = coilStroke;
@@ -6002,7 +5993,7 @@ function drawHeatSimulation() {
 
             // ハイライト
             ctx.beginPath();
-            ctx.ellipse(cx - D_c_px / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            ctx.ellipse(cx - D_c_px / 2 - coilR * 0.15, cy_mid - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(255,255,255,0.28)';
             ctx.fill();
 
