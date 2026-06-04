@@ -657,7 +657,16 @@ function draw() {
             const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
             const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
             const R_c = (D_c_real / 2) * scl;
-            const coilSpan = (zCyl - zBot) + (zLiq - zCyl) - 20; 
+            let zBot_at_R = zCyl;
+            if (config.headType === 'flat') {
+                zBot_at_R = zCyl;
+            } else if (config.headType === 'hemispherical') {
+                zBot_at_R = zCyl - Math.sqrt(Math.max(0, rh*rh - R_c*R_c));
+            } else {
+                zBot_at_R = zCyl - hb * Math.sqrt(Math.max(0, 1 - (R_c*R_c)/(rh*rh)));
+            }
+            const coilR_px = (d_co / 2) * scl;
+            const coilSpan = (zLiq - zBot_at_R) - coilR_px - 15;
             const N_t = Math.max(1, Math.floor(coilSpan / (p_c * scl)));
             const pitch = coilSpan / N_t;
             
@@ -670,7 +679,7 @@ function draw() {
             const pts = [];
             for (let j = 0; j <= N_t * 64; j++) {
                 const t = (j / 64) * Math.PI * 2;
-                const cz = zBot + 10 + (j / 64) * pitch;
+                const cz = zBot_at_R + coilR_px + 10 + (j / 64) * pitch;
                 if (cz > zLiq) break;
                 pts.push(iso(R_c * Math.cos(t), R_c * Math.sin(t), cz, ox, oy));
             }

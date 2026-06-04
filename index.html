@@ -87,6 +87,8 @@
                     </div>
                 </section>
 
+                <hr class="sidebar-divider">
+
                 <!-- Liquid Properties -->
                 <section class="config-section">
                     <h3><i data-feather="droplet"></i> 攪拌液データ・物性</h3>
@@ -118,9 +120,13 @@
                         <div class="input-group full-width">
                             <label for="V-act">液量 V<sub>act</sub> (L) <span style="font-size:0.75rem;opacity:0.6;">※ 0 = 概算値を使用</span></label>
                             <input type="number" id="V-act" value="0.7295" step="0.0001" min="0">
+                            <div id="v-est-display" style="font-size: 0.72rem; color: var(--accent-color); margin-top: 3px; font-weight: 500;">概算値: -- L</div>
                         </div>
+
                     </div>
                 </section>
+
+                <hr class="sidebar-divider">
 
                 <!-- Rheology Model (Non-Newtonian) -->
                 <section class="config-section" id="rheology-section">
@@ -165,6 +171,56 @@
                         </div>
                     </div>
                 </section>
+
+                <hr class="sidebar-divider">
+
+                <!-- Solid-Liquid / Particle Properties -->
+                <section class="config-section">
+                    <h3><i data-feather="box"></i> 固液攪拌・粒子データ</h3>
+                    <div class="input-grid">
+                        <div class="input-group full-width checkbox-group">
+                            <input type="checkbox" id="solid-liquid-active" checked>
+                            <label for="solid-liquid-active">固液系</label>
+                        </div>
+                        <div class="input-group full-width" id="dp-um-container">
+                            <label for="dp-um">粒子径 d<sub>p</sub> (μm)</label>
+                            <input type="number" id="dp-um" value="150" step="1" min="1">
+                        </div>
+                        <div class="input-group" id="rho-S-container">
+                            <label for="rho-S">粒子密度 ρ<sub>s</sub> (kg/m³)</label>
+                            <input type="number" id="rho-S" value="2500" step="10">
+                        </div>
+                        <!-- スラリー密度表示（固液系ONのみ・粒子密度の右隣） -->
+                        <div class="input-group" id="rho-sl-container">
+                            <label style="color:var(--accent-color);">スラリー密度 ρ<sub>sl</sub> (kg/m³)</label>
+                            <div id="rho-sl-display" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                        </div>
+                        <div class="input-group full-width" id="solid-conc-mode-container">
+                            <label for="solid-conc-mode">濃度入力モード</label>
+                            <select id="solid-conc-mode">
+                                <option value="wt-ratio" selected>対液重量比パーセント (X [wt%])</option>
+                                <option value="wt-total">全体重量濃度 (w [wt%])</option>
+                            </select>
+                        </div>
+                        <div class="input-group full-width" id="solid-conc-val-container">
+                            <label for="solid-conc-val" id="solid-conc-label">固体濃度 X (wt% (対液))</label>
+                            <input type="number" id="solid-conc-val" value="1.0" step="0.1" min="0.001">
+                        </div>
+                        <div class="input-group full-width" id="s-factor-mode-container">
+                            <label for="s-factor-mode">S 因子設定</label>
+                            <select id="s-factor-mode">
+                                <option value="auto" selected>自動 preset マッピング</option>
+                                <option value="custom">手動カスタム入力</option>
+                            </select>
+                        </div>
+                        <div class="input-group full-width" id="s-factor-custom-container" style="display:none;">
+                            <label for="s-factor-custom">幾何学的形状因子 S (カスタム)</label>
+                            <input type="number" id="s-factor-custom" value="5.0" step="0.1" min="0.1">
+                        </div>
+                    </div>
+                </section>
+
+                <hr class="sidebar-divider">
 
                 <!-- Vessel Properties -->
                 <section class="config-section">
@@ -301,6 +357,10 @@
                                     <label for="coil-center-dia">コイル中心径 D<sub>c</sub> (m)</label>
                                     <input type="number" id="coil-center-dia" value="" step="0.01" placeholder="空欄=槽径×0.7">
                                 </div>
+                                <div class="input-group" style="grid-column: span 2;">
+                                    <label for="coil-k">コイル熱伝導度 k<sub>c</sub> (W/(m・K))</label>
+                                    <input type="number" id="coil-k" value="16.3" step="0.1" min="0.1">
+                                </div>
                             </div>
                         </div>
                         <div class="input-group full-width">
@@ -344,48 +404,6 @@
                         </div>
                     </div>
                 </section>
-
-                <!-- Solid-Liquid / Particle Properties -->
-                <section class="config-section">
-                    <h3><i data-feather="box"></i> 固液攪拌・粒子データ</h3>
-                    <div class="input-grid">
-                        <div class="input-group full-width checkbox-group">
-                            <input type="checkbox" id="solid-liquid-active" checked>
-                            <label for="solid-liquid-active">固液系</label>
-                        </div>
-                        <div class="input-group" id="dp-um-container">
-                            <label for="dp-um">粒子径 d<sub>p</sub> (μm)</label>
-                            <input type="number" id="dp-um" value="150" step="1" min="1">
-                        </div>
-                        <div class="input-group" id="rho-S-container">
-                            <label for="rho-S">粒子密度 ρ<sub>s</sub> (kg/m³)</label>
-                            <input type="number" id="rho-S" value="2500" step="10">
-                        </div>
-                        <div class="input-group full-width" id="solid-conc-mode-container">
-                            <label for="solid-conc-mode">濃度入力モード</label>
-                            <select id="solid-conc-mode">
-                                <option value="wt-ratio" selected>対液重量比パーセント (X [wt%])</option>
-                                <option value="wt-total">全体重量濃度 (w [wt%])</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-width" id="solid-conc-val-container">
-                            <label for="solid-conc-val" id="solid-conc-label">固体濃度 X (wt% (対液))</label>
-                            <input type="number" id="solid-conc-val" value="1.0" step="0.1" min="0.001">
-                        </div>
-                        <div class="input-group full-width" id="s-factor-mode-container">
-                            <label for="s-factor-mode">S 因子設定</label>
-                            <select id="s-factor-mode">
-                                <option value="auto" selected>自動 preset マッピング</option>
-                                <option value="custom">手動カスタム入力</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-width" id="s-factor-custom-container" style="display:none;">
-                            <label for="s-factor-custom">幾何学的形状因子 S (カスタム)</label>
-                            <input type="number" id="s-factor-custom" value="5.0" step="0.1" min="0.1">
-                        </div>
-                    </div>
-                </section>
-
 
             </div>
 
@@ -519,7 +537,7 @@
                                     <input type="range" id="sim-speed-slider" min="0" max="1200" step="10" value="300" style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
                                     <div style="display: flex; gap: 6px; margin-top: 2px;">
                                         <button id="btn-set-njs" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
-                                            <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 回転数設定
+                                            <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
                                         </button>
                                         <div class="checkbox-group" style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
                                             <input type="checkbox" id="sim-speed-sync" checked>
@@ -669,7 +687,7 @@
                                         <input type="range" id="heat-sim-speed-slider" min="0" max="1200" step="10" value="300" style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
                                         <div style="display: flex; gap: 6px; margin-top: 2px;">
                                             <button id="btn-heat-set-njs" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
-                                                <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 回転数設定
+                                                <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
                                             </button>
                                             <div class="checkbox-group" style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
                                                 <input type="checkbox" id="heat-sim-speed-sync" checked>
@@ -758,6 +776,16 @@
                                             </tr>
                                         </tbody>
                                     </table>
+
+                                    <!-- 伝熱抵抗割合の積み上げ棒グラフ -->
+                                    <div style="margin-top: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); padding: 8px; flex-grow: 0.15;">
+                                        <h4 style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                            <i data-feather="bar-chart-2" style="width: 12px; height: 12px; color: var(--accent-color);"></i> 伝熱抵抗の割合 (K/W)
+                                        </h4>
+                                        <div style="position: relative; width: 100%; height: 95px;">
+                                            <canvas id="heatResistChart"></canvas>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -947,7 +975,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=20260530_2340"></script>
+    <script src="app_v3.js?v=20260604_2010"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();
