@@ -32,10 +32,45 @@ let config = {
     simSpeed: 300,
     simSpeedSync: true,
     activeTab: 'rushton',
-    solidLiquidActive: true
-    ,
+    solidLiquidActive: true,
     // Particle simulation start mode: 'near-impeller' | 'suspended' | 'settled' | 'uniform'
-    particleStartMode: 'near-impeller'
+    particleStartMode: 'near-impeller',
+    // Heat transfer parameters
+    liquidTempInit: 20,
+    liquidCp: 4184,
+    liquidK: 0.60,
+    wallThickness: 0.003,
+    wallK: 16.3,
+    jacketType: 'flat',
+    jacketGap: 0.010,
+    coilActive: false,
+    coilOuterDia: 0.010,
+    coilInnerDia: 0.008,
+    coilPitch: 0.025,
+    coilCenterDia: null,
+    mediaType: 'water',
+    mediaTempIn: 80,
+    mediaFlow: 0.05,
+    mediaRho: 1000,
+    mediaMu: 0.001,
+    mediaCp: 4184,
+    mediaK: 0.60,
+    mediaViscCorr: 1.0,
+    foulingFactor: 0.0001
+};
+
+// Heat Simulation State variables
+let heatSimActive = false;
+let heatSimTime = 0.0;
+let heatSimTemp = 20.0;
+let heatParticles = [];
+let heatSimAnimId = null;
+let heatSimLastTime = null;
+let heatChart = null;
+let heatChartData = {
+    times: [],
+    liquidTemp: [],
+    mediaTempOut: []
 };
 
 // Rheology model state (loaded from viscometer CSV)
@@ -95,6 +130,27 @@ document.addEventListener('DOMContentLoaded', () => {
     switchMainTab(config.activeTab || 'rushton');
     feather.replace();
 });
+
+function syncSpeedUIElements() {
+    const speed = config.simSpeed ?? 300;
+    const sync = config.simSpeedSync ?? true;
+    
+    const slider1 = document.getElementById('sim-speed-slider');
+    const val1 = document.getElementById('sim-speed-val');
+    const sync1 = document.getElementById('sim-speed-sync');
+    
+    const slider2 = document.getElementById('heat-sim-speed-slider');
+    const val2 = document.getElementById('heat-sim-speed-val');
+    const sync2 = document.getElementById('heat-sim-speed-sync');
+
+    if (slider1) slider1.value = speed;
+    if (val1) val1.textContent = speed;
+    if (sync1) sync1.checked = sync;
+
+    if (slider2) slider2.value = speed;
+    if (val2) val2.textContent = speed;
+    if (sync2) sync2.checked = sync;
+}
 
 // Bind UI inputs to State
 function initInputs() {
@@ -157,14 +213,40 @@ function initInputs() {
     const cModel = document.getElementById('cavern-model');
     if (cModel) cModel.value = config.cavernModel ?? 'spherical';
     
-    const simSpeed = config.simSpeed ?? 300;
-    document.getElementById('sim-speed-slider').value = simSpeed;
-    document.getElementById('sim-speed-val').textContent = simSpeed;
-    document.getElementById('sim-speed-sync').checked = config.simSpeedSync ?? true;
+    syncSpeedUIElements();
+
+    // 伝熱データのロード
+    document.getElementById('liquid-temp-init').value = config.liquidTempInit ?? 20;
+    document.getElementById('liquid-cp').value = config.liquidCp ?? 4184;
+    document.getElementById('liquid-k').value = config.liquidK ?? 0.60;
+    document.getElementById('wall-thickness').value = config.wallThickness ?? 0.003;
+    document.getElementById('wall-k').value = config.wallK ?? 16.3;
+    document.getElementById('jacket-type').value = config.jacketType ?? 'flat';
+    document.getElementById('jacket-gap').value = config.jacketGap ?? 0.010;
+    document.getElementById('coil-active').checked = config.coilActive ?? false;
+    // コイル寸法入力の初期値セット
+    document.getElementById('coil-outer-dia').value = config.coilOuterDia ?? 0.010;
+    document.getElementById('coil-inner-dia').value = config.coilInnerDia ?? 0.008;
+    document.getElementById('coil-pitch').value      = config.coilPitch    ?? 0.025;
+    document.getElementById('coil-center-dia').value = config.coilCenterDia ?? '';
+    // パネル表示切替
+    const coilPanel = document.getElementById('coil-params');
+    if (coilPanel) coilPanel.style.display = config.coilActive ? 'flex' : 'none';
+    document.getElementById('media-type').value = config.mediaType ?? 'water';
+    document.getElementById('media-temp-in').value = config.mediaTempIn ?? 80;
+    document.getElementById('media-flow').value = config.mediaFlow ?? 0.05;
+    document.getElementById('media-rho').value = config.mediaRho ?? 1000;
+    document.getElementById('media-mu').value = config.mediaMu ?? 0.001;
+    document.getElementById('media-cp').value = config.mediaCp ?? 4184;
+    document.getElementById('media-k').value = config.mediaK ?? 0.60;
+    document.getElementById('media-visc-corr').value = config.mediaViscCorr ?? 1.0;
+    document.getElementById('fouling-factor').value = config.foulingFactor ?? 0.0001;
 
     updateSolidConcLabel();
     toggleSFactorCustom();
     toggleSolidLiquidInputs();
+    toggleJacketGapInput();
+    toggleMediaTypeInputs();
 }
 
 function initEventListeners() {
@@ -370,15 +452,16 @@ function initEventListeners() {
         config.sFactorCustom = parseFloat(e.target.value) || 5.0;
         recalculateAll();
     });
+    // --- Particle Simulator Speed Controls ---
     document.getElementById('sim-speed-slider').addEventListener('input', (e) => {
         config.simSpeed = parseFloat(e.target.value) || 0;
-        document.getElementById('sim-speed-val').textContent = config.simSpeed;
         
         // スライダーを手動で動かしたら自動同期を解除
         if (config.simSpeedSync) {
             config.simSpeedSync = false;
-            document.getElementById('sim-speed-sync').checked = false;
         }
+        syncSpeedUIElements();
+        
         if (simAnimId) {
             simLastFrameTime = performance.now();
         }
@@ -392,6 +475,7 @@ function initEventListeners() {
         if (config.simSpeedSync) {
             syncSimulatorSpeedWithBlock();
         }
+        syncSpeedUIElements();
         recalculateAll();
     });
     document.getElementById('btn-set-njs').addEventListener('click', () => {
@@ -399,23 +483,135 @@ function initEventListeners() {
         const njs_rpm = parseFloat(njs_rpm_str);
         if (!isNaN(njs_rpm) && njs_rpm > 0) {
             config.simSpeed = Math.round(njs_rpm);
-            document.getElementById('sim-speed-slider').value = config.simSpeed;
-            document.getElementById('sim-speed-val').textContent = config.simSpeed;
             config.simSpeedSync = false;
-            document.getElementById('sim-speed-sync').checked = false;
+            syncSpeedUIElements();
             updateSimulatorResultsOnly();
-            saveCurrentState(); // 同期用に追加
+            saveCurrentState();
             showToast(`シミュレーション回転数を Njs (${config.simSpeed} rpm) に設定しました`, 'success');
         }
     });
 
+    // --- Heat Simulator Speed Controls (Linked) ---
+    const heatSlider = document.getElementById('heat-sim-speed-slider');
+    if (heatSlider) {
+        heatSlider.addEventListener('input', (e) => {
+            config.simSpeed = parseFloat(e.target.value) || 0;
+            if (config.simSpeedSync) {
+                config.simSpeedSync = false;
+            }
+            syncSpeedUIElements();
+            if (heatSimAnimId) {
+                heatSimLastTime = performance.now();
+            }
+        });
+        heatSlider.addEventListener('change', () => {
+            updateSimulatorResultsOnly();
+            saveCurrentState();
+        });
+    }
+    const heatSync = document.getElementById('heat-sim-speed-sync');
+    if (heatSync) {
+        heatSync.addEventListener('change', (e) => {
+            config.simSpeedSync = e.target.checked;
+            if (config.simSpeedSync) {
+                syncSimulatorSpeedWithBlock();
+            }
+            syncSpeedUIElements();
+            recalculateAll();
+        });
+    }
+    const heatSetNjs = document.getElementById('btn-heat-set-njs');
+    if (heatSetNjs) {
+        heatSetNjs.addEventListener('click', () => {
+            const njs_rpm_str = document.getElementById('sim-res-Njs-rpm').textContent;
+            const njs_rpm = parseFloat(njs_rpm_str);
+            if (!isNaN(njs_rpm) && njs_rpm > 0) {
+                config.simSpeed = Math.round(njs_rpm);
+                config.simSpeedSync = false;
+                syncSpeedUIElements();
+                updateSimulatorResultsOnly();
+                saveCurrentState();
+                showToast(`シミュレーション回転数を Njs (${config.simSpeed} rpm) に設定しました`, 'success');
+            }
+        });
+    }
+
     // Tab switching event listeners
     const tabRushton = document.getElementById('tab-btn-rushton');
     const tabPartsim = document.getElementById('tab-btn-partsim');
+    const tabHeatsim = document.getElementById('tab-btn-heatsim');
     if (tabRushton && tabPartsim) {
         tabRushton.addEventListener('click', () => switchMainTab('rushton'));
         tabPartsim.addEventListener('click', () => switchMainTab('partsim'));
     }
+    if (tabHeatsim) {
+        tabHeatsim.addEventListener('click', () => switchMainTab('heatsim'));
+    }
+
+    // Heat transfer / thermal properties input watchers
+    const heatInputs = [
+        'liquid-temp-init', 'liquid-cp', 'liquid-k',
+        'wall-thickness', 'wall-k', 'jacket-type', 'jacket-gap',
+        'media-type', 'media-temp-in', 'media-flow', 'media-rho',
+        'media-mu', 'media-cp', 'media-k', 'media-visc-corr', 'fouling-factor'
+    ];
+    const getHeatPropName = (id) => {
+        if (id === 'media-temp-in') return 'mediaTempIn';
+        if (id === 'media-visc-corr') return 'mediaViscCorr';
+        return id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+    };
+    heatInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if (e.target.type === 'number') {
+                    val = parseFloat(val) || 0;
+                }
+                config[getHeatPropName(id)] = val;
+                
+                if (id === 'jacket-type') {
+                    toggleJacketGapInput();
+                }
+                if (id === 'media-type') {
+                    toggleMediaTypeInputs();
+                }
+                
+                recalculateAll();
+            });
+        }
+    });
+
+    document.getElementById('coil-active').addEventListener('change', (e) => {
+        config.coilActive = e.target.checked;
+        const panel = document.getElementById('coil-params');
+        if (panel) panel.style.display = config.coilActive ? 'flex' : 'none';
+        recalculateAll();
+    });
+
+    // コイル寸法入力
+    [
+        ['coil-outer-dia', 'coilOuterDia', 0.010],
+        ['coil-inner-dia', 'coilInnerDia', 0.008],
+        ['coil-pitch',     'coilPitch',    0.025],
+    ].forEach(([id, key, def]) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', (e) => {
+            config[key] = parseFloat(e.target.value) || def;
+            recalculateAll();
+        });
+    });
+    const coilCenterEl = document.getElementById('coil-center-dia');
+    if (coilCenterEl) coilCenterEl.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        config.coilCenterDia = isNaN(v) || v <= 0 ? null : v;
+        recalculateAll();
+    });
+
+    // Heat simulation controls
+    document.getElementById('btn-heat-sim-start').addEventListener('click', startHeatSimulation);
+    document.getElementById('btn-heat-sim-pause').addEventListener('click', pauseHeatSimulation);
+    document.getElementById('btn-heat-sim-reset').addEventListener('click', resetHeatSimulation);
 
     // Inner Tab switching event listeners (Zwietering vs Flow/Circulation)
     const btnSusp = document.getElementById('inner-tab-btn-suspension');
@@ -465,6 +661,29 @@ function toggleSolidLiquidInputs() {
     if (!active && config.activeTab === 'partsim') {
         switchMainTab('rushton');
     }
+}
+
+function toggleJacketGapInput() {
+    const type = config.jacketType || 'flat';
+    const container = document.getElementById('jacket-gap-container');
+    if (container) {
+        container.style.display = type === 'spiral' ? 'flex' : 'none';
+    }
+}
+
+function toggleMediaTypeInputs() {
+    const type = config.mediaType || 'water';
+    const isWater = type === 'water';
+    const fields = [
+        'media-flow', 'media-rho', 'media-mu', 'media-cp', 'media-k', 'media-visc-corr'
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = !isWater;
+            el.style.opacity = isWater ? '1.0' : '0.4';
+        }
+    });
 }
 
 // Show feedback message
@@ -700,6 +919,7 @@ function recalculateAll() {
     updateChart();
     updateLowReWarning();
     updateSimulatorResults();
+    updateHeatCalcUI();
     saveCurrentState();
 }
 
@@ -2776,6 +2996,22 @@ function generatePDFReport() {
     document.getElementById('pdf-val-nb').textContent = config.nB;
     document.getElementById('pdf-val-bw').textContent = config.Bw.toFixed(3);
 
+    // Heat transfer data mapping for PDF
+    const heatRes = calculateHeatTransfer();
+    document.getElementById('pdf-val-liquid-cp').textContent = config.liquidCp;
+    document.getElementById('pdf-val-liquid-k').textContent = config.liquidK.toFixed(2);
+    document.getElementById('pdf-val-wall-thickness').textContent = config.wallThickness.toFixed(3);
+    document.getElementById('pdf-val-wall-k').textContent = config.wallK.toFixed(1);
+    document.getElementById('pdf-val-jacket-type').textContent = config.jacketType === 'spiral' ? '渦巻ジャケット' : '平板ジャケット';
+    document.getElementById('pdf-val-coil-active').textContent = config.coilActive ? 'あり' : 'なし';
+    document.getElementById('pdf-val-media-type').textContent = config.mediaType === 'steam' ? 'スチーム' : '水';
+    document.getElementById('pdf-val-media-temp-in').textContent = config.mediaTempIn.toFixed(1);
+    document.getElementById('pdf-val-media-flow').textContent = config.mediaFlow.toFixed(3);
+    document.getElementById('pdf-val-heat-h1').textContent = heatRes.h1.toFixed(1);
+    document.getElementById('pdf-val-heat-h2').textContent = heatRes.h2.toFixed(1);
+    document.getElementById('pdf-val-heat-u').textContent = heatRes.U.toFixed(1);
+    document.getElementById('pdf-val-heat-area').textContent = heatRes.Area.toFixed(4);
+
     // Solid-Liquid data mapping for PDF
     const slSection = document.getElementById('pdf-solid-liquid-section');
     if (config.solidLiquidActive) {
@@ -3721,11 +3957,7 @@ function syncSimulatorSpeedWithBlock() {
         const aveN = sumN / firstBlock.rows.length;
         config.simSpeed = Math.round(aveN);
         
-        const slider = document.getElementById('sim-speed-slider');
-        if (slider) {
-            slider.value = config.simSpeed;
-            document.getElementById('sim-speed-val').textContent = config.simSpeed;
-        }
+        syncSpeedUIElements();
     }
 }
 
@@ -3736,6 +3968,7 @@ function syncSimulatorSpeedWithBlock() {
 let simCanvas = null;
 let simCtx = null;
 let simParticles = [];
+let simCoilPositions = []; // コイル管中心座標リスト [{x, y, r}]
 let simAnimId = null;
 let simImpellerAngle = 0;    // accumulated rotation angle [rad]
 let simLastFrameTime = null; // performance.now() at last frame
@@ -4017,60 +4250,72 @@ function switchMainTab(tab) {
 
     const btnRushton = document.getElementById('tab-btn-rushton');
     const btnPartsim = document.getElementById('tab-btn-partsim');
+    const btnHeatsim = document.getElementById('tab-btn-heatsim');
+    
     const contentRushton = document.getElementById('tab-content-rushton');
     const contentPartsim = document.getElementById('tab-content-partsim');
+    const contentHeatsim = document.getElementById('tab-content-heatsim');
+    
     const controlsRushton = document.getElementById('rushton-controls');
     const controlsPartsim = document.getElementById('partsim-controls');
 
-    if (!btnRushton || !btnPartsim || !contentRushton || !contentPartsim) return;
+    if (!btnRushton || !btnPartsim || !btnHeatsim || !contentRushton || !contentPartsim || !contentHeatsim) return;
+
+    // Reset all tab button styles
+    [btnRushton, btnPartsim, btnHeatsim].forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderBottom = '2px solid transparent';
+        btn.style.fontWeight = '500';
+    });
+
+    // Hide all tab contents
+    contentRushton.style.display = 'none';
+    contentPartsim.style.display = 'none';
+    contentHeatsim.style.display = 'none';
+
+    if (controlsRushton) controlsRushton.style.display = 'none';
+    if (controlsPartsim) controlsPartsim.style.display = 'none';
+
+    // Cancel animation loops to save CPU
+    if (simAnimId) {
+        cancelAnimationFrame(simAnimId);
+        simAnimId = null;
+    }
+    if (heatSimAnimId) {
+        cancelAnimationFrame(heatSimAnimId);
+        heatSimAnimId = null;
+    }
 
     if (tab === 'rushton') {
         btnRushton.classList.add('active');
         btnRushton.style.color = 'var(--accent-color)';
         btnRushton.style.borderBottom = '2px solid var(--accent-color)';
         btnRushton.style.fontWeight = '600';
-
-        btnPartsim.classList.remove('active');
-        btnPartsim.style.color = 'var(--text-secondary)';
-        btnPartsim.style.borderBottom = '2px solid transparent';
-        btnPartsim.style.fontWeight = '500';
-
-        contentRushton.style.display = 'block';
-        contentPartsim.style.display = 'none';
-
+        contentRushton.style.display = 'flex';
         if (controlsRushton) controlsRushton.style.display = 'flex';
-        if (controlsPartsim) controlsPartsim.style.display = 'none';
-
-        // Pause particle animation to save CPU
-        if (simAnimId) {
-            cancelAnimationFrame(simAnimId);
-            simAnimId = null;
-        }
         
-        // Resize and redraw Chart.js chart since parent visibility toggled
         if (chart) {
             chart.resize();
             chart.update();
         }
-    } else {
+    } else if (tab === 'partsim') {
         btnPartsim.classList.add('active');
         btnPartsim.style.color = 'var(--accent-color)';
         btnPartsim.style.borderBottom = '2px solid var(--accent-color)';
         btnPartsim.style.fontWeight = '600';
-
-        btnRushton.classList.remove('active');
-        btnRushton.style.color = 'var(--text-secondary)';
-        btnRushton.style.borderBottom = '2px solid transparent';
-        btnRushton.style.fontWeight = '500';
-
-        contentRushton.style.display = 'none';
         contentPartsim.style.display = 'flex';
-
-        if (controlsRushton) controlsRushton.style.display = 'none';
         if (controlsPartsim) controlsPartsim.style.display = 'block';
-
-        // Initialize and start particle simulation loop
+        
         initParticleSimulation();
+    } else if (tab === 'heatsim') {
+        btnHeatsim.classList.add('active');
+        btnHeatsim.style.color = 'var(--accent-color)';
+        btnHeatsim.style.borderBottom = '2px solid var(--accent-color)';
+        btnHeatsim.style.fontWeight = '600';
+        contentHeatsim.style.display = 'flex';
+        
+        initHeatSimulation();
     }
 }
 
@@ -4548,7 +4793,32 @@ function drawParticleSimulation() {
             p.y = y_surf + p.radius;
             p.vy = Math.abs(p.vy) * 0.1;
         }
-        
+
+        // コイルとの衝突判定（コイルON時）
+        if (config.coilActive && simCoilPositions.length > 0) {
+            simCoilPositions.forEach(c => {
+                const dx = p.x - c.x;
+                const dy = p.y - c.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = c.r + p.radius;
+                if (dist < minDist && dist > 0.01) {
+                    // 粒子をコイル外面へ押し出す
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    p.x = c.x + nx * minDist;
+                    p.y = c.y + ny * minDist;
+                    // 法線方向の速度成分を反転（減衰あり）
+                    const vDotN = p.vx * nx + p.vy * ny;
+                    if (vDotN < 0) {
+                        p.vx -= 1.4 * vDotN * nx;
+                        p.vy -= 1.4 * vDotN * ny;
+                        p.vx *= 0.5;
+                        p.vy *= 0.5;
+                    }
+                }
+            });
+        }
+
         const y_bot = getVesselBottomY(p.x, coords);
         
         if (p.y > y_bot - p.radius - 1) {
@@ -4592,7 +4862,99 @@ function drawParticleSimulation() {
         simCtx.fill();
     });
     simCtx.restore();
-    
+
+    // --- コイル描画（粒子より前面・インペラより後面） ---
+    if (config.coilActive) {
+        simCtx.save();
+        const coilFill   = 'rgba(6,182,212,0.75)';
+        const coilStroke = 'rgba(2,120,150,0.9)';
+
+        const d_co_m   = config.coilOuterDia ?? 0.010;
+        const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
+                           ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px_c = D_c_real * scale;
+        const coilR    = Math.max(4, (d_co_m / 2) * scale);
+
+        const y_bot_vessel = getVesselBottomY(cx, coords);
+        const coilSpan = y_bot_vessel - y_liquid - 20;
+        const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
+        const p_c_px   = p_c_m * scale;
+        const N_t_c    = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitchC   = coilSpan / N_t_c;
+
+        for (let j = 0; j < N_t_c; j++) {
+            const cy_coil = y_liquid + 14 + j * pitchC + pitchC / 2;
+
+            // 後ろ側断面
+            simCtx.beginPath();
+            simCtx.ellipse(cx - D_c_px_c / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = 'rgba(2,100,120,0.6)';
+            simCtx.fill();
+            simCtx.strokeStyle = coilStroke;
+            simCtx.lineWidth = 1.5;
+            simCtx.stroke();
+
+            simCtx.beginPath();
+            simCtx.ellipse(cx + D_c_px_c / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = 'rgba(2,100,120,0.6)';
+            simCtx.fill();
+            simCtx.stroke();
+
+            // 連結弧
+            if (j < N_t_c - 1) {
+                const cy_next = y_liquid + 14 + (j + 1) * pitchC + pitchC / 2;
+                simCtx.beginPath();
+                simCtx.strokeStyle = coilFill;
+                simCtx.lineWidth = coilR * 1.1;
+                simCtx.lineCap = 'round';
+                simCtx.moveTo(cx + D_c_px_c / 2, cy_coil);
+                simCtx.bezierCurveTo(
+                    cx + D_c_px_c / 2 + coilR * 3, cy_coil + pitchC * 0.25,
+                    cx - D_c_px_c / 2 - coilR * 3, cy_next - pitchC * 0.25,
+                    cx - D_c_px_c / 2, cy_next
+                );
+                simCtx.stroke();
+
+                simCtx.beginPath();
+                simCtx.strokeStyle = coilStroke;
+                simCtx.lineWidth = 1;
+                simCtx.lineCap = 'butt';
+                simCtx.moveTo(cx + D_c_px_c / 2, cy_coil);
+                simCtx.bezierCurveTo(
+                    cx + D_c_px_c / 2 + coilR * 3, cy_coil + pitchC * 0.25,
+                    cx - D_c_px_c / 2 - coilR * 3, cy_next - pitchC * 0.25,
+                    cx - D_c_px_c / 2, cy_next
+                );
+                simCtx.stroke();
+            }
+
+            // 前面断面（ハイライト付き）
+            simCtx.beginPath();
+            simCtx.ellipse(cx - D_c_px_c / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = coilFill;
+            simCtx.fill();
+            simCtx.strokeStyle = coilStroke;
+            simCtx.lineWidth = 1.5;
+            simCtx.stroke();
+
+            simCtx.beginPath();
+            simCtx.ellipse(cx + D_c_px_c / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            simCtx.fillStyle = coilFill;
+            simCtx.fill();
+            simCtx.stroke();
+
+            // ハイライト
+            simCtx.beginPath();
+            simCtx.ellipse(cx - D_c_px_c / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            simCtx.fillStyle = 'rgba(255,255,255,0.3)';
+            simCtx.fill();
+            simCtx.beginPath();
+            simCtx.ellipse(cx + D_c_px_c / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            simCtx.fill();
+        }
+        simCtx.restore();
+    }
+
     // 4 & 5. Draw Shaft + Impeller Blades (3D rotating, depth-sorted)
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
@@ -4756,25 +5118,919 @@ function drawParticleSimulation() {
     drawElements.forEach(el => el.draw());
     
 
-    // 6. Draw Vessel Outer Wall Outline
-    simCtx.save();
-    simCtx.strokeStyle = '#d4d4d8';
-    simCtx.lineWidth = 2;
-    simCtx.lineCap = 'round';
-    simCtx.lineJoin = 'round';
-    simCtx.beginPath();
-    simCtx.moveTo(lx, y_liquid - 10);
-    simCtx.lineTo(lx, y_cyl);
-    
-    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
-        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
-    } else if (config.headType === 'hemispherical') {
-        simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
-    } else {
-        simCtx.lineTo(rx, y_cyl);
-    }
-    simCtx.lineTo(rx, y_liquid - 10);
     simCtx.stroke();
     simCtx.restore();
+}
+
+// ====================================================
+// Heat Transfer Calculations & Simulation Tab Logic
+// ====================================================
+
+function calculateHeatTransfer() {
+    // 槽径 D_T, 翼径 d, 液密度 rho, 代表粘度 mu_eff (非ニュートンでなければmu)
+    const D_T = config.DT;
+    const d = config.d;
+    const H = config.H;
+    const rho_L = config.rho;
+    const Cp_L = config.liquidCp || 4184;
+    const k_L = config.liquidK || 0.60;
+    const t_w = config.wallThickness || 0.003;
+    const k_w = config.wallK || 16.3;
+    const r_d = config.foulingFactor || 0.0001;
+
+    // 代表粘度の取得 (非ニュートンが有効な場合は mu-eff を、そうでなければ config.mu を使用)
+    const mu_L = (rheologyData.activeModel !== 'newtonian' && typeof getEffectiveViscosity === 'function') 
+        ? (getEffectiveViscosity() || config.mu) 
+        : config.mu;
+
+    // 現在の回転数 (rps)
+    const N_rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
+    const n = Math.max(0.1, N_rpm / 60);
+
+    // 攪拌レイノルズ数 & プラントル数
+    const Re = (rho_L * n * d * d) / Math.max(1e-6, mu_L);
+    const Pr = (Cp_L * mu_L) / Math.max(1e-6, k_L);
+
+    // --- (1) 槽内液側境膜伝熱係数 h1 の計算 ---
+    // インペラ形状と邪魔板の有無に基づいて定数を決定
+    let K = 0.36;
+    let alpha = 2/3;
+    let beta = 1/3;
+    let gamma = 0.14;
+    let f_factor = 1.0;
+
+    const isBaffled = config.baffleActive && config.nB > 0 && config.Bw > 0;
+    const type = config.impellerType;
+
+    if (!config.coilActive) {
+        // ジャケット伝熱定数
+        if (type === 'flat-turbine') {
+            K = isBaffled ? 0.74 : 0.54;
+        } else if (type === 'propeller') {
+            K = isBaffled ? 0.50 : 0.37;
+        } else { // パドル系（pitched-paddle, flat-paddle, faudler）
+            K = 0.36; // パドル翼は邪魔板併用可で0.36
+        }
+    } else {
+        // コイル伝熱定数
+        if (type === 'flat-turbine') {
+            K = 1.50;
+        } else if (type === 'propeller') {
+            K = 0.83;
+        } else {
+            K = 0.87;
+            alpha = 0.62;
+        }
+    }
+
+    // 液側境膜伝熱係数 h1 の算出
+    const Nu_L = K * Math.pow(Re, alpha) * Math.pow(Pr, beta) * 1.0 * f_factor;
+    const h1 = (Nu_L * k_L) / D_T;
+
+    // --- (2) 伝熱面積の計算 ---
+    let h_dish = 0;
+    let A_dish = 0;
+    const R = D_T / 2;
+    const headType = config.headType;
+
+    if (headType === 'semi-elliptical') {
+        h_dish = R / 2;
+        A_dish = 1.382 * Math.PI * R * R;
+    } else if (headType === 'dish') {
+        h_dish = 0.1935 * D_T;
+        A_dish = 1.15 * Math.PI * R * R;
+    } else if (headType === 'hemispherical') {
+        h_dish = R;
+        A_dish = 2.0 * Math.PI * R * R;
+    } else { // flat
+        h_dish = 0;
+        A_dish = Math.PI * R * R;
+    }
+
+    const h_cyl = Math.max(0, H - h_dish);
+    const A_cyl = Math.PI * D_T * h_cyl;
+    
+    // ジャケット伝熱面積 Aj (接液面積)
+    const Aj = A_cyl + A_dish;
+
+    // コイル伝熱面積 Ac（ユーザー入力値を使用）
+    const d_co   = config.coilOuterDia  ?? 0.010;          // コイル外径 [m]
+    const d_ci   = config.coilInnerDia  ?? 0.008;          // コイル内径 [m]
+    const p_c    = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co)); // ピッチ（最低外径以上）
+    const D_c    = (config.coilCenterDia && config.coilCenterDia > 0)
+                    ? config.coilCenterDia
+                    : 0.7 * D_T;                            // コイル中心径 [m]（未入力時は槽径×0.7）
+    const clearance = config.clearance ?? 0;
+    const N_t    = Math.max(1, Math.floor((H - 2 * clearance) / p_c)); // コイル巻き数
+    const L_c    = N_t * Math.PI * D_c;                    // コイル全長 [m]
+    const Ac     = config.coilActive ? (Math.PI * d_co * L_c) : 0; // コイル外面積 [m²]
+
+    // --- (3) 熱媒体側境膜伝熱係数 h2 の計算 ---
+    let h2 = 0;
+    const isWater = config.mediaType === 'water';
+    const W_j = config.mediaFlow || 0.05;
+    const rho_j = config.mediaRho || 1000;
+    const mu_j = config.mediaMu || 0.001;
+    const Cp_j = config.mediaCp || 4184;
+    const k_j = config.mediaK || 0.60;
+    const viscCorr = config.mediaViscCorr || 1.0;
+    const T_in = config.mediaTempIn;
+
+    if (!isWater) {
+        // スチームの凝縮伝熱係数 (相変化)
+        h2 = 10000; // 非常に大きい一定値で近似
+    } else {
+        if (!config.coilActive) {
+            // ジャケット側水流速と伝熱係数
+            const D1 = D_T + 2 * t_w;
+            const s_j = config.jacketGap || 0.010;
+            const D2 = D1 + 2 * s_j;
+            
+            let Ac_flow = 0;
+            let D_eq = 0;
+
+            if (config.jacketType === 'spiral') {
+                Ac_flow = s_j * s_j; 
+                D_eq = s_j;
+            } else {
+                Ac_flow = (Math.PI / 4) * (D2 * D2 - D1 * D1);
+                D_eq = D2 - D1;
+            }
+
+            const u_j = W_j / (rho_j * Math.max(1e-6, Ac_flow));
+            const Re_j = (rho_j * u_j * D_eq) / Math.max(1e-6, mu_j);
+            const Pr_j = (Cp_j * mu_j) / Math.max(1e-6, k_j);
+            
+            const Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1/3) * viscCorr;
+            h2 = (Nu_j * k_j) / Math.max(1e-6, D_eq);
+        } else {
+            // コイル管内の伝熱係数
+            const u_c = W_j / (rho_j * (Math.PI * d_ci * d_ci / 4));
+            const Re_c = (rho_j * u_c * d_ci) / Math.max(1e-6, mu_j);
+            const Pr_c = (Cp_j * mu_j) / Math.max(1e-6, k_j);
+            
+            const Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1/3) * (1 + 3.5 * (d_ci / D_c)) * viscCorr;
+            h2 = (Nu_c * k_j) / d_ci;
+        }
+    }
+
+    // --- (4) 総括伝熱係数 U の計算 ---
+    const R_wall = t_w / k_w;
+    let U_j = 0;
+    if (h1 > 0 && h2 > 0) {
+        U_j = 1 / (1/h1 + R_wall + 1/h2 + r_d);
+    }
+    
+    const t_c_wall = 0.001; // 1mm
+    const k_c_wall = 16.3; 
+    let U_c = 0;
+    if (config.coilActive && h1 > 0 && h2 > 0) {
+        U_c = 1 / (1/h1 + (t_c_wall / k_c_wall) + 1/h2 + r_d);
+    }
+
+    const Area = config.coilActive ? Ac : Aj;
+    const U = config.coilActive ? U_c : U_j;
+
+    return {
+        h1, h2, U, Area, Aj, Ac, U_j, U_c, Cp_L, rho_L, Cp_j, W_j, T_in, isWater
+    };
+}
+
+function updateHeatCalcUI() {
+    const res = calculateHeatTransfer();
+    
+    const elH1 = document.getElementById('heat-res-h1');
+    const elH2 = document.getElementById('heat-res-h2');
+    const elU = document.getElementById('heat-res-U');
+    const elArea = document.getElementById('heat-res-Area');
+    const elQ = document.getElementById('heat-res-Q');
+    const elTout = document.getElementById('heat-res-Tout');
+
+    if (!elH1) return; 
+
+    elH1.textContent = res.h1.toFixed(1) + " W/(m²·K)";
+    elH2.textContent = res.h2.toFixed(1) + " W/(m²·K)";
+    elU.textContent = res.U.toFixed(1) + " W/(m²·K)";
+    elArea.textContent = res.Area.toFixed(4) + " m²";
+
+    const T_L = heatSimTemp;
+    let Q = 0;
+    let T_out = res.T_in;
+
+    if (res.isWater) {
+        const exponent = -(res.U * res.Area) / Math.max(1e-3, res.W_j * res.Cp_j);
+        T_out = T_L + (res.T_in - T_L) * Math.exp(exponent);
+        Q = res.W_j * res.Cp_j * (res.T_in - T_out);
+    } else {
+        T_out = res.T_in;
+        Q = res.U * res.Area * (res.T_in - T_L);
+    }
+
+    elQ.textContent = Q.toFixed(1) + " W";
+    elTout.textContent = T_out.toFixed(1) + " °C";
+
+    const tempDisp = document.getElementById('heat-sim-temp-display');
+    if (tempDisp) {
+        tempDisp.textContent = T_L.toFixed(2) + " °C";
+        const tMin = 10, tMax = 90;
+        const ratio = Math.max(0, Math.min(1, (T_L - tMin) / (tMax - tMin)));
+        const hue = Math.round(240 - 240 * ratio); 
+        tempDisp.style.color = `hsl(${hue}, 85%, 55%)`;
+    }
+}
+
+function initHeatSimulation() {
+    const canvas = document.getElementById('heatSimCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (heatSimAnimId) {
+        cancelAnimationFrame(heatSimAnimId);
+        heatSimAnimId = null;
+    }
+
+    heatSimTime = 0.0;
+    const timeEl = document.getElementById('heat-sim-time');
+    if (timeEl) timeEl.textContent = '0.0';
+    heatSimTemp = config.liquidTempInit ?? 20.0;
+    heatParticles = [];
+    heatSimLastTime = null;
+    
+    heatChartData.times = [0];
+    heatChartData.liquidTemp = [heatSimTemp];
+    const res = calculateHeatTransfer();
+    heatChartData.mediaTempOut = [res.T_in];
+    
+    initHeatChart();
+
+    const count = 1000;
+    const coords = getVesselVisualCoords();
+    const { lx, rx, y_liquid, cx, scale, hb, y_cyl, y_deepest, D_px } = coords;
+
+    for (let i = 0; i < count; i++) {
+        let px = lx + Math.random() * D_px;
+        let py = y_liquid + Math.random() * (getVesselBottomY(px, coords) - y_liquid);
+        
+        px = Math.max(lx + 2, Math.min(rx - 2, px));
+        py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 2, py));
+
+        heatParticles.push({
+            x: px,
+            y: py,
+            vx: 0,
+            vy: 0,
+            temp: heatSimTemp, 
+            relSize: 0.6 + Math.random() * 0.6
+        });
+    }
+
+    drawHeatSimulation();
+    updateHeatCalcUI();
+}
+
+function startHeatSimulation() {
+    if (heatSimActive) return;
+    heatSimActive = true;
+    
+    const btnStart = document.getElementById('btn-heat-sim-start');
+    const btnPause = document.getElementById('btn-heat-sim-pause');
+    if (btnStart && btnPause) {
+        btnStart.disabled = true;
+        btnPause.disabled = false;
+    }
+
+    heatSimLastTime = performance.now();
+    
+    function loop() {
+        if (!heatSimActive) return;
+        updateHeatPhysics();
+        drawHeatSimulation();
+        heatSimAnimId = requestAnimationFrame(loop);
+    }
+    loop();
+}
+
+function pauseHeatSimulation() {
+    heatSimActive = false;
+    const btnStart = document.getElementById('btn-heat-sim-start');
+    const btnPause = document.getElementById('btn-heat-sim-pause');
+    if (btnStart && btnPause) {
+        btnStart.disabled = false;
+        btnPause.disabled = true;
+    }
+    if (heatSimAnimId) {
+        cancelAnimationFrame(heatSimAnimId);
+        heatSimAnimId = null;
+    }
+}
+
+function resetHeatSimulation() {
+    pauseHeatSimulation();
+    initHeatSimulation();
+}
+
+function updateHeatPhysics() {
+    const now = performance.now();
+    if (!heatSimLastTime) {
+        heatSimLastTime = now;
+        return;
+    }
+    const dt = Math.min(0.03, (now - heatSimLastTime) / 1000) * 1.5; 
+    heatSimLastTime = now;
+
+    heatSimTime += dt;
+    document.getElementById('heat-sim-time').textContent = heatSimTime.toFixed(1);
+
+    const res = calculateHeatTransfer();
+    const V_act = (config.V_act && config.V_act > 0) ? (config.V_act * 1e-3) : calcLiquidVolume();
+    const M_L = res.rho_L * V_act; 
+
+    let Q = 0;
+    let T_out = res.T_in;
+    if (res.isWater) {
+        const exponent = -(res.U * res.Area) / Math.max(1e-3, res.W_j * res.Cp_j);
+        T_out = heatSimTemp + (res.T_in - heatSimTemp) * Math.exp(exponent);
+        Q = res.W_j * res.Cp_j * (res.T_in - T_out);
+    } else {
+        T_out = res.T_in;
+        Q = res.U * res.Area * (res.T_in - heatSimTemp);
+    }
+
+    const dT = (Q / (M_L * res.Cp_L)) * dt;
+    heatSimTemp += dT;
+
+    const lastTime = heatChartData.times[heatChartData.times.length - 1] || 0;
+    if (heatSimTime - lastTime >= 1.0 && heatChartData.times.length < 150) {
+        heatChartData.times.push(Math.round(heatSimTime));
+        heatChartData.liquidTemp.push(heatSimTemp);
+        heatChartData.mediaTempOut.push(T_out);
+        updateHeatChart();
+    }
+
+    updateHeatCalcUI();
+
+    const coords = getVesselVisualCoords();
+    const { cx, D_px, scale, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+    const N_rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
+    const wallThresh_px = 12; 
+    // コイル中心径（px）
+    const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
+    const D_c_px = D_c_real * scale;
+    
+    let coils = [];
+    if (config.coilActive) {
+        const p_c_m  = Math.max((config.coilOuterDia ?? 0.010) * 1.01, config.coilPitch ?? 0.025);
+        const p_c_px = p_c_m * scale;
+        const y_bot_coil = getVesselBottomY(cx, coords);
+        const coilSpan_px = y_bot_coil - y_liquid - 20;
+        const N_t = Math.max(1, Math.floor(coilSpan_px / p_c_px));
+        const pitchUsed_px = coilSpan_px / N_t;
+        for (let j = 0; j < N_t; j++) {
+            const cy = y_liquid + 14 + j * pitchUsed_px + pitchUsed_px / 2;
+            coils.push({ x: cx - D_c_px / 2, y: cy });
+            coils.push({ x: cx + D_c_px / 2, y: cy });
+        }
+    }
+
+    const gridCols = 15;
+    const gridRows = 15;
+    const gridWidth = (rx - lx) / gridCols;
+    const gridHeight = (y_deepest - y_liquid) / gridRows;
+    let grid = Array.from({ length: gridCols * gridRows }, () => ({ temps: [], count: 0, sum: 0 }));
+
+    // 密度平滑化（自己分散）のための粒子密度のカウント（第1パス）
+    let densityGrid = new Int32Array(gridCols * gridRows);
+    heatParticles.forEach(p => {
+        const cIdx = Math.max(0, Math.min(gridCols - 1, Math.floor((p.x - lx) / gridWidth)));
+        const rIdx = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y - y_liquid) / gridHeight)));
+        densityGrid[rIdx * gridCols + cIdx]++;
+    });
+
+    heatParticles.forEach(p => {
+        const colIdx_init = Math.max(0, Math.min(gridCols - 1, Math.floor((p.x - lx) / gridWidth)));
+        const rowIdx_init = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y - y_liquid) / gridHeight)));
+
+        // 周囲の密度の差による反発力を計算（過密グリッドから過疎グリッドへ向かう速度補正）
+        const getDensity = (r, c) => {
+            if (r < 0 || r >= gridRows || c < 0 || c >= gridCols) return 0; // 槽外への反発は生じさせない
+            return densityGrid[r * gridCols + c];
+        };
+
+        const dL = getDensity(rowIdx_init, colIdx_init - 1);
+        const dR = getDensity(rowIdx_init, colIdx_init + 1);
+        const dU = getDensity(rowIdx_init - 1, colIdx_init);
+        const dD = getDensity(rowIdx_init + 1, colIdx_init);
+
+        // 密度勾配の逆方向への力（完全分散のための復元速度：対流を邪魔しないようマイルドに調整 0.15 -> 0.035）
+        const diffX = (dL - dR) * 0.035;
+        const diffY = (dU - dD) * 0.035;
+
+        const fluidVel = getFluidVelocity(p.x, p.y, N_rpm, coords, p);
+
+        // 流速への追従性を高める (0.08 -> 0.16)
+        // インペラからの強力な吐出や壁沿いの循環といった「対流の動き（流動パターン）」をダイナミックかつ滑らかに見せる
+        p.vx += (fluidVel.vx - p.vx) * 0.16;
+        p.vy += (fluidVel.vy - p.vy) * 0.16;
+        
+        // 密度補正（斥力）を適用
+        p.vx += diffX;
+        p.vy += diffY;
+
+        // 乱流揺らぎ（ランダムウォーク）を適度に抑制し、流れの一貫性を向上させる
+        const turb = (0.35 + 0.25 * (N_rpm / 300)) * (p.relSize || 1.0);
+        
+        p.vx += (Math.random() - 0.5) * turb;
+        p.vy += (Math.random() - 0.5) * turb;
+
+        // 壁・底面近傍では弱い引き寄せ力を加える（ジャケットからの伝熱を表現）
+        const wallMargin = 18;
+        const distToLeft  = p.x - lx;
+        const distToRight = rx - p.x;
+        const y_bot_p     = getVesselBottomY(p.x, coords);
+        const distToBot   = y_bot_p - p.y;
+        const wallPull    = 0.04 * (N_rpm / 300 + 0.3); // 回転数に比例して僅かに増やす
+        if (distToLeft  < wallMargin) p.vx -= wallPull * (1 - distToLeft  / wallMargin);
+        if (distToRight < wallMargin) p.vx += wallPull * (1 - distToRight / wallMargin);
+        if (distToBot   < wallMargin) p.vy += wallPull * (1 - distToBot   / wallMargin);
+
+        // 速度の抗力（ダンピング）を緩和し、流れの慣性と循環速度をしっかりと表現する (0.88 -> 0.95)
+        p.vx *= 0.95;
+        p.vy *= 0.95;
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // 座標値が不正になった場合のフェイルセーフ
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.vx) || !Number.isFinite(p.vy)) {
+            p.x = cx + (Math.random() - 0.5) * D_px * 0.5;
+            p.y = y_liquid + 5 + Math.random() * (y_deepest - y_liquid - 10);
+            p.vx = 0;
+            p.vy = 0;
+        }
+
+        if (p.x < lx + 2) { p.x = lx + 2; p.vx = Math.abs(p.vx) * 0.15; p.vy *= 0.9; }
+        if (p.x > rx - 2) { p.x = rx - 2; p.vx = -Math.abs(p.vx) * 0.15; p.vy *= 0.9; }
+        if (p.y < y_liquid + 2) { p.y = y_liquid + 2; p.vy = Math.abs(p.vy) * 0.1; p.vx *= 0.8; }
+        const y_bot = getVesselBottomY(p.x, coords);
+        if (p.y > y_bot - 2) { p.y = y_bot - 2; p.vy = -Math.abs(p.vy) * 0.15; p.vx *= 0.9; }
+
+        let trRate = 0.05 * dt; 
+
+        // 壁・底面近傍の伝熱判定（distToLeft/distToRight は上で定義済みの変数を再利用）
+        const distToBottom = y_bot - p.y;
+        if (distToLeft < wallThresh_px || distToRight < wallThresh_px || distToBottom < wallThresh_px) {
+            p.temp += (res.T_in - p.temp) * trRate * 4.0;
+        }
+
+        if (config.coilActive && coils.length > 0) {
+            coils.forEach(c => {
+                const dx = p.x - c.x;
+                const dy = p.y - c.y;
+                const distSq = dx*dx + dy*dy;
+                if (distSq < 225) { 
+                    p.temp += (res.T_in - p.temp) * trRate * 6.0;
+                }
+            });
+        }
+
+        const colIdx = Math.max(0, Math.min(gridCols - 1, Math.floor((p.x - lx) / gridWidth)));
+        const rowIdx = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y - y_liquid) / gridHeight)));
+        const gIdx = rowIdx * gridCols + colIdx;
+        grid[gIdx].temps.push(p);
+        grid[gIdx].sum += p.temp;
+        grid[gIdx].count++;
+    });
+
+    grid.forEach(g => {
+        if (g.count > 1) {
+            const avg = g.sum / g.count;
+            g.temps.forEach(p => {
+                p.temp += (avg - p.temp) * 0.12;
+                p.temp += (heatSimTemp - p.temp) * 0.005;
+            });
+        }
+    });
+}
+
+function drawHeatSimulation() {
+    const canvas = document.getElementById('heatSimCanvas');
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d');
+
+    const coords = getVesselVisualCoords();
+    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const N_rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
+
+    ctx.save();
+    const T_in = config.mediaTempIn;
+    const mediaRatio = Math.max(0, Math.min(1, (T_in - 10) / 80));
+    const mediaHue = Math.round(240 - 240 * mediaRatio); 
+    const jacketColor = `hsla(${mediaHue}, 85%, 55%, 0.15)`;
+    const jacketBorder = `hsla(${mediaHue}, 80%, 45%, 0.4)`;
+
+    ctx.fillStyle = jacketColor;
+    ctx.strokeStyle = jacketBorder;
+    ctx.lineWidth = config.jacketType === 'spiral' ? 4 : 8;
+
+    ctx.beginPath();
+    const gap_px = config.jacketType === 'spiral' ? 6 : 10;
+    ctx.moveTo(lx - gap_px, y_liquid - 10);
+    ctx.lineTo(lx - gap_px, y_cyl);
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        ctx.ellipse(cx, y_cyl, D_px / 2 + gap_px, hb + gap_px, 0, Math.PI, 0, true);
+    } else if (config.headType === 'hemispherical') {
+        ctx.arc(cx, y_cyl, D_px / 2 + gap_px, Math.PI, 0, true);
+    } else {
+        ctx.lineTo(rx + gap_px, y_cyl);
+    }
+    ctx.lineTo(rx + gap_px, y_liquid - 10);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.03)'; 
+    ctx.beginPath();
+    ctx.moveTo(lx, y_liquid);
+    ctx.lineTo(lx, y_cyl);
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        ctx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
+    } else if (config.headType === 'hemispherical') {
+        ctx.arc(cx, y_cyl, D_px / 2, 0, Math.PI, false);
+    } else {
+        ctx.lineTo(rx, y_cyl);
+    }
+    ctx.lineTo(rx, y_liquid);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    if (config.jacketType === 'spiral') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        const pitch = 14;
+        for (let y = y_liquid; y < y_cyl; y += pitch) {
+            ctx.beginPath();
+            ctx.moveTo(lx - 6, y);
+            ctx.lineTo(lx, y);
+            ctx.moveTo(rx, y);
+            ctx.lineTo(rx + 6, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    ctx.save();
+    heatParticles.forEach(p => {
+        const tMin = 10;
+        const tMax = 90;
+        const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / (tMax - tMin)));
+        const hue = Math.round(240 - 240 * ratio); 
+        
+        ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.8 * p.relSize, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.restore();
+
+
+
+
+    const nowPerf = performance.now();
+    let angle = 0;
+    if (heatSimActive) {
+        const dtSec = Math.min((nowPerf - (simLastFrameTime || nowPerf)) / 1000, 0.05);
+        const omega = (N_rpm > 5) ? (N_rpm * Math.PI / 30) : 0;
+        simImpellerAngle += omega * dtSec;
+        simImpellerAngle = simImpellerAngle % (2 * Math.PI);
+    }
+    simLastFrameTime = nowPerf;
+    angle = simImpellerAngle;
+
+    // --- コイル描画（粒子より前面・インペラより後面） ---
+    if (config.coilActive) {
+        ctx.save();
+        const coilFill   = `hsl(${mediaHue}, 80%, 48%)`;
+        const coilStroke = `hsl(${mediaHue}, 70%, 35%)`;
+
+        // コイル寸法（configから読む）
+        const d_co_m   = config.coilOuterDia ?? 0.010;
+        const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
+                           ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px   = D_c_real * scale;
+        const coilR    = Math.max(4, (d_co_m / 2) * scale); // 管断面半径 [px]
+
+        const y_bot_vessel = getVesselBottomY(cx, coords);
+        const coilSpan = y_bot_vessel - y_liquid - 20;
+        const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
+        const p_c_px   = p_c_m * scale;
+        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch    = coilSpan / N_t; // 実際に使うピッチ [px]
+
+        for (let j = 0; j < N_t; j++) {
+            const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
+
+            // 左側断面（後ろ側）
+            ctx.beginPath();
+            ctx.ellipse(cx - D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${mediaHue}, 70%, 38%)`;
+            ctx.fill();
+            ctx.strokeStyle = coilStroke;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 右側断面（後ろ側）
+            ctx.beginPath();
+            ctx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${mediaHue}, 70%, 38%)`;
+            ctx.fill();
+            ctx.stroke();
+
+            // 上の連結弧（前面パス）
+            if (j < N_t - 1) {
+                const cy_next = y_liquid + 14 + (j + 1) * pitch + pitch / 2;
+                // 右→左の連結（上半分）
+                ctx.beginPath();
+                ctx.strokeStyle = coilFill;
+                ctx.lineWidth = coilR * 1.1;
+                ctx.lineCap = 'round';
+                ctx.moveTo(cx + D_c_px / 2, cy_coil);
+                ctx.bezierCurveTo(
+                    cx + D_c_px / 2 + coilR * 3, cy_coil + pitch * 0.25,
+                    cx - D_c_px / 2 - coilR * 3, cy_next - pitch * 0.25,
+                    cx - D_c_px / 2, cy_next
+                );
+                ctx.stroke();
+
+                // 連結弧の境界線
+                ctx.beginPath();
+                ctx.strokeStyle = coilStroke;
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'butt';
+                ctx.moveTo(cx + D_c_px / 2, cy_coil);
+                ctx.bezierCurveTo(
+                    cx + D_c_px / 2 + coilR * 3, cy_coil + pitch * 0.25,
+                    cx - D_c_px / 2 - coilR * 3, cy_next - pitch * 0.25,
+                    cx - D_c_px / 2, cy_next
+                );
+                ctx.stroke();
+            }
+
+            // 前面断面（光沢ハイライト付き）
+            ctx.beginPath();
+            ctx.ellipse(cx - D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.fillStyle = coilFill;
+            ctx.fill();
+            ctx.strokeStyle = coilStroke;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
+            ctx.fillStyle = coilFill;
+            ctx.fill();
+            ctx.stroke();
+
+            // ハイライト
+            ctx.beginPath();
+            ctx.ellipse(cx - D_c_px / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.28)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(cx + D_c_px / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    const clearance_px = config.clearance * scale;
+    const b_px = config.b * scale;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
+    const d_px = config.d * scale;
+    const r_hub = 5;
+    const r_in = r_hub;
+    const r_out = d_px / 2;
+
+    // --- 設定に基づく翼枚数 ---
+    const bladeCountMap = {
+        'flat-turbine':   6,
+        'pitched-paddle': 4,
+        'flat-paddle':    2,
+        'propeller':      3,
+        'faudler':        3,
+    };
+    const defaultBlades = bladeCountMap[config.impellerType] || 2;
+    const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
+
+    // --- 多段インペラY位置 ---
+    const n_stages = getActiveStages();
+    let stages_y = [];
+    if (n_stages === 1) {
+        stages_y.push(y_bottom_impeller);
+    } else {
+        const y_top_limit = y_liquid + b_px / 2;
+        const available_span = y_bottom_impeller - y_top_limit;
+        const ideal_gap = available_span / (n_stages - 1);
+        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
+        for (let i = 0; i < n_stages; i++) {
+            stages_y.push(y_bottom_impeller - (i * stage_gap));
+        }
+    }
+
+    // --- 描画要素リスト（depth-sorted） ---
+    const drawElements = [];
+
+    // シャフト
+    drawElements.push({
+        avgZ: -0.1,
+        draw: () => {
+            ctx.save();
+            ctx.strokeStyle = '#52525b';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(cx, y_liquid - 15);
+            ctx.lineTo(cx, y_bottom_impeller + b_px / 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    });
+
+    stages_y.forEach(y_imp => {
+        // ラシュトンタービンのディスク
+        if (config.impellerType === 'flat-turbine') {
+            drawElements.push({
+                avgZ: 0.01,
+                draw: () => {
+                    ctx.save();
+                    ctx.fillStyle = '#a1a1aa';
+                    ctx.strokeStyle = '#52525b';
+                    ctx.lineWidth = 0.8;
+                    ctx.fillRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    ctx.strokeRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    ctx.restore();
+                }
+            });
+        }
+
+        // ハブ
+        drawElements.push({
+            avgZ: 0.02,
+            draw: () => {
+                ctx.save();
+                ctx.fillStyle = '#3f3f46';
+                ctx.strokeStyle = '#27272a';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(cx, y_imp, r_hub, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                const markerAngle = angle;
+                const mx = cx + Math.cos(markerAngle) * (r_hub - 3);
+                const my = y_imp + Math.sin(markerAngle) * (r_hub - 3);
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#fde047';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(cx, y_imp);
+                ctx.lineTo(mx, my);
+                ctx.stroke();
+                ctx.restore();
+            }
+        });
+
+        // 翼
+        for (let k = 0; k < nBlades; k++) {
+            const phi = angle + (k * 2 * Math.PI / nBlades);
+            const { points, avgZ } = getBladePointsAndDepth(
+                phi, r_in, r_out, b_px, config.impellerType, cx, y_imp
+            );
+
+            const brightness = 0.65 + 0.35 * ((avgZ / r_out) * 0.5 + 0.5);
+            const baseH = 330;
+            const fillColor = `hsl(${baseH}, 75%, ${Math.round(50 * brightness)}%)`;
+            const strokeColor = `hsl(${baseH}, 80%, ${Math.round(38 * brightness)}%)`;
+
+            drawElements.push({
+                avgZ,
+                draw: () => {
+                    ctx.save();
+                    ctx.fillStyle = fillColor;
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        ctx.lineTo(points[i].x, points[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+        }
+    });
+
+    // 奥→手前の順に描画
+    drawElements.sort((a, b) => a.avgZ - b.avgZ);
+    drawElements.forEach(el => el.draw());
+
+    ctx.save();
+    ctx.strokeStyle = '#d4d4d8';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lx, y_liquid - 10);
+    ctx.lineTo(lx, y_cyl);
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        ctx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
+    } else if (config.headType === 'hemispherical') {
+        ctx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
+    } else {
+        ctx.lineTo(rx, y_cyl);
+    }
+    ctx.lineTo(rx, y_liquid - 10);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function initHeatChart() {
+    const ctx = document.getElementById('heatChart');
+    if (!ctx) return;
+
+    if (heatChart) {
+        heatChart.destroy();
+    }
+
+    heatChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: heatChartData.times,
+            datasets: [
+                {
+                    label: '攪拌液平均温度 T_L',
+                    data: heatChartData.liquidTemp,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 1
+                },
+                {
+                    label: '熱媒体出口温度 T_out',
+                    data: heatChartData.mediaTempOut,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    tension: 0.1,
+                    pointRadius: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#9ca3af', font: { size: 9 } },
+                    position: 'top'
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: '時間 (秒)', color: '#6b7280', font: { size: 9 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    ticks: { color: '#9ca3af', font: { size: 8 } }
+                },
+                y: {
+                    title: { display: true, text: '温度 (°C)', color: '#6b7280', font: { size: 9 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    ticks: { color: '#9ca3af', font: { size: 8 } }
+                }
+            }
+        }
+    });
+}
+
+function updateHeatChart() {
+    if (heatChart) {
+        heatChart.data.labels = heatChartData.times;
+        heatChart.data.datasets[0].data = heatChartData.liquidTemp;
+        heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
+        heatChart.update('none'); 
+    }
 }
 

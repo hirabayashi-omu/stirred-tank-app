@@ -89,15 +89,27 @@
 
                 <!-- Liquid Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="droplet"></i> 攪拌液データ</h3>
+                    <h3><i data-feather="droplet"></i> 攪拌液データ・物性</h3>
                     <div class="input-grid">
                         <div class="input-group">
-                            <label for="liquid-temp">温度 T (°C)</label>
+                            <label for="liquid-temp">現在温度 T (°C)</label>
                             <input type="number" id="liquid-temp" value="25" step="0.1">
                         </div>
                         <div class="input-group">
                             <label for="rho">液密度 ρ (kg/m³)</label>
                             <input type="number" id="rho" value="998" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="liquid-temp-init">初期温度 T<sub>L0</sub> (°C)</label>
+                            <input type="number" id="liquid-temp-init" value="20" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="liquid-cp">比熱容量 Cp<sub>L</sub> (J/(kg·K))</label>
+                            <input type="number" id="liquid-cp" value="4184" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label for="liquid-k">熱伝導度 k<sub>L</sub> (W/(m·K))</label>
+                            <input type="number" id="liquid-k" value="0.60" step="0.01">
                         </div>
                         <div class="input-group">
                             <label for="mu">液粘度 μ (Pa·s) <span style="font-size:0.75rem;opacity:0.6;">(理想系)</span></label>
@@ -169,6 +181,14 @@
                         <div class="input-group">
                             <label for="H">液高 H (m)</label>
                             <input type="number" id="H" value="0.093" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label for="wall-thickness">槽壁厚み t<sub>w</sub> (m)</label>
+                            <input type="number" id="wall-thickness" value="0.003" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label for="wall-k">槽壁熱伝導度 k<sub>w</sub> (W/(m·K))</label>
+                            <input type="number" id="wall-k" value="16.3" step="0.1">
                         </div>
                         <div class="input-group full-width">
                             <label for="head-type">鏡板の種類</label>
@@ -242,6 +262,89 @@
                         <div class="input-group" id="Bw-container">
                             <label for="Bw">邪魔板幅 B<sub>w</sub> (m)</label>
                             <input type="number" id="Bw" value="0.014" step="0.001">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Jacket & Coil Properties -->
+                <section class="config-section">
+                    <h3><i data-feather="layers"></i> ジャケット・コイルデータ</h3>
+                    <div class="input-grid">
+                        <div class="input-group full-width">
+                            <label for="jacket-type">ジャケット形式</label>
+                            <select id="jacket-type">
+                                <option value="flat" selected>平板ジャケット</option>
+                                <option value="spiral">渦巻ジャケット</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="jacket-gap-container">
+                            <label for="jacket-gap">ジャケット間隔 s<sub>j</sub> (m)</label>
+                            <input type="number" id="jacket-gap" value="0.010" step="0.001">
+                        </div>
+                        <div class="input-group checkbox-group" style="grid-column: span 1;">
+                            <input type="checkbox" id="coil-active">
+                            <label for="coil-active">コイルあり</label>
+                        </div>
+                        <!-- コイル詳細パラメータ（コイルON時のみ表示） -->
+                        <div id="coil-params" style="display: none; grid-column: span 2; display: none; flex-direction: column; gap: 8px; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.15); border-radius: 6px; padding: 8px;">
+                            <div style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; margin-bottom: 2px;">コイル寸法</div>
+                            <div class="input-grid" style="grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <div class="input-group">
+                                    <label for="coil-outer-dia">コイル外径 d<sub>co</sub> (m)</label>
+                                    <input type="number" id="coil-outer-dia" value="0.010" step="0.001" min="0.005">
+                                </div>
+                                <div class="input-group">
+                                    <label for="coil-inner-dia">コイル内径 d<sub>ci</sub> (m)</label>
+                                    <input type="number" id="coil-inner-dia" value="0.008" step="0.001" min="0.003">
+                                </div>
+                                <div class="input-group">
+                                    <label for="coil-pitch">コイルピッチ p<sub>c</sub> (m)</label>
+                                    <input type="number" id="coil-pitch" value="0.025" step="0.001" min="0.010">
+                                </div>
+                                <div class="input-group">
+                                    <label for="coil-center-dia">コイル中心径 D<sub>c</sub> (m)</label>
+                                    <input type="number" id="coil-center-dia" value="" step="0.01" placeholder="空欄=槽径×0.7">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group full-width">
+                            <label for="media-type">熱媒体の種類</label>
+                            <select id="media-type">
+                                <option value="water" selected>水 (温水・冷水)</option>
+                                <option value="steam">スチーム</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="media-temp-in">熱媒体入り口温度 T<sub>in</sub> (°C)</label>
+                            <input type="number" id="media-temp-in" value="80" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-flow">熱媒体質量流量 W<sub>j</sub> (kg/s)</label>
+                            <input type="number" id="media-flow" value="0.05" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-rho">熱媒体密度 ρ<sub>j</sub> (kg/m³)</label>
+                            <input type="number" id="media-rho" value="1000" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-mu">熱媒体粘度 μ<sub>j</sub> (Pa·s)</label>
+                            <input type="number" id="media-mu" value="0.001" step="0.0001">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-cp">熱媒体比熱 Cp<sub>j</sub> (J/(kg·K))</label>
+                            <input type="number" id="media-cp" value="4184" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-k">熱媒体熱伝導度 k<sub>j</sub> (W/(m·K))</label>
+                            <input type="number" id="media-k" value="0.60" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <label for="media-visc-corr">粘度補正項 (通常1.0)</label>
+                            <input type="number" id="media-visc-corr" value="1.0" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <label for="fouling-factor">汚れ係数 r<sub>d</sub> (m²·K/W)</label>
+                            <input type="number" id="fouling-factor" value="0.0001" step="0.00005">
                         </div>
                     </div>
                 </section>
@@ -332,6 +435,9 @@
                             <button class="tab-btn" id="tab-btn-partsim" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
                                 <i data-feather="play" style="width:16px;height:16px;"></i> 粒子浮遊シミュレータ
                             </button>
+                            <button class="tab-btn" id="tab-btn-heatsim" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                                <i data-feather="thermometer" style="width:16px;height:16px;"></i> 冷却・加熱シミュレータ
+                            </button>
                         </div>
                         
                         <!-- Controls for Rushton Plot (visible only on Rushton tab) -->
@@ -374,8 +480,33 @@
                     
                     <!-- Tab Contents -->
                     <!-- Tab 1: Rushton Plot -->
-                    <div id="tab-content-rushton" class="chart-container" style="display: block; flex-grow: 1;">
-                        <canvas id="rushtonChart"></canvas>
+                    <!-- Tab 1: Rushton Plot -->
+                    <div id="tab-content-rushton" style="display: flex; flex-grow: 1; gap: 16px; align-items: stretch; min-height: 0;">
+                        <!-- Left: Rushton Chart -->
+                        <div class="chart-container" style="flex: 2; min-width: 0;">
+                            <canvas id="rushtonChart"></canvas>
+                        </div>
+                        <!-- Right: 亀井・平岡・加藤 推算中間変数 -->
+                        <div style="flex: 1; min-width: 240px; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; overflow: hidden;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07);">
+                                <i data-feather="cpu" style="width: 14px; height: 14px; color: var(--accent-color);"></i>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">亀井・平岡・加藤 推算中間変数</span>
+                            </div>
+                            <div class="results-table-container" style="flex-grow: 1; overflow-y: auto;">
+                                <table class="results-table" style="font-size: 0.72rem;">
+                                    <thead>
+                                        <tr>
+                                            <th style="padding: 4px 6px;">変数</th>
+                                            <th style="padding: 4px 6px;">定義</th>
+                                            <th style="text-align: right; padding: 4px 6px;">推算値</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="calculated-vars-body">
+                                        <!-- Computed via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Tab 2: Particle Simulation -->
@@ -517,28 +648,113 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Tab 3: Heat Transfer Simulation -->
+                    <div id="tab-content-heatsim" style="display: none; flex-grow: 1; flex-direction: column; gap: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; height: 100%;">
+                            <!-- Left: Canvas for visual simulation -->
+                            <div style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+                                <canvas id="heatSimCanvas" width="450" height="320" style="max-width: 100%; border-radius: 4px; background: #0c121e; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
+                                <div style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                        <span style="color: var(--text-secondary);">シミュレーション経過時間:</span>
+                                        <span style="font-weight: 700; color: var(--accent-color);"><span id="heat-sim-time">0.0</span> 秒</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                        <span style="color: var(--text-secondary);">攪拌液 平均温度 T<sub>L</sub>:</span>
+                                        <span style="font-weight: 700; color: #ef4444;" id="heat-sim-temp-display">-- °C</span>
+                                    </div>
+                                    <!-- Dynamic rotation speed control (linked with particle sim) -->
+                                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                            <span style="color: var(--text-secondary);">シミュレーション回転数 N:</span>
+                                            <span style="font-weight: 700; color: var(--accent-color);"><span id="heat-sim-speed-val">300</span> rpm</span>
+                                        </div>
+                                        <input type="range" id="heat-sim-speed-slider" min="0" max="1200" step="10" value="300" style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
+                                        <div style="display: flex; gap: 6px; margin-top: 2px;">
+                                            <button id="btn-heat-set-njs" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
+                                                <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 回転数設定
+                                            </button>
+                                            <div class="checkbox-group" style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
+                                                <input type="checkbox" id="heat-sim-speed-sync" checked>
+                                                <label for="heat-sim-speed-sync" style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                        <button id="btn-heat-sim-start" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                            <i data-feather="play" style="width:14px; height:14px; vertical-align: middle;"></i> 開始
+                                        </button>
+                                        <button id="btn-heat-sim-pause" class="btn btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
+                                            <i data-feather="pause" style="width:14px; height:14px; vertical-align: middle;"></i> 一時停止
+                                        </button>
+                                        <button id="btn-heat-sim-reset" class="btn btn-secondary" style="flex: 0.5; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                            <i data-feather="rotate-ccw" style="width:14px; height:14px; vertical-align: middle;"></i> リセット
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right: Live Temp Chart & Calc Results -->
+                            <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                                <div style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; flex-grow: 1; min-height: 200px; display: flex; flex-direction: column;">
+                                    <h4 style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                        <i data-feather="activity" style="width: 14px; height: 14px; color: var(--accent-color);"></i> リアルタイム温度プロット
+                                    </h4>
+                                    <div style="flex-grow: 1; position: relative; width: 100%; height: 160px;">
+                                        <canvas id="heatChart"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <div class="results-table-container" style="flex-grow: 0.5; overflow-y: auto;">
+                                    <table class="results-table" style="font-size: 0.78rem;">
+                                        <thead>
+                                            <tr>
+                                                <th>項目</th>
+                                                <th>定義</th>
+                                                <th style="text-align: right;">計算値</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>液側境膜伝熱係数 h<sub>1</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">槽内液側伝熱係数</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);" id="heat-res-h1">-- W/(m²·K)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>熱媒側境膜伝熱係数 h<sub>2</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">ジャケット/コイル内伝熱</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-h2">-- W/(m²·K)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>総括伝熱係数 U</strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">汚れ・壁抵抗含む全体U</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="heat-res-U">-- W/(m²·K)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>伝熱面積 A</strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">接液またはコイル表面積</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-Area">-- m²</td>
+                                            </tr>
+                                            <tr style="background: rgba(16, 185, 129, 0.04);">
+                                                <td><strong>伝熱速度 Q</strong></td>
+                                                <td style="color: var(--text-secondary); font-size: 0.65rem;">全伝熱速度 (Q<sub>j</sub> + Q<sub>c</sub>)</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-Q">-- W</td>
+                                            </tr>
+                                            <tr style="background: rgba(239, 68, 68, 0.04);">
+                                                <td><strong>媒体出口温度 T<sub>out</sub></strong></td>
+                                                <td style="color: var(--text-secondary); font-size: 0.65rem;">流出時の熱媒体温度</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;" id="heat-res-Tout">-- °C</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Summary Cards / Calculated Parameters -->
-                <div class="card results-card">
-                    <div class="card-header">
-                        <h2><i data-feather="cpu"></i> 亀井・平岡・加藤 推算中間変数</h2>
-                    </div>
-                    <div class="results-table-container">
-                        <table class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>変数</th>
-                                    <th>定義</th>
-                                    <th>推算値</th>
-                                </tr>
-                            </thead>
-                            <tbody id="calculated-vars-body">
-                                <!-- Computed via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <!-- Summary Cards / Calculated Parameters (ラシュトン線図タブに移動済み) -->
 
 
                 <!-- Experimental Data Sheet -->
@@ -665,6 +881,29 @@
                     <!-- Dynamically populated via JS -->
                 </tbody>
             </table>
+
+            <!-- Heat Transfer Section -->
+            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">■ 冷却・加熱伝熱特性</h2>
+            <div style="display: flex; gap: 16px; margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 9px; line-height: 1.4;">
+                <div style="flex: 1;">
+                    <strong>伝熱条件:</strong><br>
+                    ・液比熱 Cp<sub>L</sub>: <span id="pdf-val-liquid-cp"></span> J/(kg·K)<br>
+                    ・液熱伝導度 k<sub>L</sub>: <span id="pdf-val-liquid-k"></span> W/(m·K)<br>
+                    ・槽壁厚み t<sub>w</sub>: <span id="pdf-val-wall-thickness"></span> m / 熱伝導度 k<sub>w</sub>: <span id="pdf-val-wall-k"></span> W/(m·K)<br>
+                    ・ジャケット形式: <span id="pdf-val-jacket-type"></span><br>
+                    ・コイルの有無: <span id="pdf-val-coil-active"></span>
+                </div>
+                <div style="flex: 1;">
+                    <strong>熱媒体・伝熱結果:</strong><br>
+                    ・媒体種類: <span id="pdf-val-media-type"></span> / 入り口温度 T<sub>in</sub>: <span id="pdf-val-media-temp-in"></span> °C<br>
+                    ・流量 W<sub>j</sub>: <span id="pdf-val-media-flow"></span> kg/s<br>
+                    ・液側伝熱係数 h<sub>1</sub>: <span id="pdf-val-heat-h1"></span> W/(m²·K)<br>
+                    ・熱媒側伝熱係数 h<sub>2</sub>: <span id="pdf-val-heat-h2"></span> W/(m²·K)<br>
+                    ・総括伝熱係数 U: <span id="pdf-val-heat-u"></span> W/(m²·K)<br>
+                    ・伝熱面積 A: <span id="pdf-val-heat-area"></span> m²
+                </div>
+            </div>
+
             <!-- Non-Newtonian Info Section -->
             <div id="pdf-non-newtonian-section" style="display: none; margin-bottom: 20px;">
                 <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ 非ニュートン流体 レオロジー特性 &amp; Metzner-Otto法 (有効粘度推算)</h2>

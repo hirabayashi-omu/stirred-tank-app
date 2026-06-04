@@ -302,7 +302,7 @@ body {
 }
 
 .chart-card {
-    grid-column: span 8;
+    grid-column: span 12;
     min-height: 400px;
 }
 
@@ -618,4 +618,21 @@ body {
 .input-group-inline {
     display: flex;
     align-items: center;
+}
+
+/* Heat simulation custom styles */
+#heat-sim-temp-display {
+    font-family: 'Inter', monospace;
+    font-size: 1.15rem;
+    font-weight: 700;
+    transition: color 0.3s ease;
+}
+
+#jacket-gap-container {
+    transition: all 0.3s ease;
+}
+
+.results-table-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
