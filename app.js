@@ -4,7 +4,7 @@
 let config = {
     expNumber: 'EXP-001',
     expDate: '',
-    expAuthor: '攻拈 太郎',
+    expAuthor: '攪拌 太郎',
     g: 9.806,
     liquidTemp: 25,
     rho: 998,
@@ -410,6 +410,14 @@ function initEventListeners() {
     if (tabRushton && tabPartsim) {
         tabRushton.addEventListener('click', () => switchMainTab('rushton'));
         tabPartsim.addEventListener('click', () => switchMainTab('partsim'));
+    }
+
+    // Inner Tab switching event listeners (Zwietering vs Flow/Circulation)
+    const btnSusp = document.getElementById('inner-tab-btn-suspension');
+    const btnFlow = document.getElementById('inner-tab-btn-flow');
+    if (btnSusp && btnFlow) {
+        btnSusp.addEventListener('click', () => switchInnerTab('suspension'));
+        btnFlow.addEventListener('click', () => switchInnerTab('flow'));
     }
 }
 
@@ -3499,12 +3507,78 @@ function calculateNjs() {
     }
 }
 
+function updateFlowCharacteristics() {
+    const elNqd = document.getElementById('flow-res-Nqd');
+    const elNqc = document.getElementById('flow-res-Nqc');
+    const elQd = document.getElementById('flow-res-Qd');
+    const elQdNjs = document.getElementById('flow-res-Qd-njs');
+    const elQc = document.getElementById('flow-res-Qc');
+    const elQcNjs = document.getElementById('flow-res-Qc-njs');
+    const elNc = document.getElementById('flow-res-Nc');
+    const elNcNjs = document.getElementById('flow-res-Nc-njs');
+
+    if (!elNqd) return;
+
+    const d = config.d || 0.060;
+    const DT = config.DT || 0.105;
+    const b = config.b || 0.020;
+    const np = config.np || 4;
+
+    let Np_turb = 1.5;
+    try {
+        const npRes = calculateNpCurve(1e5);
+        Np_turb = npRes.Np || npRes.Np0 || 1.5;
+    } catch (e) {
+        console.error("Failed to estimate Np_turb", e);
+    }
+
+    const term1 = Math.pow(Math.pow(np, 0.7) * (b / d), 0.25);
+    const term2 = Math.pow(DT / d, 0.34);
+    const term3 = Math.pow(Np_turb, 0.5);
+    const Nqd = 0.32 * term1 * term2 * term3;
+
+    const ratio_DT_d = DT / d;
+    const Nqc = Nqd * (1 + 0.16 * (Math.pow(ratio_DT_d, 2) - 1));
+
+    elNqd.textContent = Nqd.toFixed(3);
+    elNqc.textContent = Nqc.toFixed(3);
+
+    const V_liq = calcLiquidVolumeForPv() || 0.001;
+
+    const N_sim = config.simSpeed || 0;
+    const n_sim_rps = N_sim / 60;
+    const Qd_sim = Nqd * n_sim_rps * Math.pow(d, 3) * 60000;
+    const Qc_sim = Nqc * n_sim_rps * Math.pow(d, 3) * 60000;
+    const Nc_sim = (Qc_sim * 1e-3) / V_liq;
+
+    elQd.innerHTML = `${Qd_sim.toFixed(2)} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">L/min</span>`;
+    elQc.innerHTML = `${Qc_sim.toFixed(2)} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">L/min</span>`;
+    elNc.innerHTML = `${Nc_sim.toFixed(2)} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">回/分</span>`;
+
+    const resNjs = calculateNjs();
+    if (resNjs && !resNjs.error && resNjs.Njs_rpm > 0) {
+        const N_njs = resNjs.Njs_rpm;
+        const n_njs_rps = N_njs / 60;
+        const Qd_njs = Nqd * n_njs_rps * Math.pow(d, 3) * 60000;
+        const Qc_njs = Nqc * n_njs_rps * Math.pow(d, 3) * 60000;
+        const Nc_njs = (Qc_njs * 1e-3) / V_liq;
+
+        elQdNjs.textContent = `(Njs時: ${Qd_njs.toFixed(2)} L/min)`;
+        elQcNjs.textContent = `(Njs時: ${Qc_njs.toFixed(2)} L/min)`;
+        elNcNjs.textContent = `(Njs時: ${Nc_njs.toFixed(2)} 回/分)`;
+    } else {
+        elQdNjs.textContent = `(Njs時: -- L/min)`;
+        elQcNjs.textContent = `(Njs時: -- L/min)`;
+        elNcNjs.textContent = `(Njs時: -- 回/分)`;
+    }
+}
+
 function updateSimulatorResults() {
     const res = calculateNjs();
     const warnBox = document.getElementById('sim-warning-box');
     const warnText = document.getElementById('sim-warning-text');
     
-    if (!warnBox) return; // not initialized
+    if (!warnBox) return;
     
     if (res.error) {
         warnBox.style.display = 'block';
@@ -3520,6 +3594,7 @@ function updateSimulatorResults() {
         document.getElementById('sim-res-Pv-njs').textContent = '-- W/m³';
         
         updateSimStatusBadge(0, 100);
+        updateFlowCharacteristics();
         return;
     }
     
@@ -3532,7 +3607,6 @@ function updateSimulatorResults() {
     document.getElementById('sim-res-njs-rps').textContent = res.Njs_rps.toFixed(3) + ' 1/s';
     document.getElementById('sim-res-Njs-rpm').textContent = Math.round(res.Njs_rpm) + ' rpm';
     
-    // Calculate required power at Njs
     const Re_Njs = (config.rho * res.Njs_rps * Math.pow(config.d, 2)) / res.mu;
     const { Np } = calculateNpCurve(Re_Njs);
     const P_njs = Np * config.rho * Math.pow(res.Njs_rps, 3) * Math.pow(config.d, 5);
@@ -3545,6 +3619,7 @@ function updateSimulatorResults() {
     updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
     updateCavernDiameter();
     if (typeof _updateNjsCache === 'function') _updateNjsCache();
+    updateFlowCharacteristics();
 }
 
 function updateSimulatorResultsOnly() {
@@ -3554,6 +3629,7 @@ function updateSimulatorResultsOnly() {
     }
     updateCavernDiameter();
     if (typeof _updateNjsCache === 'function') _updateNjsCache();
+    updateFlowCharacteristics();
 }
 
 // 降伏応力流体用キャバーン径（流動領域）の推算 (Elson et al.)
@@ -3782,7 +3858,28 @@ function getFluidVelocity(x, y, speed_rpm, coords, p = {}) {
         return { vx: 0, vy: 0 };
     }
     
-    const speedMagnitude = 3.5 * (speed_rpm / 600);
+    // 循環流量数 Nqc (吐出流量数 Nqd から推算される全体循環の無次元流量)
+    const NqcMap = {
+        'pitched-paddle': 1.6,
+        'flat-paddle':    1.2,
+        'flat-turbine':   1.4,
+        'propeller':      2.0,
+        'faudler':        1.3
+    };
+    const Nqc = NqcMap[config.impellerType] || 1.4;
+    const n_rps = speed_rpm / 60;
+    
+    // 物理的な平均液循環速度: v_ave ~ Q_c / A_cross_section = (Nqc * n * d^3) / (pi/4 * DT^2)
+    // ここでは簡易的に: v_phys = (Nqc * n * d^3) / DT^2
+    const DT_val = Math.max(0.01, config.DT);
+    const d_val = config.d;
+    const v_phys = (Nqc * n_rps * Math.pow(d_val, 3)) / Math.pow(DT_val, 2);
+    
+    // 基準条件 (D_T=0.105, d=0.060, N=300rpm(5rps), pitched-paddle(Nqc=1.6)) で 
+    // speedMagnitude が従来と同じ 1.75 になるように調整係数 C = 11.2 を掛ける
+    const C_velocity = 11.2;
+    const speedMagnitude = C_velocity * v_phys;
+    
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
 
@@ -3969,6 +4066,43 @@ function switchMainTab(tab) {
 
         // Initialize and start particle simulation loop
         initParticleSimulation();
+    }
+}
+
+function switchInnerTab(tab) {
+    const btnSusp = document.getElementById('inner-tab-btn-suspension');
+    const btnFlow = document.getElementById('inner-tab-btn-flow');
+    const contentSusp = document.getElementById('inner-tab-content-suspension');
+    const contentFlow = document.getElementById('inner-tab-content-flow');
+
+    if (!btnSusp || !btnFlow || !contentSusp || !contentFlow) return;
+
+    if (tab === 'suspension') {
+        btnSusp.classList.add('active');
+        btnSusp.style.color = 'var(--accent-color)';
+        btnSusp.style.borderBottom = '2px solid var(--accent-color)';
+        btnSusp.style.fontWeight = '600';
+
+        btnFlow.classList.remove('active');
+        btnFlow.style.color = 'var(--text-secondary)';
+        btnFlow.style.borderBottom = '2px solid transparent';
+        btnFlow.style.fontWeight = '500';
+
+        contentSusp.style.display = 'block';
+        contentFlow.style.display = 'none';
+    } else {
+        btnFlow.classList.add('active');
+        btnFlow.style.color = 'var(--accent-color)';
+        btnFlow.style.borderBottom = '2px solid var(--accent-color)';
+        btnFlow.style.fontWeight = '600';
+
+        btnSusp.classList.remove('active');
+        btnSusp.style.color = 'var(--text-secondary)';
+        btnSusp.style.borderBottom = '2px solid transparent';
+        btnSusp.style.fontWeight = '500';
+
+        contentSusp.style.display = 'none';
+        contentFlow.style.display = 'block';
     }
 }
 

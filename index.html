@@ -402,9 +402,16 @@
                                 </div>
                             </div>
                             
-                            <!-- Right: Results Table -->
+                            <!-- Right: Results Table (with Inner Tab switching) -->
                             <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
-                                <div class="results-table-container" style="flex-grow: 1; max-height: none; overflow-y: auto;">
+                                <!-- インナータブヘッダー -->
+                                <div class="inner-tab-headers" style="display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 6px; margin-bottom: 4px;">
+                                    <button class="inner-tab-btn active" id="inner-tab-btn-suspension" style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);">粒子浮遊限界</button>
+                                    <button class="inner-tab-btn" id="inner-tab-btn-flow" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 4px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">吐出・循環流量</button>
+                                </div>
+
+                                <!-- タブ1: 粒子浮遊限界 (Zwietering Njs) -->
+                                <div id="inner-tab-content-suspension" class="results-table-container" style="flex-grow: 1; max-height: none; overflow-y: auto; display: block;">
                                     <table class="results-table" style="font-size: 0.8rem;">
                                         <thead>
                                             <tr>
@@ -441,7 +448,7 @@
                                             </tr>
                                             <tr style="background: rgba(6, 182, 212, 0.08); border-bottom: 2px solid var(--accent-color);">
                                                 <td><strong>N<sub>js</sub> [rpm]</strong></td>
-                                                <td style="color: var(--text-secondary); font-size: 0.7rem; font-weight: 600;">毎分限界回転数</td>
+                                                <td style="color: var(--text-secondary); font-size: 0.7rem; font-weight: 600;">完全浮遊限界速度</td>
                                                 <td style="text-align: right; font-family: monospace; font-weight: 800; color: var(--accent-color); font-size: 1.05rem;" id="sim-res-Njs-rpm">-- rpm</td>
                                             </tr>
                                             <tr>
@@ -462,6 +469,47 @@
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <!-- タブ2: 吐出・循環流動特性 (Nqd, Nqc, Qd, Qc, Nc) -->
+                                <div id="inner-tab-content-flow" class="results-table-container" style="flex-grow: 1; max-height: none; overflow-y: auto; display: none;">
+                                    <table class="results-table" style="font-size: 0.78rem;">
+                                         <thead>
+                                             <tr>
+                                                 <th>項目</th>
+                                                 <th>定義 / 計算式</th>
+                                                 <th style="text-align: right;">計算値 (現在のN / Njs)</th>
+                                             </tr>
+                                         </thead>
+                                         <tbody>
+                                             <tr>
+                                                 <td><strong>吐出流量数 N<sub>qd</sub></strong></td>
+                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">0.32(n<sub>p</sub>⁰.⁷b/d)⁰.²⁵(D<sub>T</sub>/d)⁰.³⁴N<sub>p,turb</sub>⁰.⁵</td>
+                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nqd">--</td>
+                                             </tr>
+                                             <tr>
+                                                 <td><strong>循環流量数 N<sub>qc</sub></strong></td>
+                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qd</sub>[1 + 0.16((D<sub>T</sub>/d)² - 1)]</td>
+                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nqc">--</td>
+                                             </tr>
+                                             <tr>
+                                                 <td><strong>吐出流量 Q<sub>d</sub></strong></td>
+                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qd</sub> · n · d³ [L/min]</td>
+                                                 <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="flow-res-Qd">-- L/min<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Qd-njs">(--)</span></td>
+                                             </tr>
+                                             <tr>
+                                                 <td><strong>循環流量 Q<sub>c</sub></strong></td>
+                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qc</sub> · n · d³ [L/min]</td>
+                                                 <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="flow-res-Qc">-- L/min<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Qc-njs">(--)</span></td>
+                                             </tr>
+                                             <tr>
+                                                 <td><strong>液循環数 N<sub>c</sub></strong></td>
+                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">Q<sub>c</sub> / V<sub>液</sub> [回/分]</td>
+                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nc">-- 回/分<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Nc-njs">(--)</span></td>
+                                             </tr>
+                                         </tbody>
+                                    </table>
+                                </div>
+                                
                                 <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--border-radius-sm); padding: 8px; font-size: 0.75rem; color: #ef4444; display: none;" id="sim-warning-box">
                                     <i data-feather="alert-triangle" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i>
                                     <span id="sim-warning-text">--</span>
