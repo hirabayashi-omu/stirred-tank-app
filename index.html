@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <!-- CSS Link -->
     <link rel="stylesheet" href="style.css">
     <!-- Chart.js CDN -->
@@ -17,6 +20,7 @@
     <!-- Feather Icons for Beautiful UI -->
     <script src="feather.min.js"></script>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar: Configuration and Parameters -->
@@ -31,7 +35,8 @@
 
             <div class="scroll-container">
                 <!-- Group Container for Meta Info & Presets -->
-                <div style="border: 1px solid rgba(6, 182, 212, 0.25); background: rgba(6, 182, 212, 0.03); padding: 16px; border-radius: var(--border-radius-md); margin-bottom: 24px; box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.05);">
+                <div
+                    style="border: 1px solid rgba(6, 182, 212, 0.25); background: rgba(6, 182, 212, 0.03); padding: 16px; border-radius: var(--border-radius-md); margin-bottom: 24px; box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.05);">
                     <!-- Experiment Meta Info -->
                     <section class="config-section" style="margin-bottom: 20px;">
                         <h3><i data-feather="file-text"></i> 実験情報</h3>
@@ -62,13 +67,17 @@
                                 </select>
                             </div>
                             <div class="flex-row" style="gap: 8px; margin-top: 4px;">
-                                <button id="save-preset-btn" class="btn btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                <button id="save-preset-btn" class="btn btn-secondary"
+                                    style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
                                     <i data-feather="plus" style="width:14px; height:14px;"></i> 保存
                                 </button>
-                                <button id="load-preset-btn" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
+                                <button id="load-preset-btn" class="btn btn-primary"
+                                    style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
                                     <i data-feather="folder" style="width:14px; height:14px;"></i> 読込
                                 </button>
-                                <button id="delete-preset-btn" class="btn btn-secondary" style="color:var(--danger-color); border-color:rgba(239,68,68,0.2); padding: 8px; width: auto;" disabled>
+                                <button id="delete-preset-btn" class="btn btn-secondary"
+                                    style="color:var(--danger-color); border-color:rgba(239,68,68,0.2); padding: 8px; width: auto;"
+                                    disabled>
                                     <i data-feather="trash-2" style="width:14px; height:14px;"></i>
                                 </button>
                             </div>
@@ -110,13 +119,17 @@
                             <input type="number" id="liquid-k" value="0.60" step="0.01">
                         </div>
                         <div class="input-group">
-                            <label for="mu">液粘度 μ (Pa·s) <span style="font-size:0.75rem;opacity:0.6;">(理想系)</span></label>
+                            <label for="mu">液粘度 μ (Pa·s) <span
+                                    style="font-size:0.75rem;opacity:0.6;">(理想系)</span></label>
                             <input type="number" id="mu" value="0.417" step="0.001">
                         </div>
                         <div class="input-group full-width">
-                            <label for="V-act">液量 V<sub>act</sub> (L) <span style="font-size:0.75rem;opacity:0.6;">※ 0 = 概算値を使用</span></label>
+                            <label for="V-act">液量 V<sub>act</sub> (L) <span style="font-size:0.75rem;opacity:0.6;">※ 0 =
+                                    概算値を使用</span></label>
                             <input type="number" id="V-act" value="0.7295" step="0.0001" min="0">
-                            <div id="v-est-display" style="font-size: 0.72rem; color: var(--accent-color); margin-top: 3px; font-weight: 500;">概算値: -- L</div>
+                            <div id="v-est-display"
+                                style="font-size: 0.72rem; color: var(--accent-color); margin-top: 3px; font-weight: 500;">
+                                概算値: -- L</div>
                         </div>
 
                     </div>
@@ -132,11 +145,16 @@
                             <div style="flex:1;">
                                 <label>モデルCSV読込 <span style="font-size:0.75rem;opacity:0.6;">（粘度計アプリから出力）</span></label>
                                 <div style="display:flex; gap:8px;">
-                                    <label for="rheology-csv-input" class="btn-csv-load" style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
-                                        <i data-feather="upload" style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
+                                    <label for="rheology-csv-input" class="btn-csv-load"
+                                        style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
+                                        <i data-feather="upload"
+                                            style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
                                     </label>
-                                    <button type="button" id="btn-clear-rheology" style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;" title="クリア">
-                                        <i data-feather="trash-2" style="width:14px;height:14px;vertical-align:middle;"></i>
+                                    <button type="button" id="btn-clear-rheology"
+                                        style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;"
+                                        title="クリア">
+                                        <i data-feather="trash-2"
+                                            style="width:14px;height:14px;vertical-align:middle;"></i>
                                     </button>
                                 </div>
                                 <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
@@ -155,10 +173,12 @@
                             </select>
                         </div>
                         <div class="input-group" id="ks-group">
-                            <label for="ks-input">Metzner–Otto定数 k<sub>s</sub> <span style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
+                            <label for="ks-input">Metzner–Otto定数 k<sub>s</sub> <span
+                                    style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
                             <input type="number" id="ks-input" value="11.5" step="0.1" min="0.1">
                         </div>
-                        <div class="input-group full-width" id="cavern-model-group" style="display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
+                        <div class="input-group full-width" id="cavern-model-group"
+                            style="display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
                             <label for="cavern-model">キャバーン形状モデル (降伏応力流体)</label>
                             <select id="cavern-model">
                                 <option value="spherical">球形 (Spherical, Elson)</option>
@@ -228,50 +248,68 @@
                         <!-- 質量分率 (固液系ONのみ表示) -->
                         <div class="input-group" id="sl-eff-ws-container">
                             <label>質量分率 w<sub>s</sub> [-]</label>
-                            <div id="sl-eff-ws" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-ws"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 容積分率 (固液系ONのみ表示) -->
                         <div class="input-group" id="sl-eff-phis-container">
                             <label>容積分率 φ<sub>s</sub> [-]</label>
-                            <div id="sl-eff-phis" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-phis"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 有効密度 (常時表示) -->
                         <div class="input-group" id="sl-eff-rho-container">
                             <label>有効密度 ρ<sub>eff</sub> (kg/m³)</label>
-                            <div id="sl-eff-rho" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-rho"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 有効粘度 (常時表示) -->
                         <div class="input-group" id="sl-eff-mu-container">
                             <label>有効粘度 μ<sub>eff</sub> (Pa·s)</label>
-                            <div id="sl-eff-mu" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-mu"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 有効比熱 (常時表示) -->
                         <div class="input-group" id="sl-eff-cp-container">
                             <label>有効比熱 Cp<sub>eff</sub> (J/(kg·K))</label>
-                            <div id="sl-eff-cp" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-cp"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 有効熱伝導率 (固液系OFF時表示) -->
                         <div class="input-group" id="sl-eff-k-single-container" style="display:none;">
                             <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
-                            <div id="sl-eff-k-single" style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">--</div>
+                            <div id="sl-eff-k-single"
+                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                --</div>
                         </div>
                         <!-- 有効熱伝導率詳細 (固液系ON時表示) -->
                         <div class="input-group full-width" id="sl-eff-k-details-container">
                             <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
-                            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.8rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px;">
+                            <div
+                                style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.8rem;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px;">
                                     <span style="color: var(--text-secondary);">Maxwell下限 (液連続相):</span>
-                                    <span id="sl-eff-k-maxwell-lower" style="font-weight: 700; color: var(--accent-color);">--</span>
+                                    <span id="sl-eff-k-maxwell-lower"
+                                        style="font-weight: 700; color: var(--accent-color);">--</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
                                     <span>Maxwell上限 (固連続相):</span>
                                     <span id="sl-eff-k-maxwell-upper" style="font-weight: 600;">--</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
                                     <span>並列モデル (上限値):</span>
                                     <span id="sl-eff-k-parallel" style="font-weight: 600;">--</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
                                     <span>直列モデル (下限値):</span>
                                     <span id="sl-eff-k-series" style="font-weight: 600;">--</span>
                                 </div>
@@ -352,9 +390,12 @@
                             <label for="n_stage">翼段数 N<sub>stage</sub></label>
                             <input type="number" id="n_stage" value="1" step="1" min="1">
                         </div>
-                        <div id="n-stage-warning" style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
-                            <i data-feather="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>
-                            液面・クリアランス制限により、実際に液面下に入るインペラ数は <span id="n-stage-active-val" style="font-weight:bold;"></span> 段として推算・描画しています。
+                        <div id="n-stage-warning"
+                            style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
+                            <i data-feather="alert-triangle"
+                                style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>
+                            液面・クリアランス制限により、実際に液面下に入るインペラ数は <span id="n-stage-active-val"
+                                style="font-weight:bold;"></span> 段として推算・描画しています。
                         </div>
                     </div>
                 </section>
@@ -398,8 +439,11 @@
                             <label for="coil-active">コイルあり</label>
                         </div>
                         <!-- コイル詳細パラメータ（コイルON時のみ表示） -->
-                        <div id="coil-params" style="display: none; grid-column: span 2; display: none; flex-direction: column; gap: 8px; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.15); border-radius: 6px; padding: 8px;">
-                            <div style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; margin-bottom: 2px;">コイル寸法</div>
+                        <div id="coil-params"
+                            style="display: none; grid-column: span 2; display: none; flex-direction: column; gap: 8px; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.15); border-radius: 6px; padding: 8px;">
+                            <div
+                                style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; margin-bottom: 2px;">
+                                コイル寸法</div>
                             <div class="input-grid" style="grid-template-columns: 1fr 1fr; gap: 6px;">
                                 <div class="input-group">
                                     <label for="coil-outer-dia">コイル外径 d<sub>co</sub> (m)</label>
@@ -415,7 +459,8 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="coil-center-dia">コイル中心径 D<sub>c</sub> (m)</label>
-                                    <input type="number" id="coil-center-dia" value="" step="0.01" placeholder="空欄=槽径×0.7">
+                                    <input type="number" id="coil-center-dia" value="" step="0.01"
+                                        placeholder="空欄=槽径×0.7">
                                 </div>
                                 <div class="input-group" style="grid-column: span 2;">
                                     <label for="coil-k">コイル熱伝導度 k<sub>c</sub> (W/(m・K))</label>
@@ -479,7 +524,7 @@
             <header class="top-nav">
                 <h1>攪拌槽 動力特性解析システム</h1>
                 <div class="actions">
-                    <a href="formula.html" class="btn btn-secondary" title="推算式の説明">
+                    <a href="formula.html?v=4" class="btn btn-secondary" title="推算式の説明">
                         <i data-feather="book-open"></i><span>推算式の説明</span>
                     </a>
                     <a href="#" class="btn btn-secondary" onclick="openDiagramWindow(); return false;" title="槽模式図">
@@ -491,7 +536,8 @@
                     <button id="export-csv-btn" class="btn btn-secondary" title="CSVエクスポート">
                         <i data-feather="download"></i><span>CSVエクスポート</span>
                     </button>
-                    <button id="import-csv-btn" class="btn btn-secondary" onclick="document.getElementById('csv-file-input').click()" title="CSVインポート">
+                    <button id="import-csv-btn" class="btn btn-secondary"
+                        onclick="document.getElementById('csv-file-input').click()" title="CSVインポート">
                         <i data-feather="upload"></i><span>CSVインポート</span>
                     </button>
                     <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
@@ -501,23 +547,28 @@
             <div class="content-grid">
                 <!-- Main Tab Card (Rushton Plot & Particle Sim) -->
                 <div class="card chart-card" style="min-height: 520px;">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
+                    <div class="card-header"
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
                         <div class="tab-headers" style="display: flex; gap: 20px;">
-                            <button class="tab-btn active" id="tab-btn-rushton" style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px; font-weight: 600; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                            <button class="tab-btn active" id="tab-btn-rushton"
+                                style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px; font-weight: 600; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
                                 <i data-feather="trending-up" style="width:16px;height:16px;"></i> ラシュトン線図
                             </button>
-                            <button class="tab-btn" id="tab-btn-partsim" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                            <button class="tab-btn" id="tab-btn-partsim"
+                                style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
                                 <i data-feather="play" style="width:16px;height:16px;"></i> 粒子浮遊シミュレータ
                             </button>
-                            <button class="tab-btn" id="tab-btn-heatsim" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                            <button class="tab-btn" id="tab-btn-heatsim"
+                                style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
                                 <i data-feather="thermometer" style="width:16px;height:16px;"></i> 冷却・加熱シミュレータ
                             </button>
                         </div>
-                        
+
                         <!-- Controls for Rushton Plot (visible only on Rushton tab) -->
                         <div id="rushton-controls" class="flex-row" style="gap: 8px; align-items: center;">
                             <label style="font-size: 0.75rem; color: var(--text-secondary);">Np表示範囲: </label>
-                            <select id="chart-ymin" style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
+                            <select id="chart-ymin"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
                                 <option value="auto" selected>自動</option>
                                 <option value="0.001">0.001</option>
                                 <option value="0.01">0.01</option>
@@ -525,7 +576,8 @@
                                 <option value="1">1</option>
                             </select>
                             <span style="font-size: 0.75rem; color: var(--text-muted);">〜</span>
-                            <select id="chart-ymax" style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
+                            <select id="chart-ymax"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
                                 <option value="auto" selected>自動</option>
                                 <option value="10">10</option>
                                 <option value="100">100</option>
@@ -533,16 +585,20 @@
                                 <option value="10000">10000</option>
                             </select>
                         </div>
-                        <div id="low-re-warning" style="display:none; padding: 10px 14px; margin-top: 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #b45309; font-size: 0.82rem;">
+                        <div id="low-re-warning"
+                            style="display:none; padding: 10px 14px; margin-top: 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #b45309; font-size: 0.82rem;">
                             低 Re 領域を含みます。非ニュートン流体ではこの範囲の推算が不安定になる可能性があります。
                         </div>
-                        
+
                         <!-- Badge for Particle Sim (visible only on Sim tab) -->
                         <div id="partsim-controls" style="display: none;">
                             <div style="display:flex; gap:8px; align-items:center;">
-                                <span class="badge" id="sim-status-badge" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">完全沈降</span>
-                                <label for="particle-start-mode" style="font-size:0.78rem; color:var(--text-secondary);">開始位置:</label>
-                                <select id="particle-start-mode" style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
+                                <span class="badge" id="sim-status-badge"
+                                    style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">完全沈降</span>
+                                <label for="particle-start-mode"
+                                    style="font-size:0.78rem; color:var(--text-secondary);">開始位置:</label>
+                                <select id="particle-start-mode"
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
                                     <option value="near-impeller">インペラ付近</option>
                                     <option value="suspended">浮遊</option>
                                     <option value="settled">沈殿</option>
@@ -551,20 +607,25 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Tab Contents -->
                     <!-- Tab 1: Rushton Plot -->
                     <!-- Tab 1: Rushton Plot -->
-                    <div id="tab-content-rushton" style="display: flex; flex-grow: 1; gap: 16px; align-items: stretch; min-height: 0;">
+                    <div id="tab-content-rushton"
+                        style="display: flex; flex-grow: 1; gap: 16px; align-items: stretch; min-height: 0;">
                         <!-- Left: Rushton Chart -->
                         <div class="chart-container" style="flex: 2; min-width: 0;">
                             <canvas id="rushtonChart"></canvas>
                         </div>
                         <!-- Right: 亀井・平岡・加藤 推算中間変数 -->
-                        <div style="flex: 1; min-width: 240px; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; overflow: hidden;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07);">
-                                <i data-feather="cpu" style="width: 14px; height: 14px; color: var(--accent-color);"></i>
-                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">亀井・平岡・加藤 推算中間変数</span>
+                        <div
+                            style="flex: 1; min-width: 240px; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; overflow: hidden;">
+                            <div
+                                style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07);">
+                                <i data-feather="cpu"
+                                    style="width: 14px; height: 14px; color: var(--accent-color);"></i>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">亀井・平岡・加藤
+                                    推算中間変数</span>
                             </div>
                             <div class="results-table-container" style="flex-grow: 1; overflow-y: auto;">
                                 <table class="results-table" style="font-size: 0.72rem;">
@@ -582,41 +643,59 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Tab 2: Particle Simulation -->
-                    <div id="tab-content-partsim" style="display: none; flex-grow: 1; flex-direction: column; gap: 16px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; height: 100%;">
+                    <div id="tab-content-partsim"
+                        style="display: none; flex-grow: 1; flex-direction: column; gap: 16px;">
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; height: 100%;">
                             <!-- Left: Canvas -->
-                            <div style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
-                                <canvas id="particleSimCanvas" width="450" height="320" style="max-width: 100%; border-radius: 4px; background: #0c121e; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
-                                <div style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <div
+                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+                                <canvas id="particleSimCanvas" width="450" height="320"
+                                    style="max-width: 100%; border-radius: 4px; background: #0c121e; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
+                                <div
+                                    style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
                                         <span style="color: var(--text-secondary);">シミュレーション回転数 N:</span>
-                                        <span style="font-weight: 700; color: var(--accent-color);"><span id="sim-speed-val">300</span> rpm</span>
+                                        <span style="font-weight: 700; color: var(--accent-color);"><span
+                                                id="sim-speed-val">300</span> rpm</span>
                                     </div>
-                                    <input type="range" id="sim-speed-slider" min="0" max="1200" step="10" value="300" style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
+                                    <input type="range" id="sim-speed-slider" min="0" max="1200" step="10" value="300"
+                                        style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
                                     <div style="display: flex; gap: 6px; margin-top: 2px;">
-                                        <button id="btn-set-njs" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
-                                            <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
+                                        <button id="btn-set-njs" class="btn btn-secondary"
+                                            style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
+                                            <i data-feather="zap"
+                                                style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs
+                                            完全浮遊限界速度に設定
                                         </button>
-                                        <div class="checkbox-group" style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
+                                        <div class="checkbox-group"
+                                            style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
                                             <input type="checkbox" id="sim-speed-sync" checked>
-                                            <label for="sim-speed-sync" style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
+                                            <label for="sim-speed-sync"
+                                                style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Right: Results Table (with Inner Tab switching) -->
-                            <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                            <div
+                                style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
                                 <!-- インナータブヘッダー -->
-                                <div class="inner-tab-headers" style="display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 6px; margin-bottom: 4px;">
-                                    <button class="inner-tab-btn active" id="inner-tab-btn-suspension" style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);">粒子浮遊限界</button>
-                                    <button class="inner-tab-btn" id="inner-tab-btn-flow" style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 4px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">吐出・循環流量</button>
+                                <div class="inner-tab-headers"
+                                    style="display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 6px; margin-bottom: 4px;">
+                                    <button class="inner-tab-btn active" id="inner-tab-btn-suspension"
+                                        style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);">粒子浮遊限界</button>
+                                    <button class="inner-tab-btn" id="inner-tab-btn-flow"
+                                        style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 4px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">吐出・循環流量</button>
                                 </div>
 
                                 <!-- タブ1: 粒子浮遊限界 (Zwietering Njs) -->
-                                <div id="inner-tab-content-suspension" class="results-table-container" style="flex-grow: 1; max-height: none; overflow-y: auto; display: block;">
+                                <div id="inner-tab-content-suspension" class="results-table-container"
+                                    style="flex-grow: 1; max-height: none; overflow-y: auto; display: block;">
                                     <table class="results-table" style="font-size: 0.8rem;">
                                         <thead>
                                             <tr>
@@ -628,95 +707,133 @@
                                         <tbody>
                                             <tr>
                                                 <td><strong>形状因子 S</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.7rem;">S 因子 preset</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);" id="sim-res-S">--</td>
+                                                <td style="color: var(--text-muted); font-size: 0.7rem;">S 因子 preset
+                                                </td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);"
+                                                    id="sim-res-S">--</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>密度差 Δρ</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.7rem;">ρ<sub>s</sub> - ρ<sub>L</sub></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="sim-res-deltarho">-- kg/m³</td>
+                                                <td style="color: var(--text-muted); font-size: 0.7rem;">ρ<sub>s</sub> -
+                                                    ρ<sub>L</sub></td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="sim-res-deltarho">-- kg/m³</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>動粘度 ν</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.7rem;">μ<sub>eff</sub> / ρ<sub>L</sub></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="sim-res-nu">-- m²/s</td>
+                                                <td style="color: var(--text-muted); font-size: 0.7rem;">μ<sub>eff</sub>
+                                                    / ρ<sub>L</sub></td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="sim-res-nu">-- m²/s</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>濃度 X</strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.7rem;">(固体/液体)×100</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="sim-res-X">-- wt%</td>
+                                                <td style="color: var(--text-muted); font-size: 0.7rem;">(固体/液体)×100
+                                                </td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="sim-res-X">-- wt%</td>
                                             </tr>
-                                            <tr style="background: rgba(6, 182, 212, 0.04); border-top: 1px solid rgba(6, 182, 212, 0.15);">
+                                            <tr
+                                                style="background: rgba(6, 182, 212, 0.04); border-top: 1px solid rgba(6, 182, 212, 0.15);">
                                                 <td><strong>n<sub>js</sub> [1/s]</strong></td>
                                                 <td style="color: var(--text-secondary); font-size: 0.7rem;">秒間回転数</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--accent-color);" id="sim-res-njs-rps">-- 1/s</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--accent-color);"
+                                                    id="sim-res-njs-rps">-- 1/s</td>
                                             </tr>
-                                            <tr style="background: rgba(6, 182, 212, 0.08); border-bottom: 2px solid var(--accent-color);">
+                                            <tr
+                                                style="background: rgba(6, 182, 212, 0.08); border-bottom: 2px solid var(--accent-color);">
                                                 <td><strong>N<sub>js</sub> [rpm]</strong></td>
-                                                <td style="color: var(--text-secondary); font-size: 0.7rem; font-weight: 600;">完全浮遊限界速度</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 800; color: var(--accent-color); font-size: 1.05rem;" id="sim-res-Njs-rpm">-- rpm</td>
+                                                <td
+                                                    style="color: var(--text-secondary); font-size: 0.7rem; font-weight: 600;">
+                                                    完全浮遊限界速度</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 800; color: var(--accent-color); font-size: 1.05rem;"
+                                                    id="sim-res-Njs-rpm">-- rpm</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>動力 P<sub>Njs</sub></strong></td>
                                                 <td style="color: var(--text-muted); font-size: 0.7rem;">Njs時の動力</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="sim-res-P-njs">-- W</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
+                                                    id="sim-res-P-njs">-- W</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>正味 Pv<sub>Njs</sub></strong></td>
                                                 <td style="color: var(--text-muted); font-size: 0.7rem;">単位液量あたり</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="sim-res-Pv-njs">-- W/m³</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
+                                                    id="sim-res-Pv-njs">-- W/m³</td>
                                             </tr>
-                                            <tr id="cavern-row" style="display: none; background: rgba(245, 158, 11, 0.05); border-top: 1px dashed rgba(245, 158, 11, 0.3);">
+                                            <tr id="cavern-row"
+                                                style="display: none; background: rgba(245, 158, 11, 0.05); border-top: 1px dashed rgba(245, 158, 11, 0.3);">
                                                 <td><strong style="color: #d97706;">キャバーン径 D<sub>c</sub></strong></td>
                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">降伏流体の流動領域</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: #d97706;" id="sim-res-cavern-dc">-- m</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: #d97706;"
+                                                    id="sim-res-cavern-dc">-- m</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
 
                                 <!-- タブ2: 吐出・循環流動特性 (Nqd, Nqc, Qd, Qc, Nc) -->
-                                <div id="inner-tab-content-flow" class="results-table-container" style="flex-grow: 1; max-height: none; overflow-y: auto; display: none;">
+                                <div id="inner-tab-content-flow" class="results-table-container"
+                                    style="flex-grow: 1; max-height: none; overflow-y: auto; display: none;">
                                     <table class="results-table" style="font-size: 0.78rem;">
-                                         <thead>
-                                             <tr>
-                                                 <th>項目</th>
-                                                 <th>定義 / 計算式</th>
-                                                 <th style="text-align: right;">計算値 (現在のN / Njs)</th>
-                                             </tr>
-                                         </thead>
-                                         <tbody>
-                                             <tr>
-                                                 <td><strong>吐出流量数 N<sub>qd</sub></strong></td>
-                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">0.32(n<sub>p</sub>⁰.⁷b/d)⁰.²⁵(D<sub>T</sub>/d)⁰.³⁴N<sub>p,turb</sub>⁰.⁵</td>
-                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nqd">--</td>
-                                             </tr>
-                                             <tr>
-                                                 <td><strong>循環流量数 N<sub>qc</sub></strong></td>
-                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qd</sub>[1 + 0.16((D<sub>T</sub>/d)² - 1)]</td>
-                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nqc">--</td>
-                                             </tr>
-                                             <tr>
-                                                 <td><strong>吐出流量 Q<sub>d</sub></strong></td>
-                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qd</sub> · n · d³ [L/min]</td>
-                                                 <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="flow-res-Qd">-- L/min<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Qd-njs">(--)</span></td>
-                                             </tr>
-                                             <tr>
-                                                 <td><strong>循環流量 Q<sub>c</sub></strong></td>
-                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qc</sub> · n · d³ [L/min]</td>
-                                                 <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);" id="flow-res-Qc">-- L/min<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Qc-njs">(--)</span></td>
-                                             </tr>
-                                             <tr>
-                                                 <td><strong>液循環数 N<sub>c</sub></strong></td>
-                                                 <td style="color: var(--text-muted); font-size: 0.65rem;">Q<sub>c</sub> / V<sub>液</sub> [回/分]</td>
-                                                 <td style="text-align: right; font-family: monospace; font-weight: 600;" id="flow-res-Nc">-- 回/分<br><span style="font-size:0.7rem; color:var(--text-muted);" id="flow-res-Nc-njs">(--)</span></td>
-                                             </tr>
-                                         </tbody>
+                                        <thead>
+                                            <tr>
+                                                <th>項目</th>
+                                                <th>定義 / 計算式</th>
+                                                <th style="text-align: right;">計算値 (現在のN / Njs)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>吐出流量数 N<sub>qd</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">
+                                                    0.32(n<sub>p</sub>⁰.⁷b/d)⁰.²⁵(D<sub>T</sub>/d)⁰.³⁴N<sub>p,turb</sub>⁰.⁵
+                                                </td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="flow-res-Nqd">--</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>循環流量数 N<sub>qc</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">
+                                                    N<sub>qd</sub>[1 + 0.16((D<sub>T</sub>/d)² - 1)]</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="flow-res-Nqc">--</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>吐出流量 Q<sub>d</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qd</sub>
+                                                    · n · d³ [L/min]</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
+                                                    id="flow-res-Qd">-- L/min<br><span
+                                                        style="font-size:0.7rem; color:var(--text-muted);"
+                                                        id="flow-res-Qd-njs">(--)</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>循環流量 Q<sub>c</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">N<sub>qc</sub>
+                                                    · n · d³ [L/min]</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
+                                                    id="flow-res-Qc">-- L/min<br><span
+                                                        style="font-size:0.7rem; color:var(--text-muted);"
+                                                        id="flow-res-Qc-njs">(--)</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>液循環数 N<sub>c</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.65rem;">Q<sub>c</sub>
+                                                    / V<sub>液</sub> [回/分]</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="flow-res-Nc">-- 回/分<br><span
+                                                        style="font-size:0.7rem; color:var(--text-muted);"
+                                                        id="flow-res-Nc-njs">(--)</span></td>
+                                            </tr>
+                                        </tbody>
                                     </table>
                                 </div>
-                                
-                                <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--border-radius-sm); padding: 8px; font-size: 0.75rem; color: #ef4444; display: none;" id="sim-warning-box">
-                                    <i data-feather="alert-triangle" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i>
+
+                                <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--border-radius-sm); padding: 8px; font-size: 0.75rem; color: #ef4444; display: none;"
+                                    id="sim-warning-box">
+                                    <i data-feather="alert-triangle"
+                                        style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i>
                                     <span id="sim-warning-text">--</span>
                                 </div>
                             </div>
@@ -724,72 +841,111 @@
                     </div>
 
                     <!-- Tab 3: Heat Transfer Simulation -->
-                    <div id="tab-content-heatsim" style="display: none; flex-grow: 1; flex-direction: column; gap: 16px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; height: 100%;">
+                    <div id="tab-content-heatsim"
+                        style="display: none; flex-grow: 1; flex-direction: column; gap: 16px;">
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; height: 100%;">
                             <!-- Left: Canvas for visual simulation -->
-                            <div style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
-                                <canvas id="heatSimCanvas" width="450" height="320" style="max-width: 100%; border-radius: 4px; background: #0c121e; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
-                                <div style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 4px;">
+                            <div
+                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+                                <canvas id="heatSimCanvas" width="450" height="320"
+                                    style="max-width: 100%; border-radius: 4px; background: #0c121e; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
+                                <div
+                                    style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 4px;">
                                         <span style="color: var(--text-secondary);">表示モード:</span>
-                                        <div style="display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 2px; border-radius: var(--border-radius-sm); border: 1px solid var(--card-border);">
-                                            <button id="btn-heat-view-particles" class="btn" style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: var(--accent-color); color: var(--text-primary); border: none; cursor: pointer;">粒子表示</button>
-                                            <button id="btn-heat-view-thermal" class="btn" style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">温度分布 (コンター)</button>
+                                        <div
+                                            style="display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 2px; border-radius: var(--border-radius-sm); border: 1px solid var(--card-border);">
+                                            <button id="btn-heat-view-particles" class="btn"
+                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: var(--accent-color); color: var(--text-primary); border: none; cursor: pointer;">粒子表示</button>
+                                            <button id="btn-heat-view-thermal" class="btn"
+                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">温度分布
+                                                (コンター)</button>
                                         </div>
                                     </div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
                                         <span style="color: var(--text-secondary);">シミュレーション経過時間:</span>
-                                        <span style="font-weight: 700; color: var(--accent-color);"><span id="heat-sim-time">0.0</span> 秒</span>
+                                        <span style="font-weight: 700; color: var(--accent-color);"><span
+                                                id="heat-sim-time">0.0</span> 秒</span>
                                     </div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
                                         <span style="color: var(--text-secondary);">攪拌液 平均温度 T<sub>L</sub>:</span>
-                                        <span style="font-weight: 700; color: #ef4444;" id="heat-sim-temp-display">-- °C</span>
+                                        <span style="font-weight: 700; color: #ef4444;" id="heat-sim-temp-display">--
+                                            °C</span>
                                     </div>
                                     <!-- Dynamic rotation speed control (linked with particle sim) -->
-                                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                    <div
+                                        style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
                                             <span style="color: var(--text-secondary);">シミュレーション回転数 N:</span>
-                                            <span style="font-weight: 700; color: var(--accent-color);"><span id="heat-sim-speed-val">300</span> rpm</span>
+                                            <span style="font-weight: 700; color: var(--accent-color);"><span
+                                                    id="heat-sim-speed-val">300</span> rpm</span>
                                         </div>
-                                        <input type="range" id="heat-sim-speed-slider" min="0" max="1200" step="10" value="300" style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
+                                        <input type="range" id="heat-sim-speed-slider" min="0" max="1200" step="10"
+                                            value="300"
+                                            style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
                                         <div style="display: flex; gap: 6px; margin-top: 2px;">
-                                            <button id="btn-heat-set-njs" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
-                                                <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
+                                            <button id="btn-heat-set-njs" class="btn btn-secondary"
+                                                style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
+                                                <i data-feather="zap"
+                                                    style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs
+                                                完全浮遊限界速度に設定
                                             </button>
-                                            <div class="checkbox-group" style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
+                                            <div class="checkbox-group"
+                                                style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
                                                 <input type="checkbox" id="heat-sim-speed-sync" checked>
-                                                <label for="heat-sim-speed-sync" style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
+                                                <label for="heat-sim-speed-sync"
+                                                    style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
                                             </div>
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 6px; margin-top: 4px;">
-                                        <button id="btn-heat-sim-start" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
-                                            <i data-feather="play" style="width:14px; height:14px; vertical-align: middle;"></i> 開始
+                                        <button id="btn-heat-sim-start" class="btn btn-primary"
+                                            style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                            <i data-feather="play"
+                                                style="width:14px; height:14px; vertical-align: middle;"></i> 開始
                                         </button>
-                                        <button id="btn-heat-sim-pause" class="btn btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
-                                            <i data-feather="pause" style="width:14px; height:14px; vertical-align: middle;"></i> 一時停止
+                                        <button id="btn-heat-sim-pause" class="btn btn-secondary"
+                                            style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;"
+                                            disabled>
+                                            <i data-feather="pause"
+                                                style="width:14px; height:14px; vertical-align: middle;"></i> 一時停止
                                         </button>
-                                        <button id="btn-heat-sim-reset" class="btn btn-secondary" style="flex: 0.5; padding: 8px 12px; font-size: 0.75rem; width: auto;">
-                                            <i data-feather="rotate-ccw" style="width:14px; height:14px; vertical-align: middle;"></i> リセット
+                                        <button id="btn-heat-sim-reset" class="btn btn-secondary"
+                                            style="flex: 0.5; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                            <i data-feather="rotate-ccw"
+                                                style="width:14px; height:14px; vertical-align: middle;"></i> リセット
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Right: Live Temp Chart & Calc Results -->
-                            <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
-                                <div style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; flex-grow: 1; min-height: 200px; display: flex; flex-direction: column;">
-                                    <h4 style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                                        <i data-feather="activity" style="width: 14px; height: 14px; color: var(--accent-color);"></i> リアルタイム温度プロット
+                            <div
+                                style="display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                                <div
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; flex-grow: 1; min-height: 200px; display: flex; flex-direction: column;">
+                                    <h4
+                                        style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                        <i data-feather="activity"
+                                            style="width: 14px; height: 14px; color: var(--accent-color);"></i>
+                                        リアルタイム温度プロット
                                     </h4>
                                     <div style="flex-grow: 1; position: relative; width: 100%; height: 160px;">
                                         <canvas id="heatChart"></canvas>
                                     </div>
                                 </div>
-                                
+
                                 <div class="results-table-container" style="flex-grow: 0.5; overflow-y: auto;">
-                                    <h4 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; padding-left: 0.25rem;">伝熱パラメータ（並列計算）</h4>
-                                    <table class="results-table" style="font-size: 0.7rem; margin-bottom: 0.5rem; text-align: center;">
+                                    <h4
+                                        style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; padding-left: 0.25rem;">
+                                        伝熱パラメータ（並列計算）</h4>
+                                    <table class="results-table"
+                                        style="font-size: 0.7rem; margin-bottom: 0.5rem; text-align: center;">
                                         <thead>
                                             <tr>
                                                 <th>部位</th>
@@ -808,7 +964,9 @@
                                                 <td id="heat-res-h2-j" style="font-family: monospace;">--</td>
                                                 <td id="heat-res-rd-j" style="font-family: monospace;">--</td>
                                                 <td id="heat-res-Rw-j" style="font-family: monospace;">--</td>
-                                                <td id="heat-res-U-j" style="font-family: monospace; font-weight: 600; color: var(--accent-color);">--</td>
+                                                <td id="heat-res-U-j"
+                                                    style="font-family: monospace; font-weight: 600; color: var(--accent-color);">
+                                                    --</td>
                                                 <td id="heat-res-A-j" style="font-family: monospace;">--</td>
                                             </tr>
                                             <tr>
@@ -817,7 +975,9 @@
                                                 <td id="heat-res-h2-c" style="font-family: monospace;">--</td>
                                                 <td id="heat-res-rd-c" style="font-family: monospace;">--</td>
                                                 <td id="heat-res-Rw-c" style="font-family: monospace;">--</td>
-                                                <td id="heat-res-U-c" style="font-family: monospace; font-weight: 600; color: var(--accent-color);">--</td>
+                                                <td id="heat-res-U-c"
+                                                    style="font-family: monospace; font-weight: 600; color: var(--accent-color);">
+                                                    --</td>
                                                 <td id="heat-res-A-c" style="font-family: monospace;">--</td>
                                             </tr>
                                         </tbody>
@@ -827,31 +987,40 @@
                                         <tbody>
                                             <tr style="background: rgba(16, 185, 129, 0.04);">
                                                 <td><strong>総伝熱容量 (ΣUA)</strong></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-UA-total">-- W/K</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);"
+                                                    id="heat-res-UA-total">-- W/K</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>平均総括伝熱係数 U<sub>avg</sub></strong></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600;" id="heat-res-U-avg">-- W/(m²·K)</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600;"
+                                                    id="heat-res-U-avg">-- W/(m²·K)</td>
                                             </tr>
                                             <tr style="background: rgba(16, 185, 129, 0.04);">
                                                 <td><strong>全伝熱速度 Q</strong></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-Q">-- W</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);"
+                                                    id="heat-res-Q">-- W</td>
                                             </tr>
                                             <tr style="background: rgba(16, 185, 129, 0.08);">
                                                 <td><strong>Qv (Q/V)</strong></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);" id="heat-res-Qv">-- W/m³</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);"
+                                                    id="heat-res-Qv">-- W/m³</td>
                                             </tr>
                                             <tr style="background: rgba(239, 68, 68, 0.04);">
                                                 <td><strong>媒体出口温度 T<sub>out</sub></strong></td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;" id="heat-res-Tout">-- °C</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;"
+                                                    id="heat-res-Tout">-- °C</td>
                                             </tr>
                                         </tbody>
                                     </table>
 
                                     <!-- 伝熱抵抗割合の積み上げ棒グラフ -->
-                                    <div style="margin-top: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); padding: 8px; flex-grow: 0.15;">
-                                        <h4 style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                                            <i data-feather="bar-chart-2" style="width: 12px; height: 12px; color: var(--accent-color);"></i> 伝熱抵抗の割合 (K/W)
+                                    <div
+                                        style="margin-top: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); padding: 8px; flex-grow: 0.15;">
+                                        <h4
+                                            style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                            <i data-feather="bar-chart-2"
+                                                style="width: 12px; height: 12px; color: var(--accent-color);"></i>
+                                            伝熱抵抗の割合 (K/W)
                                         </h4>
                                         <div style="position: relative; width: 100%; height: 95px;">
                                             <canvas id="heatResistChart"></canvas>
@@ -879,7 +1048,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="blocks-container" id="blocks-container">
                         <!-- Dynamic blocks are added here -->
                     </div>
@@ -893,25 +1062,41 @@
 
     <!-- PDF Report Hidden Template -->
     <div id="pdf-report-template" style="display: none;">
-        <div class="pdf-page" style="font-family: 'Noto Sans JP', 'Inter', sans-serif; color: #111827; background: #ffffff; padding: 30px 40px; width: 700px; margin: 0 auto; box-sizing: border-box;">
+        <div class="pdf-page"
+            style="font-family: 'Noto Sans JP', 'Inter', sans-serif; color: #111827; background: #ffffff; padding: 30px 40px; width: 700px; margin: 0 auto; box-sizing: border-box;">
             <!-- Report Header -->
-            <div style="border-bottom: 3px solid #06b6d4; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;">
+            <div
+                style="border-bottom: 3px solid #06b6d4; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;">
                 <div style="flex-grow: 1;">
-                    <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0; font-family: 'Outfit', sans-serif; white-space: nowrap;">攪拌槽 動力特性実験レポート</h1>
-                    <p style="font-size: 10px; color: #4b5563; margin: 4px 0 0 0;">Agitator Power Characteristics Simulation & Experimental Report</p>
+                    <h1
+                        style="font-size: 22px; font-weight: 700; color: #111827; margin: 0; font-family: 'Outfit', sans-serif; white-space: nowrap;">
+                        攪拌槽 動力特性実験レポート</h1>
+                    <p style="font-size: 10px; color: #4b5563; margin: 4px 0 0 0;">Agitator Power Characteristics
+                        Simulation & Experimental Report</p>
                 </div>
-                <div style="text-align: right; font-size: 11px; color: #374151; line-height: 1.5; flex-shrink: 0; min-width: 180px;">
-                    <div><strong>実験番号:</strong> <span id="pdf-exp-number" style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span></div>
-                    <div><strong>実験日:</strong> <span id="pdf-exp-date" style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span></div>
-                    <div><strong>作成者:</strong> <span id="pdf-exp-author" style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span></div>
+                <div
+                    style="text-align: right; font-size: 11px; color: #374151; line-height: 1.5; flex-shrink: 0; min-width: 180px;">
+                    <div><strong>実験番号:</strong> <span id="pdf-exp-number"
+                            style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span>
+                    </div>
+                    <div><strong>実験日:</strong> <span id="pdf-exp-date"
+                            style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span>
+                    </div>
+                    <div><strong>作成者:</strong> <span id="pdf-exp-author"
+                            style="border-bottom: 1px solid #d1d5db; padding-bottom: 1px; display: inline-block; min-width: 100px; text-align: left;"></span>
+                    </div>
                 </div>
             </div>
 
             <!-- Configuration parameters -->
-            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ 実験条件・攪拌槽仕様</h2>
-            <div style="display: flex; gap: 16px; margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; align-items: stretch;">
+            <h2
+                style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">
+                ■ 実験条件・攪拌槽仕様</h2>
+            <div
+                style="display: flex; gap: 16px; margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; align-items: stretch;">
                 <!-- Left: Text parameters -->
-                <div style="flex: 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 9px; line-height: 1.4;">
+                <div
+                    style="flex: 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 9px; line-height: 1.4;">
                     <div><strong>液物性 / 環境:</strong><br>
                         ・重力加速度: <span id="pdf-val-g"></span> m/s²<br>
                         ・液温度: <span id="pdf-val-temp"></span> °C<br>
@@ -938,8 +1123,10 @@
                             </div>
                         </div>
                     </div>
-                    <div id="pdf-solid-liquid-section" style="grid-column: span 2; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 2px; display: none;">
-                        <strong>固液攪拌・粒子完全浮遊速度 (Zwietering式: N<sub>js</sub> = S·ν<sup>0.1</sup>·d<sub>p</sub><sup>0.2</sup>·g<sup>0.45</sup>·Δρ<sup>0.45</sup>·X<sup>0.13</sup>·d<sup>-0.85</sup>·ρ<sub>L</sub><sup>-0.45</sup>):</strong><br>
+                    <div id="pdf-solid-liquid-section"
+                        style="grid-column: span 2; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 2px; display: none;">
+                        <strong>固液攪拌・粒子完全浮遊速度 (Zwietering式: N<sub>js</sub> =
+                            S·ν<sup>0.1</sup>·d<sub>p</sub><sup>0.2</sup>·g<sup>0.45</sup>·Δρ<sup>0.45</sup>·X<sup>0.13</sup>·d<sup>-0.85</sup>·ρ<sub>L</sub><sup>-0.45</sup>):</strong><br>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
                             <div>
                                 ・粒子径 dp: <span id="pdf-val-dp"></span> μm<br>
@@ -950,7 +1137,8 @@
                             </div>
                             <div>
                                 ・形状因子 S: <span id="pdf-val-sfactor"></span><br>
-                                ・<strong>完全浮遊速度 N<sub>js</sub>: <span id="pdf-val-njs" style="color:#0891b2;"></span> rpm</strong><br>
+                                ・<strong>完全浮遊速度 N<sub>js</sub>: <span id="pdf-val-njs" style="color:#0891b2;"></span>
+                                    rpm</strong><br>
                                 ・Re<sub>Njs</sub>: <span id="pdf-val-re-njs"></span> [-]<br>
                                 ・Np<sub>Njs</sub>: <span id="pdf-val-np-njs"></span> [-]<br>
                                 ・N<sub>js</sub> 時の攪拌所要動力: <span id="pdf-val-pnjs"></span> W<br>
@@ -960,16 +1148,21 @@
                     </div>
                 </div>
                 <!-- Right: Vessel schematic diagram Image & Hidden Canvas -->
-                <div style="flex: 1; border-left: 1px solid #e5e7eb; padding-left: 16px; display: flex; justify-content: center; align-items: center; background: #ffffff;">
+                <div
+                    style="flex: 1; border-left: 1px solid #e5e7eb; padding-left: 16px; display: flex; justify-content: center; align-items: center; background: #ffffff;">
                     <img id="pdf-vessel-img" style="width: 100%; height: 180px; object-fit: contain; display: block;">
                     <canvas id="pdfVesselCanvas" width="500" height="600" style="display: none;"></canvas>
                 </div>
             </div>
 
             <!-- Rushton Plot Graph -->
-            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ ラシュトン線図 (Rushton Plot)</h2>
-            <div style="text-align: center; margin-bottom: 24px; background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; position: relative;">
-                <img id="pdf-chart-img" style="max-width: 100%; height: 280px; object-fit: contain; display: block; margin: 0 auto;">
+            <h2
+                style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">
+                ■ ラシュトン線図 (Rushton Plot)</h2>
+            <div
+                style="text-align: center; margin-bottom: 24px; background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; position: relative;">
+                <img id="pdf-chart-img"
+                    style="max-width: 100%; height: 280px; object-fit: contain; display: block; margin: 0 auto;">
                 <!-- Hidden Canvas wrapper for rendering light-mode graph -->
                 <div style="width: 0; height: 0; overflow: hidden; opacity: 0; position: absolute; left: 0; top: 0;">
                     <canvas id="pdfChartCanvas" width="600" height="350"></canvas>
@@ -980,10 +1173,13 @@
             <div class="html2pdf__page-break"></div>
 
             <!-- Calculated Intermediate Variables Table -->
-            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">■ 亀井・平岡・加藤 推算中間変数</h2>
+            <h2
+                style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">
+                ■ 亀井・平岡・加藤 推算中間変数</h2>
             <table style="width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 20px;">
                 <thead>
-                    <tr style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb; text-align: center; font-weight: 600;">
+                    <tr
+                        style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb; text-align: center; font-weight: 600;">
                         <th style="padding: 5px; border: 1px solid #e5e7eb; text-align: left;">変数</th>
                         <th style="padding: 5px; border: 1px solid #e5e7eb; text-align: left;">定義</th>
                         <th style="padding: 5px; border: 1px solid #e5e7eb; text-align: right; width: 120px;">推算値</th>
@@ -995,19 +1191,24 @@
             </table>
 
             <!-- Heat Transfer Section -->
-            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">■ 冷却・加熱伝熱特性</h2>
-            <div style="display: flex; gap: 16px; margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 9px; line-height: 1.4;">
+            <h2
+                style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">
+                ■ 冷却・加熱伝熱特性</h2>
+            <div
+                style="display: flex; gap: 16px; margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 9px; line-height: 1.4;">
                 <div style="flex: 1;">
                     <strong>伝熱条件:</strong><br>
                     ・液比熱 Cp<sub>L</sub>: <span id="pdf-val-liquid-cp"></span> J/(kg·K)<br>
                     ・液熱伝導度 k<sub>L</sub>: <span id="pdf-val-liquid-k"></span> W/(m·K)<br>
-                    ・槽壁厚み t<sub>w</sub>: <span id="pdf-val-wall-thickness"></span> m / 熱伝導度 k<sub>w</sub>: <span id="pdf-val-wall-k"></span> W/(m·K)<br>
+                    ・槽壁厚み t<sub>w</sub>: <span id="pdf-val-wall-thickness"></span> m / 熱伝導度 k<sub>w</sub>: <span
+                        id="pdf-val-wall-k"></span> W/(m·K)<br>
                     ・ジャケット形式: <span id="pdf-val-jacket-type"></span><br>
                     ・コイルの有無: <span id="pdf-val-coil-active"></span>
                 </div>
                 <div style="flex: 1;">
                     <strong>熱媒体・伝熱結果:</strong><br>
-                    ・媒体種類: <span id="pdf-val-media-type"></span> / 入り口温度 T<sub>in</sub>: <span id="pdf-val-media-temp-in"></span> °C<br>
+                    ・媒体種類: <span id="pdf-val-media-type"></span> / 入り口温度 T<sub>in</sub>: <span
+                        id="pdf-val-media-temp-in"></span> °C<br>
                     ・流量 W<sub>j</sub>: <span id="pdf-val-media-flow"></span> kg/s<br>
                     ・液側伝熱係数 h<sub>1</sub>: <span id="pdf-val-heat-h1"></span> W/(m²·K)<br>
                     ・熱媒側伝熱係数 h<sub>2</sub>: <span id="pdf-val-heat-h2"></span> W/(m²·K)<br>
@@ -1018,16 +1219,22 @@
 
             <!-- Non-Newtonian Info Section -->
             <div id="pdf-non-newtonian-section" style="display: none; margin-bottom: 20px;">
-                <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">■ 非ニュートン流体 レオロジー特性 &amp; Metzner-Otto法 (有効粘度推算)</h2>
-                <div id="pdf-non-newtonian-content" style="font-size: 10px; line-height: 1.6; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                <h2
+                    style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px 0;">
+                    ■ 非ニュートン流体 レオロジー特性 &amp; Metzner-Otto法 (有効粘度推算)</h2>
+                <div id="pdf-non-newtonian-content"
+                    style="font-size: 10px; line-height: 1.6; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
                 </div>
             </div>
 
             <!-- Experimental Results Table -->
-            <h2 style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">■ 実験結果データ（測定ブロック平均値）</h2>
+            <h2
+                style="font-size: 13px; font-weight: 600; color: #06b6d4; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 10px 0;">
+                ■ 実験結果データ（測定ブロック平均値）</h2>
             <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 20px;">
                 <thead>
-                    <tr style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb; text-align: center; font-weight: 600;">
+                    <tr
+                        style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb; text-align: center; font-weight: 600;">
                         <th style="padding: 6px; border: 1px solid #e5e7eb; text-align: left;">測定ブロック名</th>
                         <th style="padding: 6px; border: 1px solid #e5e7eb;">平均回転数 N (rpm)</th>
                         <th style="padding: 6px; border: 1px solid #e5e7eb;">攪拌所要動力 P (W)</th>
@@ -1043,13 +1250,14 @@
             </table>
 
             <!-- Report Footer -->
-            <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; text-align: center; font-size: 9px; color: #6b7280; margin-top: 40px;">
+            <div
+                style="border-top: 1px solid #e5e7eb; padding-top: 12px; text-align: center; font-size: 9px; color: #6b7280; margin-top: 40px;">
                 Report generated by AgitatorSim System.
             </div>
         </div>
     </div>
 
-    <script src="app_v3.js?v=20260605_v4"></script>
+    <script src="app_v4.js?v=20260605_v4"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();
@@ -1091,4 +1299,5 @@
         }
     </script>
 </body>
+
 </html>
