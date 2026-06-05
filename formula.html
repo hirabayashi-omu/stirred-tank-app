@@ -739,10 +739,10 @@
             <div class="formula-card">
                 <div class="formula-title">
                     <i data-feather="loader"></i>
-                    <span>10. 粒子法ベースの2D挙動シミュレーション</span>
+                    <span>10. LPT (ラグランジュ粒子追跡) による2Dシミュレーション</span>
                 </div>
                 <p>
-                    メイン画面の「浮遊・流動状態アニメーション」では、計算された流動領域（キャバーン）やマクロな循環流速場を背景とし、オイラー・ラグランジュ法に似た簡易的な運動方程式（疑似物理演算）を解くことで粒子の軌跡をリアルタイムに描画しています。
+                    メイン画面の「浮遊・流動状態アニメーション」では、計算された流動領域（キャバーン）やマクロな循環流速場を背景とし、ラグランジュ粒子追跡（LPT: Lagrangian Particle Tracking）の原理に基づく簡易的な速度追随モデル（疑似物理演算）を解くことで粒子の軌跡をリアルタイムに描画しています。
                 </p>
 
                 <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 24px 0 12px 0;">(1) 粒子の終端沈降速度（Stokesの式）</h3>
@@ -754,18 +754,30 @@
                 </div>
                 <p style="font-size: 0.9rem;">※ $\rho_S > \rho_L$ の場合は沈降（下向き）、$\rho_S < \rho_L$ の場合は浮上（上向き）となります。</p>
 
-                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(2) 運動方程式（速度更新則）</h3>
+                <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(2) 粒子の運動方程式と速度更新則（LPTモデル）</h3>
                 <p>
-                    各タイムステップにおいて、粒子の速度ベクトル $\mathbf{v} = (v_x, v_y)$ は、周囲のマクロな流体速度場 $\mathbf{u} = (u_x, u_y)$ に対して緩和するように更新されます。また、流体の乱れ（Turbulent fluctuation）をランダムウォークとして付加しています。
+                    流体中を運動する粒子が受けるドラッグ（抗力）と、重力・浮力による外力を考慮したラグランジュ粒子追跡（LPT）の運動方程式は、ストークスの抵抗法則（微小粒子・低レイノルズ数）に基づき以下のように定義されます。
+                </p>
+                <div class="formula-block">
+                    $$\frac{d\mathbf{v}}{dt} = \frac{\mathbf{u} - \mathbf{v}}{\tau_p} + \mathbf{g}\left(1 - \frac{\rho_L}{\rho_S}\right)$$
+                </div>
+                <p>
+                    ここで、$\tau_p$ は流体速度変化に対する粒子の応答の時定数（緩和時間）であり、以下のように表されます。
+                </p>
+                <div class="formula-block">
+                    $$\tau_p = \frac{\rho_S \, d_p^2}{18 \, \mu_L}$$
+                </div>
+                <p>
+                    この運動方程式を時間刻み $\Delta t$ で一次陽解法（オイラー法）により離散化し、鉛直方向の終端沈降速度 $v_t = g(1 - \rho_L/\rho_S)\tau_p$ を代入することで、プログラム中で用いられる以下の速度更新式が得られます。また、流体の乱れ（Turbulent fluctuation）をランダムウォークとして付加しています。
                 </p>
                 <div class="formula-block">
                     $$\begin{aligned}
-                    &v_x^{(new)} = v_x + \alpha_{relax} (u_x - v_x) + v'_{turb, x} \\
-                    &v_y^{(new)} = v_y + \alpha_{relax} (u_y + v_t - v_y) + v'_{turb, y}
+                    v_x^{(new)} &= v_x + \frac{\Delta t}{\tau_p} (u_x - v_x) + v'_{turb, x} \\
+                    v_y^{(new)} &= v_y + \frac{\Delta t}{\tau_p} (u_y + v_t - v_y) + v'_{turb, y}
                     \end{aligned}$$
                 </div>
                 <p style="font-size: 0.9rem;">
-                    ここで、$\alpha_{relax}$ は粒子径 $d_p$ に依存する緩和係数（ストークス数に反比例する応答性指標）です。小粒子ほど流体に素早く追随し、大粒子ほど慣性により元の速度を保とうとします。
+                    ここで、$\alpha_{relax} = \frac{\Delta t}{\tau_p}$ は時間ステップ毎の追従度（無次元）に相当します。小粒子ほど緩和時間 $\tau_p$ が短いため流体速度に素早く追従し、大粒子ほど慣性（緩和時間）が大きいため自身の速度を保持しようとする物理挙動が再現されます。
                 </p>
 
                 <h3 style="font-size: 1.05rem; color: var(--text-primary); margin: 32px 0 12px 0;">(3) せん断領域での乱流拡散モデリング</h3>

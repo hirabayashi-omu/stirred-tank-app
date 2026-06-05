@@ -25,6 +25,8 @@ let config = {
     Bw: 0.014,
     dp_um: 150,
     rho_S: 2500,
+    solidCp: 800,
+    solidK: 1.0,
     solidConcMode: 'wt-ratio',
     solidConcVal: 1.0,
     sFactorMode: 'auto',
@@ -69,6 +71,9 @@ let heatSimAnimId = null;
 let heatSimLastTime = null;
 let heatChart = null;
 let heatResistChart = null;
+let heatShowThermalMap = false;
+let thermalGridData = null;
+let thermalOffscreenCanvas = null;
 let heatChartData = {
     times: [],
     liquidTemp: [],
@@ -113,7 +118,7 @@ const DEFAULT_SCALE_PRESETS = [
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.01,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
             mediaViscCorr: 1.0, foulingFactor: 0.0001,
-            dp_um: 100, rho_S: 2500, solidLiquidActive: true,
+            dp_um: 100, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
             simSpeed: 600, simSpeedSync: false, activeTab: 'rushton'
@@ -137,7 +142,7 @@ const DEFAULT_SCALE_PRESETS = [
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.05,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
             mediaViscCorr: 1.0, foulingFactor: 0.0001,
-            dp_um: 150, rho_S: 2500, solidLiquidActive: true,
+            dp_um: 150, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
             simSpeed: 300, simSpeedSync: false, activeTab: 'rushton'
@@ -161,7 +166,7 @@ const DEFAULT_SCALE_PRESETS = [
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.20,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
             mediaViscCorr: 1.0, foulingFactor: 0.0001,
-            dp_um: 150, rho_S: 2500, solidLiquidActive: true,
+            dp_um: 150, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
             simSpeed: 150, simSpeedSync: false, activeTab: 'rushton'
@@ -185,7 +190,7 @@ const DEFAULT_SCALE_PRESETS = [
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.80,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
             mediaViscCorr: 1.0, foulingFactor: 0.0001,
-            dp_um: 200, rho_S: 2500, solidLiquidActive: true,
+            dp_um: 200, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
             simSpeed: 80, simSpeedSync: false, activeTab: 'rushton'
@@ -209,7 +214,7 @@ const DEFAULT_SCALE_PRESETS = [
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 3.0,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
             mediaViscCorr: 1.0, foulingFactor: 0.0001,
-            dp_um: 250, rho_S: 2500, solidLiquidActive: true,
+            dp_um: 250, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
             simSpeed: 40, simSpeedSync: false, activeTab: 'rushton'
@@ -366,6 +371,8 @@ function initInputs() {
     document.getElementById('solid-liquid-active').checked = config.solidLiquidActive ?? true;
     document.getElementById('dp-um').value = config.dp_um ?? 150;
     document.getElementById('rho-S').value = config.rho_S ?? 2500;
+    document.getElementById('solid-cp').value = config.solidCp ?? 800;
+    document.getElementById('solid-k').value = config.solidK ?? 1.0;
     document.getElementById('solid-conc-mode').value = config.solidConcMode ?? 'wt-ratio';
     document.getElementById('solid-conc-val').value = config.solidConcVal ?? 1.0;
     document.getElementById('s-factor-mode').value = config.sFactorMode ?? 'auto';
@@ -608,6 +615,14 @@ function initEventListeners() {
         config.rho_S = parseFloat(e.target.value) || 2500;
         recalculateAll();
     });
+    document.getElementById('solid-cp').addEventListener('input', (e) => {
+        config.solidCp = parseFloat(e.target.value) || 800;
+        recalculateAll();
+    });
+    document.getElementById('solid-k').addEventListener('input', (e) => {
+        config.solidK = parseFloat(e.target.value) || 1.0;
+        recalculateAll();
+    });
     document.getElementById('solid-conc-mode').addEventListener('change', (e) => {
         config.solidConcMode = e.target.value;
         updateSolidConcLabel();
@@ -788,6 +803,28 @@ function initEventListeners() {
     document.getElementById('btn-heat-sim-pause').addEventListener('click', pauseHeatSimulation);
     document.getElementById('btn-heat-sim-reset').addEventListener('click', resetHeatSimulation);
 
+    // Heat simulation view mode toggles
+    const btnViewPart = document.getElementById('btn-heat-view-particles');
+    const btnViewTherm = document.getElementById('btn-heat-view-thermal');
+    if (btnViewPart && btnViewTherm) {
+        btnViewPart.addEventListener('click', () => {
+            heatShowThermalMap = false;
+            btnViewPart.style.background = 'var(--accent-color)';
+            btnViewPart.style.color = 'var(--text-primary)';
+            btnViewTherm.style.background = 'transparent';
+            btnViewTherm.style.color = 'var(--text-muted)';
+            drawHeatSimulation();
+        });
+        btnViewTherm.addEventListener('click', () => {
+            heatShowThermalMap = true;
+            btnViewTherm.style.background = 'var(--accent-color)';
+            btnViewTherm.style.color = 'var(--text-primary)';
+            btnViewPart.style.background = 'transparent';
+            btnViewPart.style.color = 'var(--text-muted)';
+            drawHeatSimulation();
+        });
+    }
+
     // Inner Tab switching event listeners (Zwietering vs Flow/Circulation)
     const btnSusp = document.getElementById('inner-tab-btn-suspension');
     const btnFlow = document.getElementById('inner-tab-btn-flow');
@@ -814,7 +851,8 @@ function toggleSolidLiquidInputs() {
     const ids = [
         'dp-um-container',
         'rho-S-container',
-        'rho-sl-container',
+        'solid-cp-container',
+        'solid-k-container',
         'solid-conc-mode-container',
         'solid-conc-val-container',
         's-factor-mode-container'
@@ -824,6 +862,23 @@ function toggleSolidLiquidInputs() {
         if (!el) return;
         el.classList.toggle('sl-hidden', !active);
     });
+    
+    // Toggle Effective Properties children based on solid-liquid active state
+    const elWsCont = document.getElementById('sl-eff-ws-container');
+    const elPhisCont = document.getElementById('sl-eff-phis-container');
+    const elKDetailsCont = document.getElementById('sl-eff-k-details-container');
+    const elKSingleCont = document.getElementById('sl-eff-k-single-container');
+    
+    if (elWsCont) elWsCont.style.display = active ? 'block' : 'none';
+    if (elPhisCont) elPhisCont.style.display = active ? 'block' : 'none';
+    if (elKDetailsCont) elKDetailsCont.style.display = active ? 'block' : 'none';
+    if (elKSingleCont) elKSingleCont.style.display = active ? 'none' : 'block';
+    
+    // Section and divider are always displayed as general summary of physical properties
+    const elDivider = document.getElementById('sl-eff-divider');
+    const elSection = document.getElementById('sl-effective-properties-section');
+    if (elDivider) elDivider.style.display = 'block';
+    if (elSection) elSection.style.display = 'block';
     
     // Custom S factor container visibility
     toggleSFactorCustom();
@@ -839,8 +894,8 @@ function toggleSolidLiquidInputs() {
         switchMainTab('rushton');
     }
 
-    // スラリー密度を更新
-    updateSlurryDensityUI();
+    // 有効物性値UIを更新
+    updateEffectivePropertiesUI();
 }
 
 /**
@@ -1191,7 +1246,7 @@ function recalculateAll() {
         { name: 'updateLowReWarning', fn: updateLowReWarning },
         { name: 'updateSimulatorResults', fn: updateSimulatorResults },
         { name: 'updateHeatCalcUI', fn: updateHeatCalcUI },
-        { name: 'updateSlurryDensityUI', fn: updateSlurryDensityUI },
+        { name: 'updateEffectivePropertiesUI', fn: updateEffectivePropertiesUI },
         { name: 'updateVEstDisplay', fn: updateVEstDisplay },
         { name: 'saveCurrentState', fn: saveCurrentState }
     ];
@@ -4091,19 +4146,36 @@ window.addEventListener('message', (event) => {
 });
 
 /**
- * 固液系がONかつ有効な場合はスラリー密度 ρ_sl、そうでない場合は液密度 ρ_L を返す。
+ * 固液有効物性値（比熱容量、密度、熱伝導率、質量分率、容積分率）を計算して返す。
  */
-function getEffectiveDensity() {
-    if (!config.solidLiquidActive) {
-        return config.rho;
-    }
-    const rhoL = config.rho;
-    const rhoS = config.rho_S ?? 2500;
+function getEffectiveProperties() {
+    const isSL = config.solidLiquidActive;
     
-    if (rhoS <= 0 || rhoL <= 0) {
-        return rhoL;
+    // 液物性 (デフォルト)
+    const rhoL = config.rho;
+    const CpL = config.liquidCp ?? 4184;
+    const kL = config.liquidK ?? 0.60;
+    
+    if (!isSL) {
+        return {
+            rho: rhoL,
+            Cp: CpL,
+            k: kL,
+            c_s: 0,
+            phi_s: 0,
+            k_parallel: kL,
+            k_series: kL,
+            k_maxwell_lower: kL,
+            k_maxwell_upper: kL
+        };
     }
-
+    
+    // 固体物性
+    const rhoS = config.rho_S ?? 2500;
+    const CpS = config.solidCp ?? 800;
+    const kS = config.solidK ?? 1.0;
+    
+    // 固体質量分率 c_s (0〜1)
     let c_s = 0;
     if (config.solidConcMode === 'wt-total') {
         const w = config.solidConcVal ?? 1.0;
@@ -4112,10 +4184,165 @@ function getEffectiveDensity() {
         const X = config.solidConcVal ?? 1.0;
         c_s = X / (100 + X);
     }
+    
+    // 有効密度 (逆数和 = スラリー密度)
+    let rho_eff = rhoL;
+    if (rhoS > 0 && rhoL > 0) {
+        rho_eff = 1 / (c_s / rhoS + (1 - c_s) / rhoL);
+    }
+    
+    // 容積分率 phi_s
+    let phi_s = 0;
+    if (rhoS > 0 && rhoL > 0) {
+        phi_s = (c_s / rhoS) / (c_s / rhoS + (1 - c_s) / rhoL);
+    }
+    
+    // 有効比熱 (単純な加算則)
+    const Cp_eff = c_s * CpS + (1 - c_s) * CpL;
+    
+    // 有効熱伝導率
+    // 並列モデル (上限値)
+    const k_parallel = phi_s * kS + (1 - phi_s) * kL;
+    
+    // 直列モデル (下限値)
+    let k_series = kL;
+    if (kS > 0 && kL > 0) {
+        k_series = 1 / (phi_s / kS + (1 - phi_s) / kL);
+    }
+    
+    // Maxwell下限モデル (液連続相)
+    let k_maxwell_lower = kL;
+    if (kS > 0 && kL > 0) {
+        const numerator = 2 * kL + kS + 2 * phi_s * (kS - kL);
+        const denominator = 2 * kL + kS - phi_s * (kS - kL);
+        if (denominator !== 0) {
+            k_maxwell_lower = kL * (numerator / denominator);
+        }
+    }
 
-    const eps = (rhoS * (1 - c_s)) / (rhoS * (1 - c_s) + rhoL * c_s);
-    const rhoSl = eps * rhoL + (1 - eps) * rhoS;
-    return rhoSl;
+    // Maxwell上限モデル (固連続相)
+    let k_maxwell_upper = kS;
+    if (kS > 0 && kL > 0) {
+        const phi_f = 1 - phi_s;
+        const numerator = 2 * kS + kL + 2 * phi_f * (kL - kS);
+        const denominator = 2 * kS + kL - phi_f * (kL - kS);
+        if (denominator !== 0) {
+            k_maxwell_upper = kS * (numerator / denominator);
+        }
+    }
+    
+    const k_eff = phi_s >= 0.2 ? k_maxwell_upper : k_maxwell_lower;
+    
+    return {
+        rho: rho_eff,
+        Cp: Cp_eff,
+        k: k_eff, // 固体分率が20%以上なら上限(固連続相)、それ未満なら下限(液連続相)を使用する
+        c_s,
+        phi_s,
+        k_parallel,
+        k_series,
+        k_maxwell_lower,
+        k_maxwell_upper
+    };
+}
+
+/**
+ * 固液系がONかつ有効な場合はスラリー密度 ρ_sl、そうでない場合は液密度 ρ_L を返す。
+ */
+function getEffectiveDensity() {
+    return getEffectiveProperties().rho;
+}
+
+/**
+ * 固液有効物性値のUI表示を更新する。
+ */
+function updateEffectivePropertiesUI() {
+    const elRho = document.getElementById('sl-eff-rho');
+    if (!elRho) return; // UIが存在しない場合は何もしない
+
+    const elWs = document.getElementById('sl-eff-ws');
+    const elPhis = document.getElementById('sl-eff-phis');
+    const elMu = document.getElementById('sl-eff-mu');
+    const elCp = document.getElementById('sl-eff-cp');
+    const elKSingle = document.getElementById('sl-eff-k-single');
+    const elKMaxwellLower = document.getElementById('sl-eff-k-maxwell-lower');
+    const elKMaxwellUpper = document.getElementById('sl-eff-k-maxwell-upper');
+    const elKParallel = document.getElementById('sl-eff-k-parallel');
+    const elKSeries = document.getElementById('sl-eff-k-series');
+
+    // 1. 有効比熱 Cp_eff
+    if (elCp) {
+        if (config.solidLiquidActive) {
+            const props = getEffectiveProperties();
+            elCp.textContent = props.Cp.toFixed(0);
+        } else {
+            elCp.textContent = config.liquidCp.toFixed(0);
+        }
+    }
+
+    // 2. 有効密度 ρ_eff
+    if (elRho) {
+        if (config.solidLiquidActive) {
+            const props = getEffectiveProperties();
+            const rhoL = config.rho;
+            const rhoS = config.rho_S ?? 2500;
+            const eps = (rhoS * (1 - props.c_s)) / (rhoS * (1 - props.c_s) + rhoL * props.c_s);
+            elRho.innerHTML = `${props.rho.toFixed(1)} <span style="font-size:0.72rem;opacity:0.8;">(ε = ${eps.toFixed(4)})</span>`;
+        } else {
+            elRho.textContent = config.rho.toFixed(1);
+        }
+    }
+
+    // 3. 有効粘度 μ_eff (代表粘度)
+    if (elMu) {
+        let allN = [];
+        expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
+        const n_rep = allN.length > 0 ? allN.reduce((a, b) => a + b, 0) / allN.length : 100 / 60;
+        const isNewt = rheologyData.activeModel === 'newtonian';
+        
+        if (!isNewt && typeof calcEffectiveViscosity === 'function') {
+            const mu_eff = calcEffectiveViscosity(n_rep);
+            elMu.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;opacity:0.8;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
+        } else {
+            elMu.textContent = config.mu.toFixed(4);
+        }
+    }
+
+    // 4. 固液系が非アクティブな場合
+    if (!config.solidLiquidActive) {
+        if (elWs) elWs.textContent = '--';
+        if (elPhis) elPhis.textContent = '--';
+        if (elKSingle) elKSingle.textContent = config.liquidK.toFixed(3);
+        if (elKMaxwellLower) elKMaxwellLower.textContent = '--';
+        if (elKMaxwellUpper) elKMaxwellUpper.textContent = '--';
+        if (elKParallel) elKParallel.textContent = '--';
+        if (elKSeries) elKSeries.textContent = '--';
+        return;
+    }
+
+    // 5. 固液系がアクティブな場合の追加項目更新
+    const props = getEffectiveProperties();
+    if (elWs) elWs.textContent = (props.c_s * 100).toFixed(2) + ' wt%';
+    if (elPhis) elPhis.textContent = (props.phi_s * 100).toFixed(2) + ' vol%';
+    
+    // 熱伝導率詳細
+    const isUpper = props.phi_s >= 0.2;
+    if (elKMaxwellLower) {
+        if (!isUpper) {
+            elKMaxwellLower.innerHTML = `${props.k_maxwell_lower.toFixed(3)} <span style="font-size:0.7rem; color:var(--accent-color); font-weight:bold;">(適用中)</span>`;
+        } else {
+            elKMaxwellLower.textContent = props.k_maxwell_lower.toFixed(3);
+        }
+    }
+    if (elKMaxwellUpper) {
+        if (isUpper) {
+            elKMaxwellUpper.innerHTML = `${props.k_maxwell_upper.toFixed(3)} <span style="font-size:0.7rem; color:var(--accent-color); font-weight:bold;">(適用中)</span>`;
+        } else {
+            elKMaxwellUpper.textContent = props.k_maxwell_upper.toFixed(3);
+        }
+    }
+    if (elKParallel) elKParallel.textContent = props.k_parallel.toFixed(3);
+    if (elKSeries) elKSeries.textContent = props.k_series.toFixed(3);
 }
 
 // -----------------------------------------------------------
@@ -5778,9 +6005,11 @@ function calculateHeatTransfer() {
     const D_T = config.DT;
     const d = config.d;
     const H = config.H;
-    const rho_L = config.rho;
-    const Cp_L = config.liquidCp || 4184;
-    const k_L = config.liquidK || 0.60;
+    // 固液有効物性値の取得 (固液系がONの場合は有効物性値、OFFの場合は純液体の物性値が返る)
+    const effProps = getEffectiveProperties();
+    const rho_L = effProps.rho;
+    const Cp_L = effProps.Cp;
+    const k_L = effProps.k;
     const t_w = config.wallThickness || 0.003;
     const k_w = config.wallK || 16.3;
     const r_d = config.foulingFactor || 0.0001;
@@ -6046,9 +6275,26 @@ function initHeatSimulation() {
     initHeatChart();
     initHeatResistChart();
 
+    // グリッドデータの初期化 (温度コンター時間平均用)
+    const gridCols = 45;
+    const gridRows = 32;
+    thermalGridData = Array.from({ length: gridCols * gridRows }, () => ({
+        smoothTemp: heatSimTemp
+    }));
+
+    if (!thermalOffscreenCanvas) {
+        thermalOffscreenCanvas = document.createElement('canvas');
+    }
+    thermalOffscreenCanvas.width = gridCols;
+    thermalOffscreenCanvas.height = gridRows;
+
     const count = 1000;
     const coords = getVesselVisualCoords();
     const { lx, rx, y_liquid, cx, scale, hb, y_cyl, y_deepest, D_px } = coords;
+
+    const props = getEffectiveProperties();
+    const phi_s = props.phi_s; // 固体体積分率 (0〜1)
+    const isSL = config.solidLiquidActive;
 
     for (let i = 0; i < count; i++) {
         let px = lx + Math.random() * D_px;
@@ -6057,13 +6303,24 @@ function initHeatSimulation() {
         px = Math.max(lx + 2, Math.min(rx - 2, px));
         py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 2, py));
 
+        const isSolid = isSL && (Math.random() < phi_s);
+        const rho_i = isSolid ? (config.rho_S ?? 2500) : (config.rho);
+        const cp_i = isSolid ? (config.solidCp ?? 800) : (config.liquidCp ?? 4184);
+        const relSize = 0.6 + Math.random() * 0.6;
+        const volume_i = Math.pow(relSize, 3);
+        const mass_i = rho_i * volume_i;
+
         heatParticles.push({
             x: px,
             y: py,
             vx: 0,
             vy: 0,
             temp: heatSimTemp, 
-            relSize: 0.6 + Math.random() * 0.6
+            relSize: relSize,
+            isSolid: isSolid,
+            rho: rho_i,
+            cp: cp_i,
+            m: mass_i
         });
     }
 
@@ -6194,7 +6451,7 @@ function updateHeatPhysics() {
     const gridRows = 15;
     const gridWidth = (rx - lx) / gridCols;
     const gridHeight = (y_deepest - y_liquid) / gridRows;
-    let grid = Array.from({ length: gridCols * gridRows }, () => ({ temps: [], count: 0, sum: 0 }));
+    let grid = Array.from({ length: gridCols * gridRows }, () => ({ temps: [], count: 0, sum_mCpT: 0, sum_mCp: 0 }));
 
     // 密度平滑化（自己分散）のための粒子密度のカウント（第1パス）
     let densityGrid = new Int32Array(gridCols * gridRows);
@@ -6331,17 +6588,24 @@ function updateHeatPhysics() {
         const rowIdx = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y - y_liquid) / gridHeight)));
         const gIdx = rowIdx * gridCols + colIdx;
         grid[gIdx].temps.push(p);
-        grid[gIdx].sum += p.temp;
+        
+        const p_m = (p.m !== undefined && !isNaN(p.m)) ? p.m : (p.relSize * p.relSize * 1.0);
+        const p_cp = (p.cp !== undefined && !isNaN(p.cp)) ? p.cp : 4184;
+        
+        grid[gIdx].sum_mCpT += p_m * p_cp * p.temp;
+        grid[gIdx].sum_mCp += p_m * p_cp;
         grid[gIdx].count++;
     });
 
     grid.forEach(g => {
-        if (g.count > 1) {
-            const avg = g.sum / g.count;
-            g.temps.forEach(p => {
-                p.temp += (avg - p.temp) * 0.12;
-                p.temp += (heatSimTemp - p.temp) * 0.005;
-            });
+        if (g.count > 1 && g.sum_mCp > 0) {
+            const avg = g.sum_mCpT / g.sum_mCp;
+            if (!isNaN(avg)) {
+                g.temps.forEach(p => {
+                    p.temp += (avg - p.temp) * 0.12;
+                    p.temp += (heatSimTemp - p.temp) * 0.005;
+                });
+            }
         }
     });
 }
@@ -6474,17 +6738,142 @@ function drawHeatSimulation() {
     }
 
     ctx.save();
-    heatParticles.forEach(p => {
-        const tMin = 10;
-        const tMax = 90;
-        const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / (tMax - tMin)));
-        const hue = Math.round(240 - 240 * ratio); 
+    
+    // 液相領域にクリップするためのパスを作成（容器の底と液面を合わせたパス）
+    ctx.beginPath();
+    const steps_clip = 40;
+    // 液面のカーブを描画
+    for (let i = 0; i <= steps_clip; i++) {
+        const t_step = i / steps_clip;
+        const px = lx + t_step * D_px;
+        const py = getLocalSurfaceY(px);
+        if (i === 0) {
+            ctx.moveTo(px, py);
+        } else {
+            ctx.lineTo(px, py);
+        }
+    }
+    // 容器の底面への右側
+    ctx.lineTo(rx, y_cyl);
+    // 容器の底部の形状に応じたパス
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        ctx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
+    } else if (config.headType === 'hemispherical') {
+        ctx.arc(cx, y_cyl, D_px / 2, 0, Math.PI, false);
+    } else {
+        ctx.lineTo(lx, y_cyl);
+    }
+    ctx.closePath();
+    ctx.clip(); // 液相内部のみ描画するようにクリッピング
+
+    if (heatShowThermalMap) {
+        // --- ① カーネル平滑化法 ＆ ② 時間平均（タイムアベレージ）を用いた温度コンター表示 ---
+        const gridCols = 45;
+        const gridRows = 32;
+        const w_cell = (rx - lx) / gridCols;
+        const h_cell = (y_deepest - y_liquid) / gridRows;
+
+        // グリッドデータおよびオフスクリーンキャンバスの初期化/保証
+        if (!thermalGridData || thermalGridData.length !== gridCols * gridRows) {
+            thermalGridData = Array.from({ length: gridCols * gridRows }, () => ({
+                smoothTemp: heatSimTemp
+            }));
+        }
+        if (!thermalOffscreenCanvas) {
+            thermalOffscreenCanvas = document.createElement('canvas');
+            thermalOffscreenCanvas.width = gridCols;
+            thermalOffscreenCanvas.height = gridRows;
+        }
+
+        const offCanvas = thermalOffscreenCanvas;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.clearRect(0, 0, gridCols, gridRows);
+
+        const h_smooth = 25.0; // スムージング半径 [px]
+        const h_smooth_sq = h_smooth * h_smooth;
+        const props = getEffectiveProperties();
+        const meanTemp = isNaN(heatSimTemp) ? 20.0 : heatSimTemp;
         
-        ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 1.8 * p.relSize, 0, Math.PI * 2);
-        ctx.fill();
-    });
+        // 代表的な熱容量（粒子が周囲にない部分での加重平均バイアス用）
+        const defaultM_Cp = 0.05 * ((props.Cp ?? 4184) * (props.rho ?? 1000) * 1.0);
+
+        // 時間平均用の補間係数（ポーズ中はチラつき更新をしないため、現在の表示を維持）
+        const beta = heatSimActive ? 0.85 : 0.0;
+
+        for (let r = 0; r < gridRows; r++) {
+            const yc = y_liquid + (r + 0.5) * h_cell;
+            for (let c = 0; c < gridCols; c++) {
+                const xc = lx + (c + 0.5) * w_cell;
+                const gIdx = r * gridCols + c;
+
+                let sum_w_mCpT = 0;
+                let sum_w_mCp = 0;
+
+                // 各粒子からの距離と熱容量(m * Cp)に基づく重み付き集計 (カーネル平滑化)
+                for (let i = 0; i < heatParticles.length; i++) {
+                    const p = heatParticles[i];
+                    const dx = p.x - xc;
+                    const dy = p.y - yc;
+                    const distSq = dx * dx + dy * dy;
+
+                    // カーネルの有効影響範囲 (2.5倍) 以内のみ集計して高速化
+                    if (distSq < 6.25 * h_smooth_sq) {
+                        const weight = Math.exp(-distSq / h_smooth_sq); // ガウスカーネル
+                        const p_m = (p.m !== undefined && !isNaN(p.m)) ? p.m : ((p.relSize || 1.0) * (p.relSize || 1.0) * 1.0);
+                        const p_cp = (p.cp !== undefined && !isNaN(p.cp)) ? p.cp : 4184;
+                        const mCp = p_m * p_cp;
+                        
+                        const p_temp = isNaN(p.temp) ? meanTemp : p.temp;
+                        sum_w_mCpT += weight * mCp * p_temp;
+                        sum_w_mCp += weight * mCp;
+                    }
+                }
+
+                // 熱容量ベースの加重平均温度の算出 (粒子が極端に少ない壁際等はバルク液温に漸近)
+                let rawTemp = (sum_w_mCpT + defaultM_Cp * meanTemp) / (sum_w_mCp + defaultM_Cp);
+                if (isNaN(rawTemp)) {
+                    rawTemp = meanTemp;
+                }
+
+                // 時間平均 (EMA) による時間チラつき防止
+                let currentSmooth = thermalGridData[gIdx].smoothTemp;
+                if (currentSmooth === undefined || isNaN(currentSmooth)) {
+                    currentSmooth = meanTemp;
+                }
+                let newSmooth = beta * currentSmooth + (1 - beta) * rawTemp;
+                if (isNaN(newSmooth)) {
+                    newSmooth = meanTemp;
+                }
+                thermalGridData[gIdx].smoothTemp = newSmooth;
+
+                // 色（HSL）への変換とオフスクリーン描画
+                const tMin = 10;
+                const tMax = 90;
+                const ratio = Math.max(0, Math.min(1, (newSmooth - tMin) / (tMax - tMin)));
+                const hue = Math.round(240 - 240 * ratio); // 青(240) から 赤(0)
+
+                offCtx.fillStyle = `hsl(${hue}, 85%, 55%)`;
+                offCtx.fillRect(c, r, 1, 1);
+            }
+        }
+
+        // バイリニア補間を適用してオフスクリーンから拡大描画 (サーモグラフィ)
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(offCanvas, lx, y_liquid, rx - lx, y_deepest - y_liquid);
+    } else {
+        // --- 従来どおりの熱粒子表示 ---
+        heatParticles.forEach(p => {
+            const tMin = 10;
+            const tMax = 90;
+            const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / (tMax - tMin)));
+            const hue = Math.round(240 - 240 * ratio); 
+            
+            ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.8 * p.relSize, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
     ctx.restore();
 
 
