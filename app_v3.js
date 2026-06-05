@@ -536,9 +536,14 @@ function initEventListeners() {
         }
         const confirmed = confirm(`全 ${expBlocks.length} ブロックを削除します。この操作は元に戻せません。よろしいですか？`);
         if (!confirmed) return;
-        // Remove all blocks
-        const ids = expBlocks.map(b => b.id);
-        ids.forEach(id => removeBlock(id));
+        
+        // 全ブロックを一括クリア
+        expBlocks = [];
+        const container = document.getElementById('blocks-container');
+        if (container) {
+            container.innerHTML = '';
+        }
+        recalculateAll();
         showToast('全ブロックを削除しました。', 'success');
     });
 
@@ -1326,6 +1331,7 @@ function removeBlock(blockId) {
     if (el) el.remove();
     recalculateAll();
 }
+window.removeBlock = removeBlock;
 
 function renderBlockHTML(block) {
     const container = document.getElementById('blocks-container');
@@ -6550,7 +6556,7 @@ function updateHeatPhysics() {
 
         const distToBottom = y_bot_p - p.y;
         if (distToLeft < wallThresh_px || distToRight < wallThresh_px || distToBottom < wallThresh_px) {
-            p.temp += (res.T_in - p.temp) * trRate * 4.0;
+            p.temp += (res.T_in - p.temp) * trRate * 30.0;
         }
 
         if (config.coilActive && coils.length > 0) {
@@ -6563,7 +6569,7 @@ function updateHeatPhysics() {
                 
                 // コイル近傍での伝熱判定
                 if (distSq < (c.r + 15)*(c.r + 15)) { 
-                    p.temp += (res.T_in - p.temp) * trRate * 6.0;
+                    p.temp += (res.T_in - p.temp) * trRate * 45.0;
                 }
                 
                 // 剛体衝突（透過防止）
@@ -6603,11 +6609,38 @@ function updateHeatPhysics() {
             if (!isNaN(avg)) {
                 g.temps.forEach(p => {
                     p.temp += (avg - p.temp) * 0.12;
-                    p.temp += (heatSimTemp - p.temp) * 0.005;
+                    p.temp += (heatSimTemp - p.temp) * 0.001;
                 });
             }
         }
     });
+
+    // --- 粒子平均温度をマクロバルク温度 heatSimTemp に一致させるための保存則補正 ---
+    let sum_mCp = 0;
+    let sum_mCpT = 0;
+    for (let i = 0; i < heatParticles.length; i++) {
+        const p = heatParticles[i];
+        const p_m = (p.m !== undefined && !isNaN(p.m)) ? p.m : ((p.relSize || 1.0) * (p.relSize || 1.0) * 1.0);
+        const p_cp = (p.cp !== undefined && !isNaN(p.cp)) ? p.cp : 4184;
+        const mCp = p_m * p_cp;
+        sum_mCp += mCp;
+        sum_mCpT += mCp * p.temp;
+    }
+    
+    if (sum_mCp > 0) {
+        const tMeanPart = sum_mCpT / sum_mCp;
+        const dT_shift = heatSimTemp - tMeanPart;
+        
+        // 平均からの差分を維持したまま、全体をシフトして平均値を heatSimTemp に一致させる
+        for (let i = 0; i < heatParticles.length; i++) {
+            heatParticles[i].temp += dT_shift;
+            
+            // 温度の物理的な上下限のクリップ (凍結や極端な高温を防ぐ安全弁)
+            const lowerBound = Math.min(heatSimTemp, res.T_in) - 5.0;
+            const upperBound = Math.max(heatSimTemp, res.T_in) + 5.0;
+            heatParticles[i].temp = Math.max(lowerBound, Math.min(upperBound, heatParticles[i].temp));
+        }
+    }
 }
 
 function drawHeatSimulation() {
@@ -6766,6 +6799,22 @@ function drawHeatSimulation() {
     ctx.closePath();
     ctx.clip(); // 液相内部のみ描画するようにクリッピング
 
+    // ダイナミックにカラースケールの範囲を計算
+    const meanTemp = isNaN(heatSimTemp) ? 20.0 : heatSimTemp;
+    
+    let tMin = meanTemp - 2.0;
+    let tMax = meanTemp + 2.0;
+    
+    if (T_in > meanTemp + 0.1) {
+        // 加熱
+        tMin = meanTemp - 0.5;
+        tMax = meanTemp + Math.max(1.5, (T_in - meanTemp) * 0.25);
+    } else if (T_in < meanTemp - 0.1) {
+        // 冷却
+        tMax = meanTemp + 0.5;
+        tMin = meanTemp - Math.max(1.5, (meanTemp - T_in) * 0.25);
+    }
+
     if (heatShowThermalMap) {
         // --- ① カーネル平滑化法 ＆ ② 時間平均（タイムアベレージ）を用いた温度コンター表示 ---
         const gridCols = 45;
@@ -6792,8 +6841,7 @@ function drawHeatSimulation() {
         const h_smooth = 25.0; // スムージング半径 [px]
         const h_smooth_sq = h_smooth * h_smooth;
         const props = getEffectiveProperties();
-        const meanTemp = isNaN(heatSimTemp) ? 20.0 : heatSimTemp;
-        
+
         // 代表的な熱容量（粒子が周囲にない部分での加重平均バイアス用）
         const defaultM_Cp = 0.05 * ((props.Cp ?? 4184) * (props.rho ?? 1000) * 1.0);
 
@@ -6847,9 +6895,7 @@ function drawHeatSimulation() {
                 thermalGridData[gIdx].smoothTemp = newSmooth;
 
                 // 色（HSL）への変換とオフスクリーン描画
-                const tMin = 10;
-                const tMax = 90;
-                const ratio = Math.max(0, Math.min(1, (newSmooth - tMin) / (tMax - tMin)));
+                const ratio = Math.max(0, Math.min(1, (newSmooth - tMin) / Math.max(1e-3, tMax - tMin)));
                 const hue = Math.round(240 - 240 * ratio); // 青(240) から 赤(0)
 
                 offCtx.fillStyle = `hsl(${hue}, 85%, 55%)`;
@@ -6863,10 +6909,8 @@ function drawHeatSimulation() {
     } else {
         // --- 従来どおりの熱粒子表示 ---
         heatParticles.forEach(p => {
-            const tMin = 10;
-            const tMax = 90;
-            const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / (tMax - tMin)));
-            const hue = Math.round(240 - 240 * ratio); 
+            const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / Math.max(1e-3, tMax - tMin)));
+            const hue = Math.round(240 - 240 * ratio);
             
             ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
             ctx.beginPath();
