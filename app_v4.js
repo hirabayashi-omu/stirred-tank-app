@@ -1026,11 +1026,24 @@ function getParticleTargetCount(coords) {
  */
 function updateVEstDisplay() {
     const el = document.getElementById('v-est-display');
-    if (!el) return;
+    const hEl = document.getElementById('h-est-display');
+    if (!el && !hEl) return;
     try {
         const vEstM3 = calcLiquidVolume(); // m³
         const vEstL = vEstM3 * 1000;       // L
-        el.textContent = `概算値: ${vEstL.toFixed(4)} L`;
+        const V_act_m3 = (config.V_act && config.V_act > 0) ? config.V_act * 1e-3 : null;
+        const hEstM = calcLiquidHeightFromVolume(V_act_m3 || vEstM3);
+
+        if (el) {
+            if (config.V_act && config.V_act > 0) {
+                el.textContent = `実測値: ${config.V_act.toFixed(4)} L、概算値: ${vEstL.toFixed(4)} L`;
+            } else {
+                el.textContent = `概算値: ${vEstL.toFixed(4)} L`;
+            }
+        }
+        if (hEl) {
+            hEl.textContent = `推算液高: ${hEstM.toFixed(4)} m`;
+        }
     } catch (e) {
         console.error("Failed to update V_est display", e);
     }
@@ -1110,7 +1123,8 @@ function getKameiHiraokaIntermediateVars() {
 
     const ReG_ratio = (Math.PI * eta * Math.log(D_d)) / (4 * d / (beta * DT));
 
-    const NpMax = getNpMax();
+    const coords = getVesselVisualCoords();
+    const NpMax = getNpMax(coords);
 
     return {
         beta, eta, gamma, X, Ct, m, Cu, f_infty, CL, ReG_ratio, NpMax
@@ -1119,9 +1133,8 @@ function getKameiHiraokaIntermediateVars() {
 
 // Calculate liquid volume based on dish head shape
 // H = height from deepest point of bottom to liquid surface
-function calcLiquidVolume() {
+function calcLiquidVolume(H = config.H) {
     const R = config.DT / 2;
-    const H = config.H;
     const headType = config.headType;
 
     let h_dish = 0; // depth of bottom dish
@@ -1181,18 +1194,112 @@ function calcLiquidVolumeForPv() {
     return calcLiquidVolume();
 }
 
-// Calculate the actual number of stages that physically fit under the liquid level
+function calcLiquidHeightFromVolume(V_m3) {
+    if (!(V_m3 > 0)) return config.H;
+    const R = config.DT / 2;
+    let h_dish = 0;
+    if (config.headType === 'semi-elliptical') {
+        h_dish = R / 2;
+    } else if (config.headType === 'dish') {
+        h_dish = 0.1935 * config.DT;
+    } else if (config.headType === 'hemispherical') {
+        h_dish = R;
+    }
+    let hi = config.DT + h_dish;
+    let lo = 0;
+    let mid = hi;
+    for (let i = 0; i < 60; i++) {
+        mid = (lo + hi) / 2;
+        const v = calcLiquidVolume(mid);
+        if (v > V_m3) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    return mid;
+}
+
+function getLiquidHeight() {
+    if (config.V_act && config.V_act > 0) {
+        return calcLiquidHeightFromVolume(config.V_act * 1e-3);
+    }
+    return config.H;
+}
+
+function getLiquidVolume() {
+    return calcLiquidVolumeForPv();
+}
+
+// Calculate the actual number of stages that physically fit in the vessel geometry
 // and respect the clearance and the minimum stage gap (1.3 * b)
 function getActiveStages() {
-    const { H, clearance, b, n_stage } = config;
+    const H = config.H;
+    const { clearance, b, n_stage } = config;
     const max_stages = Math.max(1, Math.floor((H - clearance - b) / (1.3 * b)) + 1);
     return Math.min(parseInt(n_stage) || 1, max_stages);
 }
 
+function getImpellerStagePositions(coords) {
+    const { clearance, b } = config;
+    const n_stages = getActiveStages();
+    const clearance_px = (clearance || 0) * coords.scale;
+    const b_px = (b || 0) * coords.scale;
+    const y_bottom_impeller = coords.y_deepest - clearance_px - b_px / 2;
+    const stage_gap = Math.max(b_px * 1.3, b_px);
+    const positions = [];
+    for (let i = 0; i < n_stages; i++) {
+        positions.push(y_bottom_impeller - (i * stage_gap));
+    }
+    return positions;
+}
+
+function getSubmergedImpellerStagePositions(coords) {
+    const { y_liquid, scale } = coords;
+    const b_px = (config.b || 0) * scale;
+    return getImpellerStagePositions(coords).filter(y_imp => (y_imp + b_px / 2) > y_liquid);
+}
+
+function getSubmergedImpellerStageFraction(coords) {
+    const positions = getImpellerStagePositions(coords);
+    if (!positions.length) return 0;
+    const b_px = (config.b || 0) * coords.scale;
+    let submerged = 0;
+    for (const y_imp of positions) {
+        const top = y_imp - b_px / 2;
+        const bottom = y_imp + b_px / 2;
+        // Fully above the liquid surface
+        if (bottom <= coords.y_liquid) continue;
+        // Fully submerged
+        if (top >= coords.y_liquid) {
+            submerged += 1;
+        } else {
+            // Partially submerged
+            submerged += (bottom - coords.y_liquid) / b_px;
+        }
+    }
+    return Math.max(0, Math.min(1, submerged / positions.length));
+}
+
+function getSubmergedStageCount(coords) {
+    const positions = getImpellerStagePositions(coords);
+    if (!positions.length) return 0;
+    const b_px = (config.b || 0) * coords.scale;
+    let count = 0;
+    for (const y_imp of positions) {
+        const bottom = y_imp + b_px / 2;
+        if (bottom > coords.y_liquid) {
+            count += 1;
+        }
+    }
+    return count;
+}
+
 // Calculate NpMax based on impeller type and multi-stage configuration
-function getNpMax() {
+function getNpMax(coords) {
     const { impellerType, np, b, d, theta } = config;
-    const n_stage_active = getActiveStages();
+    const stageFactor = coords ? getSubmergedImpellerStageFraction(coords) : 1;
+    const n_stage_active = getActiveStages() * stageFactor;
     const thetaRad = (theta * Math.PI) / 180;
     let NpMax_1 = 0; // 1-stage NpMax
 
@@ -1218,8 +1325,10 @@ function getNpMax() {
 function calculateNpCurve(Re) {
     if (Re <= 0) return { Np0: 0, Np: 0 };
     
+    const coords = getVesselVisualCoords();
+    const stageFraction = getSubmergedImpellerStageFraction(coords);
     const vars = getKameiHiraokaIntermediateVars();
-    const { beta, Cu, CL, Ct, m, f_infty, ReG_ratio, NpMax } = vars;
+    const { beta, Cu, CL, Ct, m, f_infty, ReG_ratio } = vars;
     const { d, DT, H, theta, baffleActive, nB, Bw, impellerType, coilActive, coilOuterDia, coilCenterDia } = config;
 
     const ReG = ReG_ratio * Re;
@@ -1232,7 +1341,12 @@ function calculateNpCurve(Re) {
 
     // Unbaffled Power number Np0
     const volume_factor = 8 * Math.pow(d, 3) / (Math.pow(DT, 2) * H);
-    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f * getActiveStages();
+    const effectiveStageCount = Math.max(0, getActiveStages() * stageFraction);
+    const Np0 = (1.2 * Math.pow(Math.PI, 4) * Math.pow(beta, 2) / volume_factor) * f * effectiveStageCount;
+
+    if (effectiveStageCount <= 0) {
+        return { Np0: 0, Np: 0 };
+    }
 
     // Baffled & Coil Power number (Kamei Equation + Kato et al., 2013)
     let baffleTerm = 0;
@@ -1254,6 +1368,11 @@ function calculateNpCurve(Re) {
 
     if (baffleTerm <= 0) {
         return { Np0, Np: Np0 };
+    }
+
+    const NpMax = getNpMax(coords);
+    if (NpMax <= 0) {
+        return { Np0: 0, Np: 0 };
     }
 
     const thetaRad = (theta * Math.PI) / 180;
@@ -1282,7 +1401,8 @@ function calculateNpCurve(Re) {
 
 function updateNStageWarning() {
     const n_stages_requested = parseInt(config.n_stage) || 1;
-    const n_stage_active = getActiveStages();
+    const coords = getVesselVisualCoords();
+    const n_stage_active = getSubmergedStageCount(coords);
     const warningEl = document.getElementById('n-stage-warning');
     const warningValEl = document.getElementById('n-stage-active-val');
     if (warningEl && warningValEl) {
@@ -3025,7 +3145,7 @@ function exportCSV() {
     csvContent += `"A_total (総伝熱面積)",${totalArea.toFixed(5)},"m2"\n`;
 
     // 1時間後の温度推算
-    const V_act_heat = (config.V_act && config.V_act > 0) ? (config.V_act * 1e-3) : calcLiquidVolume();
+    const V_act_heat = getLiquidVolume();
     const M_L = heatRes.rho_L * V_act_heat; 
     let tempAt1hr = config.liquidTempInit ?? 20.0;
     if (effU > 0) {
@@ -3215,8 +3335,6 @@ function drawVesselForPDF() {
     const rx = cx + r_vessel; // 400
 
     const y_top = 130;
-    const y_cyl_bottom = 440;
-
     let hb_px = 0;
     if (config.headType === 'semi-elliptical') {
         hb_px = r_vessel / 2; // 75
@@ -3228,10 +3346,12 @@ function drawVesselForPDF() {
         hb_px = 0;
     }
 
+    const H_px = Math.max(0, config.H * scale);
+    const y_cyl_bottom = y_top + Math.max(0, H_px - hb_px);
     const y_deepest = y_cyl_bottom + hb_px;
 
     // 1. Draw Liquid Volume (Back Layer)
-    const h_liquid_px = config.H * scale;
+    const h_liquid_px = getLiquidHeight() * scale;
     const y_liquid = y_deepest - h_liquid_px;
 
     ctx.save();
@@ -3349,25 +3469,13 @@ function drawVesselForPDF() {
     ctx.restore();
 
     // 5. Draw Impellers (Stages)
-    // RULE: The bottom impeller is always anchored at clearance C above the tank bottom.
-    //       Upper stages are stacked upward with a minimum gap of b*1.3.
-    //       Bottom clearance is NEVER compromised.
-    const n_stages = getActiveStages();
+    // RULE: The physical impeller geometry is based on the design stage count.
+    //       Only the liquid level changes with V_act; the shaft and stage spacing remain fixed.
+    const n_stages = parseInt(config.n_stage) || 1;
+    const stage_gap = b_px * 1.3;
     let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        // Ideal gap based on available span between clearance-top and liquid surface
-        const y_top_impeller_limit = y_liquid + b_px/2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        // Enforce minimum gap to prevent visual overlap/merging of blades
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-
-        // Stack upward from the fixed bottom anchor (y_bottom_impeller)
-        for (let i = 0; i < n_stages; i++) {
-            stages_y.push(y_bottom_impeller - (i * stage_gap));
-        }
+    for (let i = 0; i < n_stages; i++) {
+        stages_y.push(y_bottom_impeller - (i * stage_gap));
     }
 
     stages_y.forEach(y_imp => {
@@ -3497,7 +3605,7 @@ function drawVesselForPDF() {
     ctx.translate(458, (y_liquid + y_deepest) / 2);
     ctx.rotate(Math.PI / 2);
     ctx.textAlign = 'center';
-    ctx.fillText(`H = ${config.H.toFixed(3)} m`, 0, 0);
+    ctx.fillText(`H = ${getLiquidHeight().toFixed(3)} m`, 0, 0);
     ctx.restore();
 
     // d (Impeller Diameter)
@@ -3563,7 +3671,7 @@ function generatePDFReport() {
     document.getElementById('pdf-val-mu').textContent = config.mu.toFixed(4);
 
     document.getElementById('pdf-val-dt').textContent = config.DT.toFixed(3);
-    document.getElementById('pdf-val-h').textContent = config.H.toFixed(3);
+    document.getElementById('pdf-val-h').textContent = getLiquidHeight().toFixed(3);
     
     // Map bottom head type
     const headMap = {
@@ -3908,14 +4016,15 @@ function generatePDFReport() {
     });
 
     // Liquid volume row in PDF
-    const V_liq = calcLiquidVolume();
+    const V_liq = calcLiquidVolumeForPv();
     const V_liq_mL = V_liq * 1e6;
+    const labelText = (config.V_act && config.V_act > 0) ? '実測値 (V_act)' : '概算値';
     const headLabelMap = { 'flat': '平底', 'semi-elliptical': '半楕円形(2:1)', 'dish': '皿型', 'hemispherical': '全半球形' };
     const headLabelPdf = headLabelMap[config.headType] || config.headType;
     const trVpdf = document.createElement('tr');
     trVpdf.innerHTML = `
-        <td style="padding: 5px; border: 1px solid #e5e7eb; font-weight: 500;">V<sub>液</sub> (概算)</td>
-        <td style="padding: 5px; border: 1px solid #e5e7eb; color: #4b5563; font-size: 8px;">液体積の概算値（鏡板：${headLabelPdf}）</td>
+        <td style="padding: 5px; border: 1px solid #e5e7eb; font-weight: 500;">V<sub>液</sub> (${labelText})</td>
+        <td style="padding: 5px; border: 1px solid #e5e7eb; color: #4b5563; font-size: 8px;">液体積の${labelText === '実測値 (V_act)' ? '実測値' : '概算値'}（鏡板：${headLabelPdf}）</td>
         <td style="padding: 5px; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #0284c7;">${V_liq.toExponential(4)} m³ &nbsp;(${V_liq_mL.toFixed(1)} mL)</td>
     `;
     pdfVarsBody.appendChild(trVpdf);
@@ -4956,15 +5065,7 @@ function updateTempGrid(coords, dt_sim) {
             const b_px = (config.b ?? 0.02) * scale;
             const y_bot_imp = y_deepest - clearance_px - b_px / 2;
             const rImp = (config.d ?? 0.06) * scale / 2;
-            const n_stg = getActiveStages();
-            let stages_y_t = [y_bot_imp];
-            if (n_stg > 1) {
-                const y_top_lim = y_liquid + b_px / 2;
-                const span = y_bot_imp - y_top_lim;
-                const gap = Math.max(b_px * 1.3, span / (n_stg - 1));
-                stages_y_t = [];
-                for (let si = 0; si < n_stg; si++) stages_y_t.push(y_bot_imp - si * gap);
-            }
+            const stages_y_t = getSubmergedImpellerStagePositions(coords);
             for (const y_imp of stages_y_t) {
                 const ddx = xc - cx;
                 const ddy = yc - y_imp;
@@ -5036,17 +5137,20 @@ function getVesselVisualCoords() {
         hb = D_px / 2;
     }
 
-    const y_deepest = 300;
-    const y_cyl = y_deepest - hb;
-    const h_liquid_px = config.H * scale;
+    const y_top = 45;
+    const H_px = Math.max(0, config.H * scale);
+    const y_cyl = y_top + Math.max(0, H_px - hb);
+    const y_deepest = y_cyl + hb;
 
+    const liquidHeight = getLiquidHeight();
+    const h_liquid_px = liquidHeight * scale;
     let y_liquid = y_deepest - h_liquid_px;
-    if (y_liquid < 45) y_liquid = 45;
+    if (y_liquid < y_top) y_liquid = y_top;
 
     const lx = cx - D_px / 2;
     const rx = cx + D_px / 2;
 
-    return { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx };
+    return { cx, D_px, scale, hb, y_top, y_deepest, y_cyl, y_liquid, lx, rx };
 }
 
 function getVesselBottomY(x, coords) {
@@ -5102,20 +5206,7 @@ function getCavernDecay(x, y, coords) {
     const b_px = config.b * scale;
     const clearance_px = config.clearance * scale;
 
-    const n_stages = getActiveStages();
-    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) {
-            stages_y.push(y_bottom_impeller - (i * stage_gap));
-        }
-    }
+    const stages_y = getImpellerStagePositions(coords);
 
     let minDistOut = Infinity;
     for (const y_imp_s of stages_y) {
@@ -5220,27 +5311,17 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     const d_val = config.d;
     const v_phys = (Nqc * n_rps * Math.pow(d_val, 3)) / Math.pow(DT_val, 2);
     const C_velocity = 0.00487;
-    const speedMagnitude = C_velocity * v_phys * scale;
+
+    const submergedStageFraction = getSubmergedImpellerStageFraction(coords);
+    if (submergedStageFraction <= 0) return { vx: 0, vy: 0 };
+
+    const speedMagnitude = C_velocity * v_phys * scale * submergedStageFraction;
 
     const cavernDecay = getCavernDecay(x, y, coords);
     if (cavernDecay === 0) return { vx: 0, vy: 0 };
 
-    const clearance_px = config.clearance * scale;
-    const b_px = config.b * scale;
-    const n_stages = getActiveStages();
-    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) {
-            stages_y.push(y_bottom_impeller - (i * stage_gap));
-        }
-    }
+    let stages_y = getSubmergedImpellerStagePositions(coords);
+    if (stages_y.length === 0) stages_y = getImpellerStagePositions(coords);
 
     const rxScale = relVortexX || 1.0;
     const ryScale = relVortexY || 1.0;
@@ -5408,18 +5489,8 @@ function initParticleSimulation() {
 
     const clearance_px = config.clearance * scale;
     const b_px = config.b * scale;
-    const n_stages = getActiveStages();
-    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) stages_y.push(y_bottom_impeller - (i * stage_gap));
-    }
+    let stages_y = getSubmergedImpellerStagePositions(coords);
+    if (stages_y.length === 0) stages_y = getImpellerStagePositions(coords);
 
     const rImp_px = (config.d * scale) / 2;
 
@@ -5474,7 +5545,7 @@ function drawParticleSimulation() {
     if (!simCanvas || !simCtx) return;
 
     const coords = getVesselVisualCoords();
-    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
 
     if (document.hidden) { simLastFrameTime = null; return; }
     simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
@@ -5887,17 +5958,7 @@ function drawParticleSimulation() {
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
 
-    const n_stages = getActiveStages();
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) stages_y.push(y_bottom_impeller - (i * stage_gap));
-    }
+    const stages_y = getImpellerStagePositions(coords);
 
     const drawElements = [];
     drawElements.push({
@@ -6156,20 +6217,9 @@ function initParticleSimulation() {
     simParticles = [];
 
     // Helper: compute impeller stages Y positions (pixels)
-    const clearance_px = config.clearance * scale;
+    let stages_y = getSubmergedImpellerStagePositions(coords);
+    if (stages_y.length === 0) stages_y = getImpellerStagePositions(coords);
     const b_px = config.b * scale;
-    const n_stages = getActiveStages();
-    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) stages_y.push(y_bottom_impeller - (i * stage_gap));
-    }
 
     const rImp_px = (config.d * scale) / 2;
 
@@ -6303,7 +6353,7 @@ function drawParticleSimulation() {
     if (!simCanvas || !simCtx) return;
     
     const coords = getVesselVisualCoords();
-    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
     
     if (document.hidden) { simLastFrameTime = null; return; }
     simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
@@ -6866,20 +6916,7 @@ function drawParticleSimulation() {
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
     
-    // Multi-stage Y positions
-    const n_stages = getActiveStages();
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_impeller_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_impeller_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) {
-            stages_y.push(y_bottom_impeller - (i * stage_gap));
-        }
-    }
+    const stages_y = getImpellerStagePositions(coords);
     
     // Build draw-element list for depth sorting
     const drawElements = [];
@@ -6893,7 +6930,7 @@ function drawParticleSimulation() {
             simCtx.lineWidth = 4;
             simCtx.lineCap = 'round';
             simCtx.beginPath();
-            simCtx.moveTo(cx, y_liquid - 15);
+            simCtx.moveTo(cx, y_top - 15);
             simCtx.lineTo(cx, y_bottom_impeller + b_px / 2);
             simCtx.stroke();
             simCtx.restore();
@@ -6994,6 +7031,24 @@ function drawParticleSimulation() {
     drawElements.sort((a, b) => a.avgZ - b.avgZ);
     drawElements.forEach(el => el.draw());
     
+    // Draw vessel outline so the tank height change is visible
+    simCtx.save();
+    simCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    simCtx.lineWidth = 2;
+    simCtx.lineCap = 'round';
+    simCtx.beginPath();
+    simCtx.moveTo(lx, y_top);
+    simCtx.lineTo(lx, y_cyl);
+    if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
+        simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
+    } else if (config.headType === 'hemispherical') {
+        simCtx.arc(cx, y_cyl, D_px / 2, Math.PI, 0, true);
+    } else {
+        simCtx.lineTo(rx, y_cyl);
+    }
+    simCtx.lineTo(rx, y_top);
+    simCtx.stroke();
+    simCtx.restore();
 
     simCtx.stroke();
     
@@ -7066,7 +7121,7 @@ function calculateHeatTransfer() {
     // 槽径 D_T, 翼径 d, 液密度 rho, 代表粘度 mu_eff (非ニュートンでなければmu)
     const D_T = config.DT;
     const d = config.d;
-    const H = config.H;
+    const H_geom = config.H;
     // 固液有効物性値の取得 (固液系がONの場合は有効物性値、OFFの場合は純液体の物性値が返る)
     const effProps = getEffectiveProperties();
     const rho_L = effProps.rho;
@@ -7139,7 +7194,7 @@ function calculateHeatTransfer() {
         h_dish = 0; A_dish = Math.PI * R * R;
     }
 
-    const h_cyl = Math.max(0, H - h_dish);
+    const h_cyl = Math.max(0, H_geom - h_dish);
     const A_cyl = Math.PI * D_T * h_cyl;
     const Aj = A_cyl + A_dish;
 
@@ -7148,7 +7203,7 @@ function calculateHeatTransfer() {
     const p_c    = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
     const D_c    = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * D_T;
     const clearance = config.clearance ?? 0;
-    const N_t    = Math.max(1, Math.floor((H - 2 * clearance) / p_c));
+    const N_t    = Math.max(1, Math.floor((H_geom - 2 * clearance) / p_c));
     const L_c    = N_t * Math.PI * D_c;
     const Ac     = config.coilActive ? (Math.PI * d_co * L_c) : 0;
 
@@ -7536,7 +7591,7 @@ function updateHeatPhysics() {
     document.getElementById('heat-sim-time').textContent = heatSimTime.toFixed(1);
 
     const res = calculateHeatTransfer();
-    const V_act = (config.V_act && config.V_act > 0) ? (config.V_act * 1e-3) : calcLiquidVolume();
+    const V_act = getLiquidVolume();
     const M_L = res.rho_L * V_act; 
 
     let Q = 0;
@@ -7797,7 +7852,7 @@ function drawHeatSimulation() {
     const ctx = canvas.getContext('2d');
 
     const coords = getVesselVisualCoords();
-    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
+    const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -7816,7 +7871,7 @@ function drawHeatSimulation() {
 
     ctx.beginPath();
     const gap_px = config.jacketType === 'spiral' ? 6 : 10;
-    ctx.moveTo(lx - gap_px, y_liquid - 10);
+    ctx.moveTo(lx - gap_px, y_top);
     ctx.lineTo(lx - gap_px, y_cyl);
     if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
         ctx.ellipse(cx, y_cyl, D_px / 2 + gap_px, hb + gap_px, 0, Math.PI, 0, true);
@@ -7825,7 +7880,7 @@ function drawHeatSimulation() {
     } else {
         ctx.lineTo(rx + gap_px, y_cyl);
     }
-    ctx.lineTo(rx + gap_px, y_liquid - 10);
+    ctx.lineTo(rx + gap_px, y_top);
     ctx.stroke();
     ctx.restore();
 
@@ -8187,20 +8242,7 @@ function drawHeatSimulation() {
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
 
-    // --- 多段インペラY位置 ---
-    const n_stages = getActiveStages();
-    let stages_y = [];
-    if (n_stages === 1) {
-        stages_y.push(y_bottom_impeller);
-    } else {
-        const y_top_limit = y_liquid + b_px / 2;
-        const available_span = y_bottom_impeller - y_top_limit;
-        const ideal_gap = available_span / (n_stages - 1);
-        const stage_gap = Math.max(b_px * 1.3, ideal_gap);
-        for (let i = 0; i < n_stages; i++) {
-            stages_y.push(y_bottom_impeller - (i * stage_gap));
-        }
-    }
+    const stages_y = getImpellerStagePositions(coords);
 
     // --- 描画要素リスト（depth-sorted） ---
     const drawElements = [];
@@ -8214,7 +8256,7 @@ function drawHeatSimulation() {
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(cx, y_liquid - 15);
+            ctx.moveTo(cx, y_top - 15);
             ctx.lineTo(cx, y_bottom_impeller + b_px / 2);
             ctx.stroke();
             ctx.restore();
@@ -8312,7 +8354,7 @@ function drawHeatSimulation() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(lx, y_liquid - 10);
+    ctx.moveTo(lx, y_top);
     ctx.lineTo(lx, y_cyl);
     if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
         ctx.ellipse(cx, y_cyl, D_px / 2, hb, 0, Math.PI, 0, true);
@@ -8321,7 +8363,7 @@ function drawHeatSimulation() {
     } else {
         ctx.lineTo(rx, y_cyl);
     }
-    ctx.lineTo(rx, y_liquid - 10);
+    ctx.lineTo(rx, y_top);
     ctx.stroke();
     
     // Draw simulation parameters badge in the top-right corner
