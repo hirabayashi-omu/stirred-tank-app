@@ -53,6 +53,10 @@
                                 <label for="exp-author">作成者</label>
                                 <input type="text" id="exp-author" value="攪拌 太郎">
                             </div>
+                            <div class="input-group">
+                                <label for="ambient-temp">環境温度 T<sub>amb</sub> (°C)</label>
+                                <input type="number" id="ambient-temp" value="25" step="0.1">
+                            </div>
                         </div>
                     </section>
 
@@ -862,6 +866,10 @@
                                             <button id="btn-heat-view-thermal" class="btn"
                                                 style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">温度分布
                                                 (コンター)</button>
+                                            <button id="btn-heat-colorscale-relative" class="btn"
+                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: var(--accent-color); color: var(--text-primary); border: none; cursor: pointer;">相対</button>
+                                            <button id="btn-heat-colorscale-absolute" class="btn"
+                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">絶対 (T₀〜T_in)</button>
                                         </div>
                                     </div>
                                     <div

@@ -5,6 +5,7 @@ let config = {
     expNumber: 'EXP-001',
     expDate: '',
     expAuthor: '攪拌 太郎',
+    ambientTemp: 25,
     g: 9.806,
     liquidTemp: 25,
     rho: 998,
@@ -72,6 +73,7 @@ let heatSimLastTime = null;
 let heatChart = null;
 let heatResistChart = null;
 let heatShowThermalMap = false;
+let heatColorScaleMode = 'relative';
 let thermalGridData = null;
 let thermalOffscreenCanvas = null;
 let heatChartData = {
@@ -336,6 +338,7 @@ function initInputs() {
     document.getElementById('exp-number').value = config.expNumber;
     document.getElementById('exp-date').value = config.expDate;
     document.getElementById('exp-author').value = config.expAuthor;
+    document.getElementById('ambient-temp').value = config.ambientTemp ?? 25;
     document.getElementById('g').value = config.g;
     document.getElementById('rho').value = config.rho;
     document.getElementById('mu').value = config.mu;
@@ -421,7 +424,7 @@ function initInputs() {
 function initEventListeners() {
     initRheologyListeners();
     // Watch sidebar input changes
-    const metaInputs = ['exp-number', 'exp-date', 'exp-author'];
+    const metaInputs = ['exp-number', 'exp-date', 'exp-author', 'ambient-temp'];
     metaInputs.forEach(id => {
         document.getElementById(id).addEventListener('input', (e) => {
             const key = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -828,6 +831,37 @@ function initEventListeners() {
             btnViewPart.style.color = 'var(--text-muted)';
             drawHeatSimulation();
         });
+    }
+
+    const btnColorRelative = document.getElementById('btn-heat-colorscale-relative');
+    const btnColorAbsolute = document.getElementById('btn-heat-colorscale-absolute');
+    if (btnColorRelative && btnColorAbsolute) {
+        const updateColorScaleBtns = () => {
+            if (heatColorScaleMode === 'relative') {
+                btnColorRelative.style.background = 'var(--accent-color)';
+                btnColorRelative.style.color = 'var(--text-primary)';
+                btnColorAbsolute.style.background = 'transparent';
+                btnColorAbsolute.style.color = 'var(--text-muted)';
+            } else {
+                btnColorAbsolute.style.background = 'var(--accent-color)';
+                btnColorAbsolute.style.color = 'var(--text-primary)';
+                btnColorRelative.style.background = 'transparent';
+                btnColorRelative.style.color = 'var(--text-muted)';
+            }
+        };
+        btnColorRelative.addEventListener('click', () => {
+            heatColorScaleMode = 'relative';
+            updateColorScaleBtns();
+            drawHeatSimulation();
+            updateHeatChart();
+        });
+        btnColorAbsolute.addEventListener('click', () => {
+            heatColorScaleMode = 'absolute';
+            updateColorScaleBtns();
+            drawHeatSimulation();
+            updateHeatChart();
+        });
+        updateColorScaleBtns();
     }
 
     // Inner Tab switching event listeners (Zwietering vs Flow/Circulation)
@@ -4752,19 +4786,28 @@ function updateTempGrid(coords, dt_sim) {
 
     const T_wall = config.mediaTempIn ?? 80;  // ジャケット/コイル温度 [°C]
     const T_bulk = heatSimTemp;               // バルク液温（伝熱シミュで更新される）
+    const T_amb = config.ambientTemp ?? 25;   // 環境温度 [°C]
 
     // --- 有効熱拡散率 α_eff ---
-    // 実際の熱拡散率 α = k/(ρ Cp) に乱流強度を加味した値を使う
+    // 分子スケールの熱拡散率は物性値から計算する: α = k / (ρ * Cp) [m²/s]
     const effProps = getEffectiveProperties();
-    const alpha_mol = (effProps.k ?? 0.6) / Math.max(1e-3, (effProps.rho ?? 998) * (effProps.Cp ?? 4184));
+    // 安全マージン付きで物性値から α_mol を算出
+    let alpha_mol = (effProps.k || 0.6) / Math.max(1e-6, (effProps.rho || 998) * (effProps.Cp || 4184));
+    // 異常値対策: 極端に小さい/負の値を下限でクリップ
+    alpha_mol = Math.max(alpha_mol, 1e-9);
     const Re_liq = calculateReVal((config.simSpeed ?? 300) / 60);
-    // 乱流拡散係数: 無次元乱流プラントル数 Pr_t = 0.9 を仮定
-    // α_t ≈ ν_t / Pr_t, ν_t ≈ 0.01 * Re^0.8 * (d²N) — 完全な粗推定
-    const d_val = config.d ?? 0.060;
-    const n_rps = (config.simSpeed ?? 300) / 60;
-    const nu_t_phys = 0.001 * Math.max(0, (Re_liq ** 0.6)) * (d_val * d_val * n_rps);
-    const alpha_t = nu_t_phys / 0.9;
-    const alpha_eff_phys = alpha_mol + alpha_t;  // [m²/s]
+    // 乱流拡散係数: 有効粘度と代表速度・長さから渦粘性を推定し Pr_t で割る
+    // 物理ベースの推算: ν_t ≈ C_t * U_char * L_char, α_t = ν_t / Pr_t
+    const d_val = config.d ?? 0.060; // [m]
+    const n_rps = (config.simSpeed ?? 300) / 60; // [1/s]
+    const Pr_t = 0.9;
+    // 代表速度: インペラの周速（tip speed）を使用
+    const U_tip = 2 * Math.PI * (d_val * 0.5) * n_rps; // [m/s]
+    const L_char = Math.max(0.001, d_val * 0.5); // [m]
+    const C_t = 0.08; // 経験係数（調整可能）
+    const nu_t_phys = C_t * U_tip * L_char; // [m²/s]
+    const alpha_t = nu_t_phys / Pr_t;
+    const alpha_eff_phys = alpha_mol + alpha_t; // [m²/s]
 
     // スケール変換: [px²/step] を [m²/s] に対応させる
     //   1 px = (DT_m / D_px) m → 1 px² = (DT_m/D_px)² m²
@@ -4806,6 +4849,40 @@ function updateTempGrid(coords, dt_sim) {
                             - 4 * tempGrid[idx];
             next[idx] += r_fac * laplacian;
 
+            // --- 移流項（温度差による自然対流） ---
+            // 温度勾配を中央差分で計算
+            const T_xp = get(row, col + 1);
+            const T_xm = get(row, col - 1);
+            const T_yp = get(row + 1, col);
+            const T_ym = get(row - 1, col);
+            const dTdx = (T_xp - T_xm) / (2 * cellW + 1e-9);  // [°C / px]
+            const dTdy = (T_yp - T_ym) / (2 * cellH + 1e-9);  // [°C / px]
+
+            // 温度差から浮力速度を推定
+            const T_local = tempGrid[idx];
+            const dT = T_local - T_bulk;
+            const g_val = config.g || 9.806;
+            const beta_val = 2e-4;
+            
+            // 浮力による鉛直速度 [m/s] を格子単位に変換
+            const v_buoy_phys = g_val * beta_val * dT;  // [m/s]
+            const v_buoy_px = v_buoy_phys * scale * dt_sim;  // [px]
+            
+            // 温度勾配から水平移流速度を推定（温度が高い側へ広がる傾向）
+            const C_conv = 0.15;  // 移流強度係数（調整可能）
+            const u_conv_px = -C_conv * dTdx;  // [px/frame]
+            
+            // 移流項: -u*∂T/∂x - v*∂T/∂y
+            const advection = u_conv_px * dTdx + v_buoy_px * dTdy;
+            next[idx] -= advection * dt_sim;
+
+            // --- 水面層の温水拡散を強める ---
+            if (row === 0 || row === 1) {
+                const topSpreadFactor = r_fac * (row === 0 ? 0.95 : 0.45);
+                const topHorizLap = (get(row, col - 1) + get(row, col + 1)) - 2 * tempGrid[idx];
+                next[idx] += topSpreadFactor * topHorizLap;
+            }
+
             // --- 壁(左右)境界セル: ジャケット温度に向けた加熱/冷却 ---
             const distWall = Math.min(xc - lx, rx - xc);
             if (distWall < cellW * 1.5) {
@@ -4817,6 +4894,22 @@ function updateTempGrid(coords, dt_sim) {
             if (distBot < cellH * 1.5) {
                 const rate = 0.06 * dt_sim;
                 next[idx] += (T_wall - next[idx]) * rate;
+            }
+
+            // --- 自然対流を想定した自由表面 Newton 冷却 ---
+            const distSurf = yc - y_liquid;
+            if (distSurf <= cellH * 1.5) {
+                const surfFactor = Math.max(0, 1 - distSurf / (cellH * 1.5));
+                const h_surface = 0.02 + 0.03 * Math.min(1, Re_liq / 1000);
+                next[idx] += (T_amb - next[idx]) * h_surface * dt_sim * surfFactor;
+            }
+
+            // --- 底面付近の停滞冷水プールを保持 ---
+            const impellerZone = (config.d ?? 0.06) * scale * 1.2;
+            const farFromImpeller = Math.abs(xc - cx) > impellerZone;
+            if (row >= rows - 2 && farFromImpeller && tempGrid[idx] < T_bulk) {
+                const bottomPoolRetention = 0.05 * dt_sim;
+                next[idx] += (tempGrid[idx] - next[idx]) * bottomPoolRetention;
             }
 
             // --- コイル境界: 近傍セルをT_wallへ ---
@@ -5040,6 +5133,49 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     const u = (x - cx) / (D_px / 2);
     const y_surf = Math.max(y_liquid - 10, y_liquid + vortexDepth * (0.5 - u * u) + waveOffset);
 
+    const T_ref = heatSimTemp || config.liquidTempInit || 20;
+    const T_local = getTempAtPoint(x, y, coords);
+    const beta_expand = 2e-4;
+    const deltaT_buoy = T_local - T_ref;
+    const buoyancyVy = -Math.max(-1.0, Math.min(1.0, 0.03 * beta_expand * deltaT_buoy * (config.g || 9.806) * scale));
+
+    // 水面近傍の温水外向き流
+    let surfaceWarmVx = 0;
+    if (y < y_liquid + D_px * 0.12 && T_local > T_ref) {
+        const warmFactor = Math.min(1, (T_local - T_ref) / 18);
+        surfaceWarmVx = Math.sign(x - cx) * warmFactor * 0.6;
+    }
+
+    // --- 温度依存密度による流速連成（簡易） ---
+    // 周囲の温度勾配に基づいて局所的な水平/鉛直補正速度を生成する。
+    // 勾配は格子からの双差分で求め、小さな定数でスケーリングして px/frame 単位に変換する。
+    let gradVx = 0, gradVy = 0;
+    try {
+        const dx_px = Math.max(1, Math.round(D_px * 0.02));
+        const dy_px = dx_px;
+        const T_xp = getTempAtPoint(x + dx_px, y, coords);
+        const T_xm = getTempAtPoint(x - dx_px, y, coords);
+        const T_yp = getTempAtPoint(x, y + dy_px, coords);
+        const T_ym = getTempAtPoint(x, y - dy_px, coords);
+        const dTdx_px = (T_xp - T_xm) / (2 * dx_px + 1e-9); // °C / px
+        const dTdy_px = (T_yp - T_ym) / (2 * dy_px + 1e-9); // °C / px
+
+        // 経験係数（表示速度への変換）
+        const C_h = 0.45; // 水平方向の影響強度（調整可能）
+        const C_v = 0.35; // 垂直方向の影響強度（調整可能）
+
+        // 温度が高い方へ水平に広がる傾向を与える（符号調整）
+        gradVx = -C_h * dTdx_px;
+        gradVy = -C_v * dTdy_px;
+
+        // クリップして極端な値を防ぐ（px/frame）
+        const clip = v => Math.max(-2.0, Math.min(2.0, v));
+        gradVx = clip(gradVx);
+        gradVy = clip(gradVy);
+    } catch (e) {
+        // 安全にフォールバック（何もしない）
+    }
+
     if (speed_rpm <= 5 || y < y_surf || y > getVesselBottomY(x, coords)) {
         return { vx: 0, vy: 0 };
     }
@@ -5126,7 +5262,7 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
             const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
             const wallThresh = D_px * 0.04;
-            const wallFactor = Math.min(1.0, wallDist / wallThresh);
+            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
             const centerThresh = D_px * 0.035;
             const centerFactor = Math.min(1.0, dist / centerThresh);
 
@@ -5146,7 +5282,7 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
             const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
             const wallThresh = D_px * 0.04;
-            const wallFactor = Math.min(1.0, wallDist / wallThresh);
+            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
             const centerThresh = D_px * 0.05;
             const centerFactor = Math.min(1.0, dist / centerThresh);
 
@@ -5160,8 +5296,8 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     if (totalWeight < 0.001) return { vx: 0, vy: 0 };
     const normFactor = Math.min(1.5, totalWeight) / totalWeight;
     return {
-        vx: totalVx * normFactor * cavernDecay,
-        vy: totalVy * normFactor * cavernDecay
+        vx: totalVx * normFactor * cavernDecay + surfaceWarmVx + (typeof gradVx !== 'undefined' ? gradVx : 0),
+        vy: (totalVy * normFactor + buoyancyVy) * cavernDecay + (typeof gradVy !== 'undefined' ? gradVy : 0)
     };
 }
 
@@ -5550,28 +5686,19 @@ function drawParticleSimulation() {
         const g_acc = config.g || 9.806;
         const rhoS = config.rho_S ?? 2500;
         const rhoL = config.rho ?? 998;
-        const delta_rho = rhoS - rhoL;
-        const vt_m_s = (2 / 9) * (delta_rho * g_acc * R_p * R_p) / mu_f;  // [m/s], +下向き
-        const vt_px = Math.max(-5, Math.min(5, 0.00487 * vt_m_s * (1 / m_per_px_ou)));
-
-        // ── 浮力 ──
-        // 格子から粒子位置の温度を取得し、局所密度差から浮力を算出
         const T_local = getTempAtPoint(p.x, p.y, coords);
-        const T_ref = heatSimTemp; // バルク液温を基準
-        // 熱膨張係数 β ≈ 2e-4 /K (水の代表値), 浮力加速度 a_b = β * ΔT * g [m/s²]
-        const beta_expand = 2e-4; // [1/K]
+        const T_ref = heatSimTemp;
+        const beta_expand = 2e-4;
         const deltaT = T_local - T_ref;
-        // 粒子の浮力: (ρ_f - ρ_p) / ρ_p × g — 熱による液密度変化分を追加
-        // 液密度変化: Δρ_L = -ρ_L * β * ΔT
         const rhoL_local = rhoL * (1 - beta_expand * deltaT);
-        const delta_rho_buoy = rhoS - rhoL_local;  // 正→沈降、負→浮上
-        const vt_buoy_m_s = (2 / 9) * (delta_rho_buoy * g_acc * R_p * R_p) / mu_f;
-        const vt_buoy_px = Math.max(-8, Math.min(8, 0.00487 * vt_buoy_m_s * (1 / m_per_px_ou)));
+        const delta_rho_total = rhoS - rhoL_local;  // 正→沈降、負→浮上
+        const vt_total_m_s = (2 / 9) * (delta_rho_total * g_acc * R_p * R_p) / mu_f;  // [m/s]
+        const vt_total_px = Math.max(-8, Math.min(8, 0.00487 * vt_total_m_s * (1 / m_per_px_ou)));
 
         // ── LPT 速度統合 ──
-        // 目標速度 = 平均流 + OU乱流 + (重力+浮力)
+        // 目標速度 = 平均流 + OU乱流 + 体積力に基づく沈降/浮上
         const target_vx = meanFlow.vx + p.wx;
-        const target_vy = meanFlow.vy + p.wy + vt_buoy_px;
+        const target_vy = meanFlow.vy + p.wy + vt_total_px;
 
         // Stokes 追従係数（粒子の慣性時間スケールに依存）
         // τ_p = ρ_p * d_p² / (18 μ_f) [s]
@@ -5625,12 +5752,12 @@ function drawParticleSimulation() {
         const y_bot = getVesselBottomY(p.x, coords);
         if (p.y > y_bot - p.radius - 1) {
             p.y = y_bot - p.radius - 1;
-            const isBuoyant = delta_rho < 0;
+            const isBuoyant = delta_rho_total < 0;
             if (!isBuoyant && config.simSpeed < liftOffThreshold) {
                 p.vx = 0; p.vy = 0; p.wx = 0; p.wy = 0;
                 p.color = '#78350f';
             } else if (isBuoyant) {
-                p.vy = Math.min(p.vy, -Math.max(0.35, Math.abs(vt_px) * 3));
+                p.vy = Math.min(p.vy, -Math.max(0.35, Math.abs(vt_total_px) * 3));
                 p.vx *= 0.4;
                 p.color = '#38bdf8';
             } else {
@@ -5971,6 +6098,19 @@ function switchInnerTab(tab) {
 function initParticleSimulation() {
     simCanvas = document.getElementById('particleSimCanvas');
     if (!simCanvas) return;
+    
+    // キャンバスのサイズを親コンテナに合わせる（非表示→表示時のリサイズ対応）
+    const canvasParent = simCanvas.parentElement;
+    if (canvasParent) {
+        const rect = canvasParent.getBoundingClientRect();
+        simCanvas.width = Math.max(300, Math.floor(rect.width * 0.95));
+        simCanvas.height = Math.max(250, Math.floor(rect.height * 0.7));
+    } else {
+        // フォールバック: 固定サイズ
+        simCanvas.width = 450;
+        simCanvas.height = 320;
+    }
+    
     simCtx = simCanvas.getContext('2d');
     
     if (simAnimId) {
@@ -6425,9 +6565,19 @@ function drawParticleSimulation() {
             p.vy = 0;
         }
         
-        // Boundary collision
-        if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.2; }
-        if (p.x > rx - p.radius) { p.x = rx - p.radius; p.vx = -p.vx * 0.2; }
+        // Boundary collision with minimum velocity retention
+        if (p.x < lx + p.radius) {
+            p.x = lx + p.radius;
+            p.vx = -p.vx * 0.2;
+            // 壁での反弾後、最小の接線速度（上下）を保持（粘着防止）
+            if (Math.abs(p.vy) < 0.2) p.vy = 0.2 * Math.sign(p.vy || 1);
+        }
+        if (p.x > rx - p.radius) {
+            p.x = rx - p.radius;
+            p.vx = -p.vx * 0.2;
+            // 壁での反弾後、最小の接線速度（上下）を保持（粘着防止）
+            if (Math.abs(p.vy) < 0.2) p.vy = 0.2 * Math.sign(p.vy || 1);
+        }
         
         const t_sec = performance.now() / 1000;
         const rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
@@ -6435,6 +6585,8 @@ function drawParticleSimulation() {
         if (p.y < y_surf + p.radius) {
             p.y = y_surf + p.radius;
             p.vy = Math.abs(p.vy) * 0.1;
+            // 水面での衝突後、最小の水平速度を保持（粘着防止）
+            if (Math.abs(p.vx) < 0.15) p.vx = 0.15 * Math.sign(p.vx || 1);
         }
 
         // コイルとの衝突判定（コイルON時）
@@ -7203,6 +7355,68 @@ function resetHeatSimulation() {
     initHeatSimulation();
 }
 
+function _calcColorScaleRange(T_in) {
+    const meanTemp = isNaN(heatSimTemp) ? 20.0 : heatSimTemp;
+
+    let tMin, tMax;
+    if (heatColorScaleMode === 'absolute') {
+        const T0 = config.liquidTempInit ?? 20.0;
+        tMin = Math.min(T0, T_in);
+        tMax = Math.max(T0, T_in);
+        if (tMax - tMin < 0.5) {
+            tMin -= 0.5;
+            tMax += 0.5;
+        }
+    } else {
+        tMin = meanTemp - 2.0;
+        tMax = meanTemp + 2.0;
+        if (T_in > meanTemp + 0.1) {
+            tMin = meanTemp - 0.5;
+            tMax = meanTemp + Math.max(1.5, (T_in - meanTemp) * 0.25);
+        } else if (T_in < meanTemp - 0.1) {
+            tMax = meanTemp + 0.5;
+            tMin = meanTemp - Math.max(1.5, (meanTemp - T_in) * 0.25);
+        }
+    }
+    return { tMin, tMax };
+}
+
+function _drawColorBar(ctx, canvas, tMin, tMax) {
+    const barW = 12;
+    const barH = 110;
+    const barX = 14;
+    const barY = canvas.height - barH - 40;
+    const steps = barH;
+
+    for (let i = 0; i < steps; i++) {
+        const ratio = i / steps;
+        const hue = Math.round(240 - 240 * ratio);
+        ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
+        ctx.fillRect(barX, barY + barH - i - 1, barW, 1);
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    ctx.font = 'bold 8px Inter, Noto Sans JP, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    const labelX = barX + barW + 4;
+    ctx.fillText(`${tMax.toFixed(1)} °C`, labelX, barY + 4);
+    const tMid = (tMin + tMax) / 2;
+    ctx.fillText(`${tMid.toFixed(1)} °C`, labelX, barY + barH / 2);
+    ctx.fillText(`${tMin.toFixed(1)} °C`, labelX, barY + barH - 4);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '7px Inter, Noto Sans JP, sans-serif';
+    ctx.textBaseline = 'top';
+    const modeLabel = heatColorScaleMode === 'absolute' ? '絶対スケール' : '相対スケール';
+    ctx.fillText(modeLabel, barX, barY + barH + 3);
+}
+
 function updateHeatPhysics() {
     const now = performance.now();
     if (!heatSimLastTime) {
@@ -7628,20 +7842,8 @@ function drawHeatSimulation() {
     ctx.clip(); // 液相内部のみ描画するようにクリッピング
 
     // ダイナミックにカラースケールの範囲を計算
+    const { tMin, tMax } = _calcColorScaleRange(T_in);
     const meanTemp = isNaN(heatSimTemp) ? 20.0 : heatSimTemp;
-    
-    let tMin = meanTemp - 2.0;
-    let tMax = meanTemp + 2.0;
-    
-    if (T_in > meanTemp + 0.1) {
-        // 加熱
-        tMin = meanTemp - 0.5;
-        tMax = meanTemp + Math.max(1.5, (T_in - meanTemp) * 0.25);
-    } else if (T_in < meanTemp - 0.1) {
-        // 冷却
-        tMax = meanTemp + 0.5;
-        tMin = meanTemp - Math.max(1.5, (meanTemp - T_in) * 0.25);
-    }
 
     if (heatShowThermalMap) {
         // --- ① カーネル平滑化法 ＆ ② 時間平均（タイムアベレージ）を用いた温度コンター表示 ---
@@ -7745,6 +7947,9 @@ function drawHeatSimulation() {
             ctx.arc(p.x, p.y, 1.8 * p.relSize, 0, Math.PI * 2);
             ctx.fill();
         });
+    }
+    if (heatShowThermalMap) {
+        _drawColorBar(ctx, canvas, tMin, tMax);
     }
     ctx.restore();
 
@@ -8074,6 +8279,28 @@ function drawHeatSimulation() {
     ctx.restore();
 }
 
+function _getHeatChartBaseline() {
+    return (config.liquidTempInit !== undefined && config.liquidTempInit !== null)
+        ? config.liquidTempInit
+        : (heatChartData.liquidTemp.length ? heatChartData.liquidTemp[0] : 20);
+}
+
+function _syncHeatChartYAxisMode() {
+    if (!heatChart) return;
+    const baseline = _getHeatChartBaseline();
+    heatChart.options.scales.y.title.text = heatColorScaleMode === 'relative'
+        ? '温度差 ΔT (°C)'
+        : '温度 (°C)';
+    heatChart.options.scales.y.ticks.callback = function(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '';
+        return heatColorScaleMode === 'relative'
+            ? (num - baseline).toFixed(1)
+            : num.toFixed(1);
+    };
+    heatChart.update('none');
+}
+
 function initHeatChart() {
     const ctx = document.getElementById('heatChart');
     if (!ctx) return;
@@ -8115,6 +8342,18 @@ function initHeatChart() {
                 legend: {
                     labels: { color: '#9ca3af', font: { size: 9 } },
                     position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            const baseline = _getHeatChartBaseline();
+                            const display = heatColorScaleMode === 'relative'
+                                ? (value - baseline).toFixed(1)
+                                : value.toFixed(1);
+                            return `${context.dataset.label}: ${display} °C`;
+                        }
+                    }
                 }
             },
             scales: {
@@ -8126,7 +8365,13 @@ function initHeatChart() {
                 y: {
                     title: { display: true, text: '温度 (°C)', color: '#6b7280', font: { size: 9 } },
                     grid: { color: 'rgba(255,255,255,0.03)' },
-                    ticks: { color: '#9ca3af', font: { size: 8 } }
+                    ticks: { color: '#9ca3af', font: { size: 8 }, callback: function(value) {
+                        const num = Number(value);
+                        if (!Number.isFinite(num)) return '';
+                        return heatColorScaleMode === 'relative'
+                            ? (num - _getHeatChartBaseline()).toFixed(1)
+                            : num.toFixed(1);
+                    }}
                 }
             }
         }
@@ -8138,6 +8383,7 @@ function updateHeatChart() {
         heatChart.data.labels = heatChartData.times;
         heatChart.data.datasets[0].data = heatChartData.liquidTemp;
         heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
+        _syncHeatChartYAxisMode();
         heatChart.update('none'); 
     }
 }
