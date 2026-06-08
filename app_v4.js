@@ -1011,10 +1011,9 @@ function updateVEstDisplay() {
 }
 
 function toggleJacketGapInput() {
-    const type = config.jacketType || 'flat';
     const container = document.getElementById('jacket-gap-container');
     if (container) {
-        container.style.display = type === 'spiral' ? 'flex' : 'none';
+        container.style.display = 'flex';
     }
 }
 
@@ -3579,7 +3578,9 @@ function generatePDFReport() {
     document.getElementById('pdf-val-liquid-k').textContent = config.liquidK.toFixed(2);
     document.getElementById('pdf-val-wall-thickness').textContent = config.wallThickness.toFixed(3);
     document.getElementById('pdf-val-wall-k').textContent = config.wallK.toFixed(1);
-    document.getElementById('pdf-val-jacket-type').textContent = config.jacketType === 'spiral' ? '渦巻ジャケット' : '平板ジャケット';
+    document.getElementById('pdf-val-jacket-type').textContent = config.jacketType === 'spiral'
+        ? '渦巻ジャケット（接線流）'
+        : (config.jacketType === 'flat-tangential' ? '平板ジャケット（接線流）' : '平板ジャケット（半径流）');
     document.getElementById('pdf-val-coil-active').textContent = config.coilActive ? 'あり' : 'なし';
     document.getElementById('pdf-val-media-type').textContent = config.mediaType === 'steam' ? 'スチーム' : '水';
     document.getElementById('pdf-val-media-temp-in').textContent = config.mediaTempIn.toFixed(1);
@@ -6512,6 +6513,9 @@ function drawParticleSimulation() {
     
     // Base radius scales with config.dp_um
     const baseRadius = Math.max(0.8, Math.min(6.0, 0.5 + 0.1 * Math.sqrt(config.dp_um || 150)));
+    const collisionCellSize = Math.max(16, baseRadius * 2.4);
+    const collisionGrid = new Map();
+    const getGridKey = (gx, gy) => `${gx},${gy}`;
 
     simCtx.save();
     simParticles.forEach(p => {
@@ -6613,6 +6617,54 @@ function drawParticleSimulation() {
                 }
             });
         }
+
+        const cellX = Math.floor(p.x / collisionCellSize);
+        const cellY = Math.floor(p.y / collisionCellSize);
+        for (let ix = cellX - 1; ix <= cellX + 1; ix++) {
+            for (let iy = cellY - 1; iy <= cellY + 1; iy++) {
+                const cell = collisionGrid.get(getGridKey(ix, iy));
+                if (!cell) continue;
+                cell.forEach(q => {
+                    const dx = p.x - q.x;
+                    const dy = p.y - q.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = p.radius + q.radius;
+                    if (dist <= 0 || dist >= minDist) return;
+
+                    const overlap = minDist - dist;
+                    const nx = dx / Math.max(dist, 1e-3);
+                    const ny = dy / Math.max(dist, 1e-3);
+                    const push = overlap * 0.5;
+
+                    p.x += nx * push;
+                    p.y += ny * push;
+                    q.x -= nx * push;
+                    q.y -= ny * push;
+
+                    const relVel = (p.vx - q.vx) * nx + (p.vy - q.vy) * ny;
+                    if (relVel < 0) {
+                        const impulse = Math.min(0.6, -relVel * 0.65);
+                        p.vx += impulse * nx;
+                        p.vy += impulse * ny;
+                        q.vx -= impulse * nx;
+                        q.vy -= impulse * ny;
+                    }
+
+                    const tx = -ny;
+                    const ty = nx;
+                    const relT = (p.vx - q.vx) * tx + (p.vy - q.vy) * ty;
+                    const friction = 0.15;
+                    p.vx -= friction * relT * tx;
+                    p.vy -= friction * relT * ty;
+                    q.vx += friction * relT * tx;
+                    q.vy += friction * relT * ty;
+                });
+            }
+        }
+
+        const gridKey = getGridKey(cellX, cellY);
+        if (!collisionGrid.has(gridKey)) collisionGrid.set(gridKey, []);
+        collisionGrid.get(gridKey).push(p);
 
         const y_bot = getVesselBottomY(p.x, coords);
         
@@ -7117,17 +7169,40 @@ function calculateHeatTransfer() {
         const s_j = config.jacketGap || 0.010;
         const D2 = D1 + 2 * s_j;
         let Ac_flow = 0;
+        let P_wet = 0;
         let D_eq = 0;
+        const jacketType = config.jacketType || 'flat';
+        const isSpiral = jacketType === 'spiral';
+        const isFlatTangential = jacketType === 'flat-tangential';
+        const isFlatRadial = jacketType === 'flat' || jacketType === 'flat-radial';
+        let L_flow = Math.max(1e-6, isSpiral ? Math.PI * D_T : (isFlatTangential ? Math.PI * D_T : D_T / 2));
 
-        if (config.jacketType === 'spiral') {
-            Ac_flow = s_j * s_j; D_eq = s_j;
+        if (isSpiral) {
+            Ac_flow = s_j * s_j;
+            P_wet = 4 * s_j;
         } else {
-            Ac_flow = (Math.PI / 4) * (D2 * D2 - D1 * D1); D_eq = D2 - D1;
+            Ac_flow = (Math.PI / 4) * (D2 * D2 - D1 * D1);
+            P_wet = Math.PI * (D1 + D2);
         }
+
+        D_eq = Math.max(1e-6, 4 * Ac_flow / P_wet);
+
         const u_j = W_j / (rho_j * Math.max(1e-6, Ac_flow));
         const Re_j = (rho_j * u_j * D_eq) / Math.max(1e-6, mu_j);
         const Pr_j = (Cp_j * mu_j) / Math.max(1e-6, k_j);
-        const Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1/3) * viscCorr;
+
+        let Nu_j = 0;
+        if (Re_j < 2100) {
+            // 層流: Sieder-Tate式（流路長 L_flow を利用）
+            Nu_j = 1.86 * Math.pow(Re_j * Pr_j * (D_eq / L_flow), 1/3) * Math.pow(1.0, 0.14);
+        } else if (Re_j < 10000) {
+            // 遷移流: Hausenの修正式
+            Nu_j = 0.116 * (Math.pow(Re_j, 2/3) - 125) * Math.pow((Cp_j * mu_j) / k_j, 1/3) * (1 + Math.pow(D_eq / L_flow, 2/3));
+        } else {
+            // 乱流: Sieder-Tate式
+            Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1/3) * viscCorr;
+        }
+        Nu_j = Math.max(Nu_j, 0.0);
         h2_j = (Nu_j * k_j) / Math.max(1e-6, D_eq);
 
         // コイル管内の伝熱係数
@@ -7135,7 +7210,12 @@ function calculateHeatTransfer() {
             const u_c = W_j / (rho_j * (Math.PI * d_ci * d_ci / 4));
             const Re_c = (rho_j * u_c * d_ci) / Math.max(1e-6, mu_j);
             const Pr_c = (Cp_j * mu_j) / Math.max(1e-6, k_j);
-            const Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1/3) * (1 + 3.5 * (d_ci / D_c)) * viscCorr;
+            let Nu_c = 0;
+            if (Re_c < 2300) {
+                Nu_c = 3.66;
+            } else {
+                Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1/3) * viscCorr * (1 + 3.5 * (d_ci / D_c));
+            }
             h2_c = (Nu_c * k_j) / d_ci;
         }
     }
