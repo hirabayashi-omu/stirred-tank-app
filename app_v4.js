@@ -995,6 +995,32 @@ function updateSlurryDensityUI() {
     el.innerHTML = `${rhoSl.toFixed(1)} <span style="font-size:0.75rem;opacity:0.75;">(ε = ${eps.toFixed(4)})</span>`;
 }
 
+function getSolidVolumeFraction() {
+    const rhoS = config.rho_S ?? 2500;
+    const rhoL = config.rho;
+    if (rhoS <= 0 || rhoL <= 0) return 0;
+
+    let c_s = 0;
+    if (config.solidConcMode === 'wt-total') {
+        const w = config.solidConcVal ?? 1.0;
+        c_s = Math.max(0, Math.min(0.9999, w / 100));
+    } else {
+        const X = config.solidConcVal ?? 1.0;
+        c_s = X / (100 + X);
+    }
+
+    return (c_s / rhoS) / (c_s / rhoS + (1 - c_s) / rhoL);
+}
+
+function getParticleTargetCount(coords) {
+    const phi_s = getSolidVolumeFraction();
+    const tankArea = Math.PI * Math.pow(coords.D_px / 2, 2);
+    const meanParticleRadiusPx = 2.4;
+    const particleArea = Math.PI * meanParticleRadiusPx * meanParticleRadiusPx;
+    const rawCount = phi_s * tankArea / particleArea * 9.0;
+    return Math.min(3000, Math.max(200, Math.round(rawCount)));
+}
+
 /**
  * 液量の概算値を計算してUIに表示する。
  */
