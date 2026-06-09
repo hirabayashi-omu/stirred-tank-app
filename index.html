@@ -192,6 +192,13 @@
                                 <option value="cylindrical">円筒形 (Cylindrical)</option>
                             </select>
                         </div>
+                        <div class="input-group full-width" id="cavern-alpha-group" style="display: none;">
+                            <label for="cavern-alpha">
+                                キャバーン高さ比 α = H<sub>c</sub>/D<sub>c</sub>
+                                <span style="font-size:0.75rem;opacity:0.6;">（通常 0.4〜1.0）</span>
+                            </label>
+                            <input type="number" id="cavern-alpha" value="0.7" step="0.05" min="0.1" max="2.0">
+                        </div>
                     </div>
                 </section>
 
@@ -873,7 +880,8 @@
                                             <button id="btn-heat-colorscale-relative" class="btn"
                                                 style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: var(--accent-color); color: var(--text-primary); border: none; cursor: pointer;">相対</button>
                                             <button id="btn-heat-colorscale-absolute" class="btn"
-                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">絶対 (T₀〜T_in)</button>
+                                                style="padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; line-height: 1.2; height: auto; width: auto; background: transparent; color: var(--text-muted); border: none; cursor: pointer;">絶対
+                                                (T₀〜T_in)</button>
                                         </div>
                                     </div>
                                     <div

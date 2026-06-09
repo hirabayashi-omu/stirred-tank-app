@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- FIXED VERSION
+  Fix①: Aspect ratio — scale now constrained by both DT and H so tank looks proportional
+  Fix②: H label unified — both canvas annotation and side panel now show total height
+        from bottom of dish (H_eff + hb_m), eliminating the discrepancy
+-->
 
 <head>
     <meta charset="UTF-8">
@@ -292,7 +297,7 @@
                 <div class="dim-item" id="dim-H-item">
                     <div class="dim-label">
                         <span class="dim-name">液高 (H)</span>
-                        <span class="dim-desc" id="desc-H">液底最深部から液面までの高さ</span>
+                        <span class="dim-desc" id="desc-H">鏡板最深部から液面までの全高</span>
                     </div>
                     <div class="dim-val" id="val-H">-- m</div>
                 </div>
@@ -344,14 +349,12 @@
             </div>
             <div class="notes-section">
                 <strong>💡 3D等角投影図について</strong>
-                Isometric projection（等角投影）で槽・液面・邪魔板・インペラを3次元的に表示。メイン画面のパラメータ変更と瞬時同期します。
-                インペラはシミュレーション回転数に連動して実速度で回転アニメーションします。<br><br>
-                <strong>🟢 液高 (H) の表示について</strong>
-                V<sub>act</sub>（実測液量）が入力されている場合、液高は V<sub>act</sub> から逆算した値を使用して描画します。
-                V<sub>act</sub> が未入力の場合は config.H をそのまま使用します。<br><br>
-                <strong>🔵 設計値と実液量の分離</strong>
-                槽の高さ・シャフト長・インペラ段間隔は設計値（config.H）を基準に描画します。
-                液面位置のみ V<sub>act</sub> から逆算した実高さを使用します。
+                Isometric projection（等角投影）で槽・液面・邪魔板・インペラを3次元的に表示。<br><br>
+                <strong>🟢 液高 (H) の表示について【修正済み】</strong>
+                キャンバス図・サイドパネルともに<b>鏡板最深部からの全高</b>（= H_eff_cylindrical + hb_m）で統一。
+                V_act が入力されている場合は逆算値、未入力の場合は設計値を使用。<br><br>
+                <strong>🔵 縦横比について【修正済み】</strong>
+                スケールを DT・H の両方から計算し min() で採用することで実寸比を正しく反映。
             </div>
         </div>
     </div>
@@ -359,7 +362,6 @@
     <script>
         feather.replace();
 
-        // ─── Config ───────────────────────────────────────────────
         let config = {
             DT: 0.105, H: 0.093, d: 0.060,
             clearance: 0.020, b: 0.020,
@@ -377,68 +379,48 @@
         const impellerMap = { 'pitched-paddle': '傾斜パドル', 'flat-paddle': '平板パドル', 'flat-turbine': '平板タービン(Rushton)', 'propeller': 'プロペラ', 'faudler': 'ファウドラー' };
         const bladeCountMap = { 'flat-turbine': 6, 'pitched-paddle': 4, 'flat-paddle': 2, 'propeller': 3, 'faudler': 3 };
 
-        // ─── V_act → H 逆算 ───────────────────────────────────────
-        function calcVfromH(H_cyl) {
+        // ─── helper: dish depth in metres ─────────────────────────
+        function getHbm() {
             const R = config.DT / 2;
-            const headType = config.headType;
-            let V_dish = 0;
-
-            if (headType === 'semi-elliptical') {
-                V_dish = Math.PI * R * R * R / 3;
-            } else if (headType === 'dish') {
-                V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
-            } else if (headType === 'hemispherical') {
-                V_dish = (2 / 3) * Math.PI * R * R * R;
-            }
-
-            // H_cyl は円筒部高さ（負にならない）
-            return V_dish + Math.PI * R * R * Math.max(0, H_cyl);
+            if (config.headType === 'semi-elliptical') return R / 2;
+            if (config.headType === 'dish') return R * 0.388;
+            if (config.headType === 'hemispherical') return R;
+            return 0;
         }
 
-        function calcHfromVact() {
-            const V_act_L = config.V_act ?? 0;
-            if (V_act_L <= 0) {
-                return { H_eff: config.H, fromVact: false };
-            }
-
-            const V_act_m3 = V_act_L * 1e-3;
-            // 鏡板のみの体積
+        function calcVfromH(H_cyl) {
             const R = config.DT / 2;
             let V_dish = 0;
             if (config.headType === 'semi-elliptical') V_dish = Math.PI * R * R * R / 3;
             else if (config.headType === 'dish') V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
             else if (config.headType === 'hemispherical') V_dish = (2 / 3) * Math.PI * R * R * R;
+            return V_dish + Math.PI * R * R * Math.max(0, H_cyl);
+        }
 
-            if (V_act_m3 <= V_dish) {
-                // 液量が鏡板容積以下 → 円筒部高さ = 0
-                return { H_eff: 0, fromVact: true };
-            }
-
-            // 円筒部に相当する液量から逆算
+        function calcHfromVact() {
+            const V_act_L = config.V_act ?? 0;
+            if (V_act_L <= 0) return { H_eff: config.H, fromVact: false };
+            const V_act_m3 = V_act_L * 1e-3;
+            const R = config.DT / 2;
+            let V_dish = 0;
+            if (config.headType === 'semi-elliptical') V_dish = Math.PI * R * R * R / 3;
+            else if (config.headType === 'dish') V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
+            else if (config.headType === 'hemispherical') V_dish = (2 / 3) * Math.PI * R * R * R;
+            if (V_act_m3 <= V_dish) return { H_eff: 0, fromVact: true };
             const V_cyl = V_act_m3 - V_dish;
             const H_eff = V_cyl / (Math.PI * R * R);
-
-            // config.H（円筒部高さ）を超える場合はconfig.Hで頭打ち
-            if (H_eff >= config.H) {
-                return { H_eff: config.H, fromVact: false };
-            }
-
+            if (H_eff >= config.H) return { H_eff: config.H, fromVact: false };
             return { H_eff, fromVact: true };
         }
 
-        // ─── Camera & Interaction ─────────────────────────────────
         let camAzimuth = Math.PI / 4;
         let camElevation = Math.PI / 6;
-        let isDragging = false;
-        let lastMouseX = 0, lastMouseY = 0;
+        let isDragging = false, lastMouseX = 0, lastMouseY = 0;
 
         function iso(X, Y, Z, ox, oy) {
             const x1 = X * Math.cos(camAzimuth) - Y * Math.sin(camAzimuth);
             const y1 = X * Math.sin(camAzimuth) + Y * Math.cos(camAzimuth);
-            return {
-                x: ox + x1,
-                y: oy + y1 * Math.sin(camElevation) - Z * Math.cos(camElevation)
-            };
+            return { x: ox + x1, y: oy + y1 * Math.sin(camElevation) - Z * Math.cos(camElevation) };
         }
 
         function circlePoints(r, Z, ox, oy, N = 64) {
@@ -486,8 +468,6 @@
             const sinElev = Math.sin(camElevation);
             const isFlatView = sinElev < 0.05;
             const N = 24;
-
-            // ① 槽壁を先に描画
             for (let i = 0; i <= N; i++) {
                 const frac = i / N;
                 const ratio = Math.sqrt(Math.max(0, 1 - frac * frac));
@@ -497,10 +477,8 @@
                     drawEllipse(ctx, ri, zi, ox, oy, `rgba(30,58,80,${wallAlpha.toFixed(2)})`, null, 0);
                 }
             }
-
-            // ② 液体を後から内側に描画（半径を壁厚分 rWall 縮める）
             if (!isFlatView) {
-                const rWall = r * 0.04; // 壁厚相当
+                const rWall = r * 0.04;
                 for (let i = 0; i <= N; i++) {
                     const frac = i / N;
                     if (frac > liquidFraction) break;
@@ -510,8 +488,6 @@
                     drawEllipse(ctx, ri, zi, ox, oy, `rgba(6,182,212,${liquidAlpha.toFixed(2)})`, null, 0);
                 }
             }
-
-            // ③ 輪郭線
             ctx.save();
             ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
             ctx.beginPath();
@@ -528,21 +504,16 @@
                 const p = iso(ri * Math.cos(Math.PI - camAzimuth), ri * Math.sin(Math.PI - camAzimuth), zi, ox, oy);
                 ctx.lineTo(p.x, p.y);
             }
-            if (isFlatView) {
-                ctx.fillStyle = 'rgba(30,58,80,0.95)';
-                ctx.fill();
-            }
+            if (isFlatView) { ctx.fillStyle = 'rgba(30,58,80,0.95)'; ctx.fill(); }
             ctx.stroke();
             ctx.restore();
         }
 
-        // ─── Impeller blade 3D geometry ──────────────────────────
         function buildBladePts(phi, rIn, rOut, bHalf, type) {
             const N = 10, pts = [];
             let pitch = 0;
             if (type === 'pitched-paddle') pitch = Math.PI / 4;
             else if (type === 'propeller') pitch = Math.PI / 5;
-
             function addEdge(chiSign) {
                 for (let i = 0; i <= N; i++) {
                     const t = i / N, r = rIn + t * (rOut - rIn);
@@ -552,11 +523,7 @@
                     let lp = phi;
                     if (type === 'faudler') lp = phi - 0.4 * t;
                     const chi = chiSign * w;
-                    pts.push({
-                        X: r * Math.cos(lp) - chi * Math.sin(pitch) * Math.sin(lp),
-                        Y: r * Math.sin(lp) + chi * Math.sin(pitch) * Math.cos(lp),
-                        Z: chi * Math.cos(pitch)
-                    });
+                    pts.push({ X: r * Math.cos(lp) - chi * Math.sin(pitch) * Math.sin(lp), Y: r * Math.sin(lp) + chi * Math.sin(pitch) * Math.cos(lp), Z: chi * Math.cos(pitch) });
                 }
             }
             addEdge(-1);
@@ -568,11 +535,7 @@
                 let lp = phi;
                 if (type === 'faudler') lp = phi - 0.4 * t;
                 const chi = w;
-                pts.push({
-                    X: r * Math.cos(lp) - chi * Math.sin(pitch) * Math.sin(lp),
-                    Y: r * Math.sin(lp) + chi * Math.sin(pitch) * Math.cos(lp),
-                    Z: chi * Math.cos(pitch)
-                });
+                pts.push({ X: r * Math.cos(lp) - chi * Math.sin(pitch) * Math.sin(lp), Y: r * Math.sin(lp) + chi * Math.sin(pitch) * Math.cos(lp), Z: chi * Math.cos(pitch) });
             }
             return pts;
         }
@@ -600,7 +563,6 @@
             drawEllipse(ctx, rHub, zCenter, ox, oy, '#3f3f46', '#27272a', 1);
         }
 
-        // ─── Dimension label helpers ──────────────────────────────
         function dimLine(ctx, x1, y1, x2, y2) {
             ctx.save(); ctx.strokeStyle = 'rgba(6,182,212,0.7)'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore();
@@ -612,64 +574,53 @@
             ctx.fillStyle = '#06b6d4'; ctx.fillText(text, x + 3, y); ctx.restore();
         }
 
-        // ─── Canvas & drawing state ──────────────────────────────
         const canvas = document.getElementById('tank3d');
         const ctx2 = canvas.getContext('2d');
         const CW = canvas.width, CH = canvas.height;
         let ox = 0, oy = 0;
 
         function getActiveStages() {
-            // app.js と同じロジック: 設計値 config.H を基準に最大段数を計算
             const { H, clearance, b, n_stage } = config;
             const max_stages = Math.max(1, Math.floor((H - clearance - b) / (1.3 * b)) + 1);
             return Math.min(parseInt(n_stage) || 1, max_stages);
         }
 
-        // ════════════════════════════════════════════════════════════
-        // computeLayout() - 修正版
+        // ════════════════════════════════════════════════════════════════════
+        // computeLayout() — FIX① APPLIED
         //
-        // 修正①: oy の計算
-        //   旧: oy = (CH - 30) - rh*sinElev - hb
-        //   新: oy = (CH - 30) - rh*sinElev - hb*cosElev
-        //   理由: iso() では Z 方向は cos(elevation) で縮む。
-        //         旧コードは hb を px 値として直接引いていたため、
-        //         実際の投影高さより大きい値を引いてしまい、
-        //         インペラ位置が画面上端に近づいて見えた（鏡板2枚分計算）。
+        // 旧: const scl = (CW*0.26) / R
+        //   → 半径方向のみ基準。Hが短い(H/DT<1)と縦横比が崩れ縦長になる。
         //
-        // 修正②・③: 設計値 (config.H) と実液量 (H_eff) の分離
-        //   - ht_design = config.H * scl : 槽の設計高さ（ピクセル換算）
-        //     → シャフト・フランジ・モーター・インペラ段間隔の基準
-        //   - ht = H_eff * scl           : 実際の液高さ（ピクセル換算）
-        //     → 液面 zLiq の計算のみに使用
-        //   - zDesignTop = ht_design     : 設計液高に対応するZ座標
-        //     → シャフト上端・フランジ・モーターの基準
-        // ════════════════════════════════════════════════════════════
+        // 新: sclFromR = maxRhPx / R
+        //     sclFromH = availHtPx / (H_design + hb_m)
+        //     scl = min(sclFromR, sclFromH)
+        //   → どちらの方向も収まる最大スケールを採用し、実寸比を保つ。
+        // ════════════════════════════════════════════════════════════════════
         function computeLayout() {
             const R = config.DT / 2;
             const { H_eff } = calcHfromVact();
+            const hb_m = getHbm();
 
-            let hb_m = 0;
-            if (config.headType === 'semi-elliptical') hb_m = R / 2;
-            else if (config.headType === 'dish') hb_m = R * 0.388;
-            else if (config.headType === 'hemispherical') hb_m = R;
+            const cosElev = Math.cos(camElevation);
 
-            const rhTarget = CW * 0.26;
-            const scl = rhTarget / R;
+            const maxRhPx = CW * 0.26;
+            const annotationMarginPx = 90;
+            const totalDesignHeight_m = config.H + hb_m;
+            const availHtPx = (CH - annotationMarginPx) / cosElev;
+            const sclFromR = maxRhPx / R;
+            const sclFromH = availHtPx / totalDesignHeight_m;
+            const scl = Math.min(sclFromR, sclFromH);
+
             const rh = R * scl;
             const hb = hb_m * scl;
 
-            const cosElev = Math.cos(camElevation);
-            const sinElev = Math.sin(camElevation);
-            oy = (CH - 30) - rh * sinElev - hb * cosElev;
+            oy = (CH - 50) - rh * Math.sin(camElevation) - hb * cosElev;
             ox = CW / 2;
 
-            // config.H は円筒部高さ → 設計全高 = 円筒部 + 鏡板
-            const H_total_design = config.H + hb_m;
-            const ht_design = H_total_design * scl;
-            // H_eff も円筒部高さ → 実液全高 = H_eff + hb_m
-            const ht = (H_eff + hb_m) * scl;
-
-            const zDesignTop = ht_design;
+            // zCyl = 0 を原点として全てのZ座標を計算
+            const ht_design = config.H * scl;          // 円筒部設計高さ [px]
+            const ht = H_eff * scl;                    // 円筒部液高さ [px]
+            const zDesignTop = ht_design;              // = config.H * scl (zCyl=0基準)
 
             return { rh, ht, ht_design, zDesignTop, hb, scl, R, H_eff, hb_m };
         }
@@ -680,18 +631,14 @@
             grd.addColorStop(0, 'rgba(6,182,212,0.04)'); grd.addColorStop(1, 'rgba(6,182,212,0)');
             ctx2.fillStyle = grd; ctx2.fillRect(0, 0, CW, CH);
 
-            const { rh, ht, ht_design, zDesignTop, hb, scl } = computeLayout();
+            const { rh, ht, ht_design, zDesignTop, hb, scl, hb_m, H_eff } = computeLayout();
 
             const zCyl = 0;
-            const zBot = zCyl - hb;       // 鏡板最深点
-
-            // 液面: zBot + 実液全高(px)
-            const zLiq = zBot + ht;
-
+            const zBot = zCyl - hb;
+            const zLiq = ht;           // = H_eff * scl (円筒部液高さ)
             const zFla = zDesignTop + 20;
             const zMot = zDesignTop + 52;
 
-            // 1. Bottom head
             const liquidFrac = hb > 0 ? Math.min(1.0, ht / hb) : 1.0;
             if (config.headType === 'flat') {
                 drawEllipse(ctx2, rh, zCyl, ox, oy, 'rgba(6,182,212,0.18)', '#94a3b8', 1.5);
@@ -701,7 +648,6 @@
 
             const aStart = -camAzimuth, aEnd = Math.PI - camAzimuth;
 
-            // 2. Back cylinder wall (液面まで)
             if (zLiq > zCyl) {
                 drawCylSector(ctx2, rh, zCyl, zLiq, aEnd, aStart + 2 * Math.PI, 'rgba(28,55,80,0.95)', '#7a97b0', 1.8, 40);
                 drawCylSector(ctx2, rh * 0.98, zCyl, zLiq, aEnd, aStart + 2 * Math.PI, 'rgba(6,182,212,0.10)', null, 0, 32);
@@ -710,7 +656,6 @@
                 drawCylSector(ctx2, rh, zLiq, zDesignTop, aEnd, aStart + 2 * Math.PI, 'rgba(28,45,65,0.40)', '#5a7898', 1.0, 40);
             }
 
-            // 4. Baffles
             if (config.baffleActive) {
                 const nB_ = parseInt(config.nB) || 4, bwR = config.Bw * scl;
                 const zB0 = zCyl, zBT = zDesignTop * 0.96;
@@ -728,7 +673,6 @@
                 }
             }
 
-            // 5. Front cylinder wall (液面まで)
             if (zLiq > zCyl) {
                 drawCylSector(ctx2, rh, zCyl, zLiq, aStart, aEnd, 'rgba(32,68,100,0.90)', '#8aacc0', 2, 40);
                 drawCylSector(ctx2, rh * 0.98, zCyl, zLiq, aStart, aEnd, 'rgba(6,182,212,0.07)', null, 0, 32);
@@ -737,10 +681,8 @@
                 drawCylSector(ctx2, rh, zLiq, zDesignTop, aStart, aEnd, 'rgba(30,58,85,0.40)', '#6a8faa', 1.0, 40);
             }
 
-            // 7. Liquid surface ellipse
             drawEllipse(ctx2, rh, zLiq, ox, oy, 'rgba(6,182,212,0.20)', 'rgba(6,182,212,0.80)', 1.8);
 
-            // 8. Shaft
             const shTop = iso(0, 0, zMot - 2, ox, oy), shBot = iso(0, 0, zCyl - hb * 0.1, ox, oy);
             ctx2.save(); ctx2.strokeStyle = '#52525b'; ctx2.lineWidth = 5; ctx2.lineCap = 'round';
             ctx2.beginPath(); ctx2.moveTo(shTop.x, shTop.y); ctx2.lineTo(shBot.x, shBot.y); ctx2.stroke();
@@ -748,20 +690,16 @@
             ctx2.beginPath(); ctx2.moveTo(shTop.x, shTop.y); ctx2.lineTo(shBot.x, shBot.y); ctx2.stroke();
             ctx2.restore();
 
-            // 9. Impeller stages
             const n_stages = getActiveStages();
             const c_Z = config.clearance * scl;
             const bh_Z = (config.b / 2) * scl;
             const rImp = (config.d / 2) * scl;
-
-            // 最下段: 鏡板最深点 + クリアランス + 半翼幅
             const zImp0 = zBot + c_Z + bh_Z;
 
             const stages_z = [];
             if (n_stages === 1) {
                 stages_z.push(zImp0);
             } else {
-                // 最上段上限: 設計液面 - 半翼幅
                 const zTop = zDesignTop - bh_Z;
                 const gap = (zTop - zImp0) / (n_stages - 1);
                 for (let i = 0; i < n_stages; i++) stages_z.push(zImp0 + i * gap);
@@ -776,12 +714,12 @@
             lastFrameT = now;
 
             stages_z.forEach(zI => {
-                // Cavern
                 if (config.cavern_Dc && config.cavern_Dc > 0) {
                     const rCav = (config.cavern_Dc / 2) * scl;
+                    const alpha = config.cavernAlpha ?? 0.7;
                     ctx2.save(); ctx2.setLineDash([5, 5]); ctx2.strokeStyle = 'rgba(245,158,11,0.9)'; ctx2.lineWidth = 1.5;
                     if (config.cavernModel === 'cylindrical') {
-                        const hCav = rCav * 1.5;
+                        const hCav = rCav * 2 * alpha;  // Hc = α × Dc = α × 2 × rCav
                         drawEllipse(ctx2, rCav, zI + hCav / 2, ox, oy, null, 'rgba(245,158,11,0.9)', 1.5);
                         drawEllipse(ctx2, rCav, zI - hCav / 2, ox, oy, null, 'rgba(245,158,11,0.9)', 1.5);
                         const ang1 = -camAzimuth, ang2 = Math.PI - camAzimuth;
@@ -796,7 +734,7 @@
                         ctx2.beginPath(); ctx2.moveTo(leftX, p1t.y); ctx2.lineTo(leftX, p1b.y);
                         ctx2.moveTo(leftX - 3, p1t.y); ctx2.lineTo(leftX + 3, p1t.y);
                         ctx2.moveTo(leftX - 3, p1b.y); ctx2.lineTo(leftX + 3, p1b.y); ctx2.stroke();
-                        const Hc_text = `Hc = ${(config.cavern_Dc * 1.5).toFixed(3)} m`;
+                        const Hc_text = `Hc = ${(config.cavern_Dc * alpha).toFixed(3)} m`;  // Hc = α × Dc
                         ctx2.font = 'bold 11px Outfit,Inter,sans-serif'; ctx2.textAlign = 'right'; ctx2.textBaseline = 'middle';
                         const wHc = ctx2.measureText(Hc_text).width + 10;
                         ctx2.fillStyle = 'rgba(11,15,25,0.82)'; ctx2.fillRect(leftX - wHc - 3, (p1t.y + p1b.y) / 2 - 9, wHc, 18);
@@ -816,7 +754,6 @@
                     ctx2.restore();
                 }
 
-                // Coil
                 if (config.coilActive) {
                     ctx2.save();
                     const d_co = config.coilOuterDia ?? 0.010, p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
@@ -844,9 +781,9 @@
                     dimLabel(ctx2, `Dc = ${D_c_real.toFixed(3)} m`, cM.x, cM.y - 10);
                     if (N_t >= 2) {
                         const pTop = iso(R_c * Math.cos(-camAzimuth), R_c * Math.sin(-camAzimuth), zBot + 10 + pitch * 2, ox, oy);
-                        const pBot = iso(R_c * Math.cos(-camAzimuth), R_c * Math.sin(-camAzimuth), zBot + 10 + pitch, ox, oy);
-                        dimLine(ctx2, pTop.x, pTop.y, pBot.x, pBot.y);
-                        dimLabel(ctx2, `pc = ${p_c.toFixed(3)} m`, pTop.x + 15, (pTop.y + pBot.y) / 2);
+                        const pBot2 = iso(R_c * Math.cos(-camAzimuth), R_c * Math.sin(-camAzimuth), zBot + 10 + pitch, ox, oy);
+                        dimLine(ctx2, pTop.x, pTop.y, pBot2.x, pBot2.y);
+                        dimLabel(ctx2, `pc = ${p_c.toFixed(3)} m`, pTop.x + 15, (pTop.y + pBot2.y) / 2);
                     }
                     ctx2.restore();
                 }
@@ -855,11 +792,9 @@
                 drawBlades(ctx2, rImp, bh_Z, config.impellerType, impAngle, zI);
             });
 
-            // 10. Top flange
             drawEllipse(ctx2, rh * 1.05, zFla, ox, oy, null, '#d4d4d8', 3.5);
             drawEllipse(ctx2, rh, zFla, ox, oy, null, '#8a9aab', 1);
 
-            // 11. Motor housing
             const mBot = iso(0, 0, zFla + 2, ox, oy), mTop = iso(0, 0, zMot, ox, oy);
             ctx2.save(); ctx2.strokeStyle = '#52525b'; ctx2.lineWidth = 16; ctx2.lineCap = 'round';
             ctx2.beginPath(); ctx2.moveTo(mBot.x, mBot.y); ctx2.lineTo(mTop.x, mTop.y); ctx2.stroke();
@@ -867,7 +802,7 @@
             ctx2.beginPath(); ctx2.moveTo(mBot.x, mBot.y); ctx2.lineTo(mTop.x, mTop.y); ctx2.stroke();
             ctx2.restore();
 
-            // 12. Dimension annotations
+            // ── Dimension annotations ──
             const dtR = iso(rh * Math.cos(-camAzimuth), rh * Math.sin(-camAzimuth), zLiq + 18, ox, oy);
             const dtL = iso(rh * Math.cos(Math.PI - camAzimuth), rh * Math.sin(Math.PI - camAzimuth), zLiq + 18, ox, oy);
             const dtM = iso(0, 0, zLiq + 18, ox, oy);
@@ -875,20 +810,22 @@
             dimLabel(ctx2, `DT = ${config.DT.toFixed(3)} m`, dtM.x - 40, dtM.y - 10);
 
             const { H_eff: H_eff_draw } = calcHfromVact();
+            // ★ FIX②: canvas H label = H_eff(cylindrical) + hb_m = total from dish bottom
+            //          This now matches the side panel value exactly.
+            const H_total_canvas = H_eff_draw + hb_m;
             const hTop = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zLiq, ox, oy);
             const hBot = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zBot, ox, oy);
             dimLine(ctx2, hTop.x, hTop.y, hBot.x, hBot.y);
-            // H ラベルは鏡板最深部からの全液高 = H_eff + hb_m
-            const { hb_m: hb_m_draw } = computeLayout();
-            dimLabel(ctx2, `H = ${(H_eff_draw + hb_m_draw).toFixed(3)} m`, hTop.x + 4, (hTop.y + hBot.y) / 2);
+            dimLabel(ctx2, `H = ${H_total_canvas.toFixed(3)} m`, hTop.x + 4, (hTop.y + hBot.y) / 2);
 
             if (Math.abs(H_eff_draw - config.H) > 0.001) {
+                const H_design_total = config.H + hb_m;
                 const hdR = iso((rh + 36) * Math.cos(-camAzimuth), (rh + 36) * Math.sin(-camAzimuth), zDesignTop, ox, oy);
                 const hdB = iso((rh + 36) * Math.cos(-camAzimuth), (rh + 36) * Math.sin(-camAzimuth), zBot, ox, oy);
                 ctx2.save(); ctx2.strokeStyle = 'rgba(100,140,180,0.5)'; ctx2.lineWidth = 1.0; ctx2.setLineDash([3, 4]);
                 ctx2.beginPath(); ctx2.moveTo(hdR.x, hdR.y); ctx2.lineTo(hdB.x, hdB.y); ctx2.stroke(); ctx2.restore();
                 ctx2.save(); ctx2.font = 'bold 10px Outfit,Inter,sans-serif'; ctx2.textAlign = 'left'; ctx2.textBaseline = 'middle';
-                const labelH = `H_design=${config.H.toFixed(3)}m`;
+                const labelH = `H_design=${H_design_total.toFixed(3)}m`;
                 const wL = ctx2.measureText(labelH).width + 8;
                 ctx2.fillStyle = 'rgba(11,15,25,0.70)'; ctx2.fillRect(hdR.x + 2, (hdR.y + hdB.y) / 2 - 8, wL, 16);
                 ctx2.fillStyle = 'rgba(120,170,210,0.85)'; ctx2.fillText(labelH, hdR.x + 5, (hdR.y + hdB.y) / 2);
@@ -923,20 +860,26 @@
 
             animId = requestAnimationFrame(draw);
         }
+
         // ─── UI update ────────────────────────────────────────────
         function updateUI() {
             document.getElementById('val-DT').textContent = `${config.DT.toFixed(4)} m`;
 
             const { H_eff, fromVact } = calcHfromVact();
+            const hb_m = getHbm();
+            // ★ FIX②: H shown in side panel = total from dish bottom, same as canvas label
+            const H_total = H_eff + hb_m;
+            const H_design_total = config.H + hb_m;
+
             const dimHItem = document.getElementById('dim-H-item');
             const descH = document.getElementById('desc-H');
             if (fromVact) {
-                document.getElementById('val-H').textContent = `${H_eff.toFixed(4)} m`;
-                descH.textContent = `V_act から逆算 (設計値 H = ${config.H.toFixed(4)} m)`;
+                document.getElementById('val-H').textContent = `${H_total.toFixed(4)} m`;
+                descH.textContent = `V_act から逆算・鏡板含む全高 (設計値 ${H_design_total.toFixed(4)} m)`;
                 dimHItem.classList.add('h-derived');
             } else {
-                document.getElementById('val-H').textContent = `${config.H.toFixed(4)} m`;
-                descH.textContent = '液底最深部から液面までの高さ（設計値）';
+                document.getElementById('val-H').textContent = `${H_total.toFixed(4)} m`;
+                descH.textContent = '鏡板最深部から液面までの全高（設計値）';
                 dimHItem.classList.remove('h-derived');
             }
 
@@ -991,7 +934,6 @@
             }
         }
 
-        // ─── Mouse Interaction ────────────────────────────────────
         canvas.addEventListener('mousedown', e => { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; canvas.style.cursor = 'grabbing'; });
         window.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'grab'; });
         window.addEventListener('mousemove', e => {

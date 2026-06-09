@@ -384,6 +384,16 @@ function initInputs() {
     const cModel = document.getElementById('cavern-model');
     if (cModel) cModel.value = config.cavernModel ?? 'spherical';
 
+    // キャバーン α の初期ロード
+    const cavernAlphaInput = document.getElementById('cavern-alpha');
+    if (cavernAlphaInput) {
+        cavernAlphaInput.value = config.cavernAlpha ?? 0.7;
+        const alphaGroup = document.getElementById('cavern-alpha-group');
+        if (alphaGroup) {
+            alphaGroup.style.display = config.cavernModel === 'cylindrical' ? 'block' : 'none';
+        }
+    }
+
     syncSpeedUIElements();
 
     // 伝熱データのロード
@@ -1029,10 +1039,17 @@ function updateVEstDisplay() {
     const hEl = document.getElementById('h-est-display');
     if (!el && !hEl) return;
     try {
-        const vEstM3 = calcLiquidVolume(); // m³
-        const vEstL = vEstM3 * 1000;       // L
+        const vEstM3 = calcLiquidVolume();
+        const vEstL = vEstM3 * 1000;
         const V_act_m3 = (config.V_act && config.V_act > 0) ? config.V_act * 1e-3 : null;
-        const hEstM = calcLiquidHeightFromVolume(V_act_m3 || vEstM3);
+        const hCyl = calcLiquidHeightFromVolume(V_act_m3 || vEstM3); // 円筒部高さ
+
+        // 鏡板高さを加算して全高を計算
+        let hb_m = 0;
+        if (config.headType === 'semi-elliptical') hb_m = config.DT / 4;
+        else if (config.headType === 'dish') hb_m = config.DT * 0.1935;
+        else if (config.headType === 'hemispherical') hb_m = config.DT / 2;
+        const hTotal = hCyl + hb_m; // 鏡板最深部からの全高
 
         if (el) {
             if (config.V_act && config.V_act > 0) {
@@ -1042,7 +1059,8 @@ function updateVEstDisplay() {
             }
         }
         if (hEl) {
-            hEl.textContent = `推算液高: ${hEstM.toFixed(4)} m`;
+            // 全高（鏡板含む）を表示 ← ここを修正
+            hEl.textContent = `液高(鏡板含む全高): ${hTotal.toFixed(4)} m`;
         }
     } catch (e) {
         console.error("Failed to update V_est display", e);
@@ -1196,10 +1214,19 @@ function calcLiquidHeightFromVolume(V_m3) {
 }
 
 function getLiquidHeight() {
-    if (config.V_act && config.V_act > 0) {
-        return calcLiquidHeightFromVolume(config.V_act * 1e-3);
+    let h_dish = 0;
+    if (config.headType === 'semi-elliptical') {
+        h_dish = config.DT / 4;
+    } else if (config.headType === 'dish') {
+        h_dish = 0.1935 * config.DT;
+    } else if (config.headType === 'hemispherical') {
+        h_dish = config.DT / 2;
     }
-    return config.H;
+
+    if (config.V_act && config.V_act > 0) {
+        return calcLiquidHeightFromVolume(config.V_act * 1e-3) + h_dish;
+    }
+    return config.H + h_dish;
 }
 
 function getLiquidVolume() {
@@ -1225,19 +1252,18 @@ function getImpellerStagePositions(coords) {
     const clearance_px = clearance * scale;
     const b_px = b * scale;
 
-    // 最下段中心: 槽底(deepest)から C + b/2 だけ上
+    // 最下段: 鏡板最深部 + clearance + b/2
     const y_bottom_impeller = coords.y_deepest - clearance_px - b_px / 2;
 
     const positions = [];
     if (n_stages === 1) {
         positions.push(y_bottom_impeller);
     } else {
-        // 段間隔 = (H - C - b/2) / (n-1) を物理値[m]で計算し scale でpx変換
-        // H: 設計槽高（入力値）、C: クリアランス、b: 翼幅
-        const gap_m = (H - clearance - b / 2) / (n_stages - 1);
-        const gap_px = gap_m * scale;
+        // 最上段: 鏡板最深部 から config.H 分上 - b/2
+        // = diagram.htmlの zBot + zDesignTop - b/2 に相当
+        const y_top_impeller = coords.y_deepest - H * scale - b_px / 2;
+        const gap_px = (y_bottom_impeller - y_top_impeller) / (n_stages - 1);
         for (let i = 0; i < n_stages; i++) {
-            // i=0: 最下段、i=n-1: 最上段
             positions.push(y_bottom_impeller - i * gap_px);
         }
     }
@@ -2449,6 +2475,11 @@ function initRheologyListeners() {
     if (cavernModelSelect) {
         cavernModelSelect.addEventListener('change', e => {
             config.cavernModel = e.target.value;
+            // α入力の表示切替
+            const cavernAlphaGroup = document.getElementById('cavern-alpha-group');
+            if (cavernAlphaGroup) {
+                cavernAlphaGroup.style.display = e.target.value === 'cylindrical' ? 'block' : 'none';
+            }
             saveCurrentState();
             recalculateAll();
         });
@@ -4805,18 +4836,29 @@ function updateCavernDiameter() {
         return;
     }
 
-    // 現在の回転数での動力 P を計算
+    // 現在の回転数でのトルク T を計算
     const mu_eff = calcEffectiveViscosity(n_rps);
     const effRho = getEffectiveDensity();
     const Re = (effRho * n_rps * Math.pow(config.d, 2)) / mu_eff;
     const { Np } = calculateNpCurve(Re);
     const P = Np * effRho * Math.pow(n_rps, 3) * Math.pow(config.d, 5);
+    const T = P / (2 * Math.PI * n_rps);  // トルク T [N·m]
 
-    // キャバーンモデルに応じた係数 K_c
-    const Kc = (config.cavernModel === 'cylindrical') ? 1.0 : 1.36;
-
-    // Dc = (Kc * P / (pi^2 * tau_y * N))^(1/3)
-    let Dc = Math.pow((Kc * P) / (Math.pow(Math.PI, 2) * pr.tau_y * n_rps), 1 / 3);
+    let Dc;
+    if (config.cavernModel === 'cylindrical') {
+        // 円筒モデル: Dc = (T / (π·τy·(α/2 + 1/6)))^(1/3)
+        const alpha = config.cavernAlpha ?? 0.7;
+        Dc = Math.pow(
+            T / (Math.PI * pr.tau_y * (alpha / 2 + 1 / 6)),
+            1 / 3
+        );
+    } else {
+        // 球形モデル: Dc = (6T / (π·τy))^(1/3)
+        Dc = Math.pow(
+            (6 * T) / (Math.PI * pr.tau_y),
+            1 / 3
+        );
+    }
 
     // キャバーン径は槽径 DT を超えない（壁に到達）
     if (Dc > config.DT) {
@@ -5115,9 +5157,34 @@ function ouStep(wx, wy, theta, sigma, dt_sim) {
 }
 
 // ── 平均流速場の計算（既存ロジックを保持） ─────────────────
-function getVesselVisualCoords() {
-    const cx = 225;
-    const D_px = 240;
+
+function getVesselVisualCoords(canvasW, canvasH) {
+    const useDynamic = (canvasW != null && canvasH != null);
+    const cx = useDynamic ? Math.round(canvasW / 2) : 225;
+
+    // 容器全体の高さ = H + hb（鏡板）をキャンバス高さの 75% に収める
+    // hb/DT比 = headTypeに依存（semi-elliptical: 0.25, hemispherical: 0.5）
+    // H/DT 比から D_px を逆算する
+    const hb_ratio = config.headType === 'hemispherical' ? 0.5
+        : config.headType === 'semi-elliptical' ? 0.25
+            : config.headType === 'dish' ? 0.1935 : 0;
+    const vessel_H_ratio = config.H / config.DT + hb_ratio; // 容器全高 / DT
+
+    const y_top_frac = 0.08; // キャンバス上端マージン
+    const y_bot_frac = 0.05; // キャンバス下端マージン
+    const available_H_frac = 1 - y_top_frac - y_bot_frac;
+
+    let D_px;
+    if (useDynamic) {
+        // 縦方向に収まるD_px
+        const D_px_from_H = Math.round((canvasH * available_H_frac) / vessel_H_ratio);
+        // 横方向に収まるD_px
+        const D_px_from_W = Math.round(canvasW * 0.53);
+        D_px = Math.min(D_px_from_H, D_px_from_W);
+    } else {
+        D_px = 240;
+    }
+
     const scale = D_px / config.DT;
 
     let hb = 0;
@@ -5129,9 +5196,9 @@ function getVesselVisualCoords() {
         hb = D_px / 2;
     }
 
-    const y_top = 45;
+    const y_top = useDynamic ? Math.round(canvasH * y_top_frac) : 45;
     const H_px = Math.max(0, config.H * scale);
-    const y_cyl = y_top + Math.max(0, H_px - hb);
+    const y_cyl = y_top + H_px;
     const y_deepest = y_cyl + hb;
 
     const liquidHeight = getLiquidHeight();
@@ -5468,7 +5535,7 @@ function initParticleSimulation() {
     simLastFrameTime = null;
     _cachedNjsResult = calculateNjs();
 
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(simCanvas.width, simCanvas.height);
     const { lx, D_px, cx, scale, hb, y_deepest, y_cyl, y_liquid, rx } = coords;
 
     // 格子温度場初期化（液初期温度 または バルク液温で）
@@ -5536,7 +5603,7 @@ function initParticleSimulation() {
 function drawParticleSimulation() {
     if (!simCanvas || !simCtx) return;
 
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(simCanvas.width, simCanvas.height);
     const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
 
     if (document.hidden) { simLastFrameTime = null; return; }
@@ -6207,7 +6274,7 @@ function initParticleSimulation() {
     simLastFrameTime = null;
     _cachedNjsResult = calculateNjs(); // 初期化時にNjsをキャッシュ
 
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(simCanvas.width, simCanvas.height);
     const { lx, D_px, cx, scale, hb, y_deepest, y_cyl, y_liquid, rx } = coords;
 
     // Initialize target particles based on concentration and selected start mode
@@ -6350,7 +6417,7 @@ function getBladePointsAndDepth(phi, r_in, r_out, b_px, impellerType, cx, y_imp)
 function drawParticleSimulation() {
     if (!simCanvas || !simCtx) return;
 
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(simCanvas.width, simCanvas.height);
     const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
 
     if (document.hidden) { simLastFrameTime = null; return; }
@@ -7432,7 +7499,7 @@ function initHeatSimulation() {
     thermalOffscreenCanvas.height = gridRows;
 
     const count = 1000;
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(canvas.width, canvas.height);
     const { lx, rx, y_liquid, cx, scale, hb, y_cyl, y_deepest, D_px } = coords;
 
     const props = getEffectiveProperties();
@@ -7623,7 +7690,11 @@ function updateHeatPhysics() {
 
     updateHeatCalcUI();
 
-    const coords = getVesselVisualCoords();
+    const heatCanvas = document.getElementById('heatSimCanvas');
+    const coords = getVesselVisualCoords(
+        heatCanvas ? heatCanvas.width : null,
+        heatCanvas ? heatCanvas.height : null
+    );
     const { cx, D_px, scale, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
     const N_rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
     const wallThresh_px = 12;
@@ -7849,7 +7920,7 @@ function drawHeatSimulation() {
     if (!canvas || !canvas.getContext) return;
     const ctx = canvas.getContext('2d');
 
-    const coords = getVesselVisualCoords();
+    const coords = getVesselVisualCoords(canvas.width, canvas.height);
     const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -8527,13 +8598,33 @@ function initHeatChart() {
 }
 
 function updateHeatChart() {
-    if (heatChart) {
-        heatChart.data.labels = heatChartData.times;
-        heatChart.data.datasets[0].data = heatChartData.liquidTemp;
-        heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
-        _syncHeatChartYAxisMode();
-        heatChart.update('none');
+    if (!heatChart) return;
+
+    // データはどちらのモードも実温度をそのまま使用
+    heatChart.data.labels = heatChartData.times;
+    heatChart.data.datasets[0].data = heatChartData.liquidTemp;
+    heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
+
+    if (heatColorScaleMode === 'absolute') {
+        // 絶対モード: 初期液温〜熱媒入口温度で固定
+        const T0 = config.liquidTempInit ?? 20;
+        const Tin = config.mediaTempIn ?? 80;
+        heatChart.options.scales.y.min = Math.min(T0, Tin);
+        heatChart.options.scales.y.max = Math.max(T0, Tin);
+        heatChart.options.scales.y.title.text = '温度 (°C)';
+    } else {
+        // 相対モード: データ範囲に合わせて自動スケール
+        heatChart.options.scales.y.min = undefined;
+        heatChart.options.scales.y.max = undefined;
+        heatChart.options.scales.y.title.text = '温度 (°C)';
     }
+
+    heatChart.options.scales.y.ticks.callback = v => Number(v).toFixed(1);
+    heatChart.update('none');
+}
+
+function _syncHeatChartYAxisMode() {
+    updateHeatChart();
 }
 
 function initHeatResistChart() {
