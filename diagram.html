@@ -635,7 +635,7 @@
 
             const zCyl = 0;
             const zBot = zCyl - hb;
-            const zLiq = ht;           // = H_eff * scl (円筒部液高さ)
+            const zLiq = ht;
             const zFla = zDesignTop + 20;
             const zMot = zDesignTop + 52;
 
@@ -717,9 +717,13 @@
                 if (config.cavern_Dc && config.cavern_Dc > 0) {
                     const rCav = (config.cavern_Dc / 2) * scl;
                     const alpha = config.cavernAlpha ?? 0.7;
-                    ctx2.save(); ctx2.setLineDash([5, 5]); ctx2.strokeStyle = 'rgba(245,158,11,0.9)'; ctx2.lineWidth = 1.5;
+                    ctx2.save();
+                    ctx2.setLineDash([5, 5]);
+                    ctx2.strokeStyle = 'rgba(245,158,11,0.9)';
+                    ctx2.lineWidth = 1.5;
+
                     if (config.cavernModel === 'cylindrical') {
-                        const hCav = rCav * 2 * alpha;  // Hc = α × Dc = α × 2 × rCav
+                        const hCav = rCav * 2 * alpha;
                         drawEllipse(ctx2, rCav, zI + hCav / 2, ox, oy, null, 'rgba(245,158,11,0.9)', 1.5);
                         drawEllipse(ctx2, rCav, zI - hCav / 2, ox, oy, null, 'rgba(245,158,11,0.9)', 1.5);
                         const ang1 = -camAzimuth, ang2 = Math.PI - camAzimuth;
@@ -734,15 +738,117 @@
                         ctx2.beginPath(); ctx2.moveTo(leftX, p1t.y); ctx2.lineTo(leftX, p1b.y);
                         ctx2.moveTo(leftX - 3, p1t.y); ctx2.lineTo(leftX + 3, p1t.y);
                         ctx2.moveTo(leftX - 3, p1b.y); ctx2.lineTo(leftX + 3, p1b.y); ctx2.stroke();
-                        const Hc_text = `Hc = ${(config.cavern_Dc * alpha).toFixed(3)} m`;  // Hc = α × Dc
+                        const Hc_text = `Hc = ${(config.cavern_Dc * alpha).toFixed(3)} m`;
                         ctx2.font = 'bold 11px Outfit,Inter,sans-serif'; ctx2.textAlign = 'right'; ctx2.textBaseline = 'middle';
                         const wHc = ctx2.measureText(Hc_text).width + 10;
                         ctx2.fillStyle = 'rgba(11,15,25,0.82)'; ctx2.fillRect(leftX - wHc - 3, (p1t.y + p1b.y) / 2 - 9, wHc, 18);
                         ctx2.fillStyle = '#f59e0b'; ctx2.fillText(Hc_text, leftX - 8, (p1t.y + p1b.y) / 2);
+
+                    } else if (config.cavernModel === 'torus') {
+
+                        //==========================
+                        // トーラスキャバーン
+                        // Dc = d + 2r
+                        //==========================
+
+                        const alphaT = config.cavernAlpha ?? 1.0;
+
+                        // 大半径（翼端）
+                        const R = (config.d / 2) * scl;
+
+                        // 小半径
+                        let r =
+                            ((config.cavern_Dc - config.d) / 2) * scl;
+
+                        // 最低値
+                        r = Math.max(r, 2);
+
+                        const nPhi = 72;
+                        const nTheta = 36;
+
+                        ctx2.save();
+                        ctx2.setLineDash([]);
+                        ctx2.strokeStyle = "rgba(245,158,11,0.9)";
+                        ctx2.lineWidth = 1.2;
+
+                        // θ一定
+                        for (let j = 0; j < nTheta; j++) {
+
+                            const theta = 2 * Math.PI * j / nTheta;
+
+                            ctx2.beginPath();
+
+                            for (let i = 0; i <= nPhi; i++) {
+
+                                const phi = 2 * Math.PI * i / nPhi;
+
+                                const x =
+                                    (R + r * Math.cos(theta))
+                                    * Math.cos(phi);
+
+                                const y =
+                                    (R + r * Math.cos(theta))
+                                    * Math.sin(phi);
+
+                                const z =
+                                    zI +
+                                    alphaT * r * Math.sin(theta);
+
+                                const p = iso(x, y, z, ox, oy);
+
+                                if (i === 0)
+                                    ctx2.moveTo(p.x, p.y);
+                                else
+                                    ctx2.lineTo(p.x, p.y);
+                            }
+
+                            ctx2.stroke();
+                        }
+
+                        // φ一定
+                        for (let i = 0; i < nPhi; i++) {
+
+                            const phi = 2 * Math.PI * i / nPhi;
+
+                            ctx2.beginPath();
+
+                            for (let j = 0; j <= nTheta; j++) {
+
+                                const theta = 2 * Math.PI * j / nTheta;
+
+                                const x =
+                                    (R + r * Math.cos(theta))
+                                    * Math.cos(phi);
+
+                                const y =
+                                    (R + r * Math.cos(theta))
+                                    * Math.sin(phi);
+
+                                const z =
+                                    zI +
+                                    alphaT * r * Math.sin(theta);
+
+                                const p = iso(x, y, z, ox, oy);
+
+                                if (j === 0)
+                                    ctx2.moveTo(p.x, p.y);
+                                else
+                                    ctx2.lineTo(p.x, p.y);
+                            }
+
+                            ctx2.stroke();
+                        }
+
+                        ctx2.restore();
                     } else {
-                        const cc = iso(0, 0, zI, ox, oy); ctx2.beginPath(); ctx2.arc(cc.x, cc.y, rCav, 0, 2 * Math.PI); ctx2.stroke();
+                        // 球形モデル
+                        const cc = iso(0, 0, zI, ox, oy);
+                        ctx2.beginPath(); ctx2.arc(cc.x, cc.y, rCav, 0, 2 * Math.PI); ctx2.stroke();
                     }
-                    const cc = iso(0, 0, zI, ox, oy); ctx2.setLineDash([]); ctx2.lineWidth = 1;
+
+                    // Dc 寸法線（共通）
+                    const cc = iso(0, 0, zI, ox, oy);
+                    ctx2.setLineDash([]); ctx2.lineWidth = 1;
                     ctx2.beginPath(); ctx2.moveTo(cc.x - rCav, cc.y); ctx2.lineTo(cc.x + rCav, cc.y);
                     ctx2.moveTo(cc.x - rCav, cc.y - 3); ctx2.lineTo(cc.x - rCav, cc.y + 3);
                     ctx2.moveTo(cc.x + rCav, cc.y - 3); ctx2.lineTo(cc.x + rCav, cc.y + 3); ctx2.stroke();
@@ -810,8 +916,6 @@
             dimLabel(ctx2, `DT = ${config.DT.toFixed(3)} m`, dtM.x - 40, dtM.y - 10);
 
             const { H_eff: H_eff_draw } = calcHfromVact();
-            // ★ FIX②: canvas H label = H_eff(cylindrical) + hb_m = total from dish bottom
-            //          This now matches the side panel value exactly.
             const H_total_canvas = H_eff_draw + hb_m;
             const hTop = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zLiq, ox, oy);
             const hBot = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zBot, ox, oy);

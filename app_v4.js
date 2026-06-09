@@ -4846,12 +4846,27 @@ function updateCavernDiameter() {
 
     let Dc;
     if (config.cavernModel === 'cylindrical') {
-        // 円筒モデル: Dc = (T / (π·τy·(α/2 + 1/6)))^(1/3)
         const alpha = config.cavernAlpha ?? 0.7;
         Dc = Math.pow(
             T / (Math.PI * pr.tau_y * (alpha / 2 + 1 / 6)),
             1 / 3
         );
+    } else if (config.cavernModel === 'torus') {
+        // トーラスモデル: Dc = (3/(π³(1-β²)) · T/τy)^(1/3)
+        // β = d/Dc → 反復計算で解く
+        const d = config.d;
+        let Dc_iter = d * 2.0; // 初期推定値
+        for (let i = 0; i < 50; i++) {
+            const beta = d / Dc_iter;
+            const beta2 = Math.min(0.99, beta * beta); // β²<1 を保証
+            const Dc_next = Math.pow(
+                (3 / (Math.pow(Math.PI, 3) * (1 - beta2))) * (T / pr.tau_y),
+                1 / 3
+            );
+            if (Math.abs(Dc_next - Dc_iter) < 1e-7) { Dc_iter = Dc_next; break; }
+            Dc_iter = 0.6 * Dc_next + 0.4 * Dc_iter; // 緩和係数
+        }
+        Dc = Dc_iter;
     } else {
         // 球形モデル: Dc = (6T / (π·τy))^(1/3)
         Dc = Math.pow(
