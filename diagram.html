@@ -378,32 +378,21 @@
         const bladeCountMap = { 'flat-turbine': 6, 'pitched-paddle': 4, 'flat-paddle': 2, 'propeller': 3, 'faudler': 3 };
 
         // ─── V_act → H 逆算 ───────────────────────────────────────
-        function calcVfromH(H_m) {
+        function calcVfromH(H_cyl) {
             const R = config.DT / 2;
             const headType = config.headType;
-            let h_dish = 0, V_dish = 0;
+            let V_dish = 0;
 
             if (headType === 'semi-elliptical') {
-                h_dish = R / 2;
                 V_dish = Math.PI * R * R * R / 3;
             } else if (headType === 'dish') {
-                h_dish = 0.1935 * config.DT;
                 V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
             } else if (headType === 'hemispherical') {
-                h_dish = R;
                 V_dish = (2 / 3) * Math.PI * R * R * R;
             }
 
-            if (h_dish > 0 && H_m <= h_dish) {
-                if (headType === 'hemispherical') {
-                    return Math.PI * H_m * H_m * (3 * R - H_m) / 3;
-                } else if (headType === 'semi-elliptical') {
-                    return (Math.PI * R * R / (h_dish * h_dish)) * (h_dish * H_m * H_m - Math.pow(H_m, 3) / 3);
-                } else {
-                    return V_dish * (H_m / h_dish);
-                }
-            }
-            return V_dish + Math.PI * R * R * Math.max(0, H_m - h_dish);
+            // H_cyl は円筒部高さ（負にならない）
+            return V_dish + Math.PI * R * R * Math.max(0, H_cyl);
         }
 
         function calcHfromVact() {
@@ -413,18 +402,28 @@
             }
 
             const V_act_m3 = V_act_L * 1e-3;
-            const V_max = calcVfromH(config.DT * 2);
+            // 鏡板のみの体積
+            const R = config.DT / 2;
+            let V_dish = 0;
+            if (config.headType === 'semi-elliptical') V_dish = Math.PI * R * R * R / 3;
+            else if (config.headType === 'dish') V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
+            else if (config.headType === 'hemispherical') V_dish = (2 / 3) * Math.PI * R * R * R;
 
-            if (V_act_m3 >= V_max) {
+            if (V_act_m3 <= V_dish) {
+                // 液量が鏡板容積以下 → 円筒部高さ = 0
+                return { H_eff: 0, fromVact: true };
+            }
+
+            // 円筒部に相当する液量から逆算
+            const V_cyl = V_act_m3 - V_dish;
+            const H_eff = V_cyl / (Math.PI * R * R);
+
+            // config.H（円筒部高さ）を超える場合はconfig.Hで頭打ち
+            if (H_eff >= config.H) {
                 return { H_eff: config.H, fromVact: false };
             }
 
-            let lo = 0.0, hi = config.DT * 2;
-            for (let i = 0; i < 80; i++) {
-                const mid = (lo + hi) / 2;
-                calcVfromH(mid) < V_act_m3 ? (lo = mid) : (hi = mid);
-            }
-            return { H_eff: (lo + hi) / 2, fromVact: true };
+            return { H_eff, fromVact: true };
         }
 
         // ─── Camera & Interaction ─────────────────────────────────
@@ -647,8 +646,6 @@
         // ════════════════════════════════════════════════════════════
         function computeLayout() {
             const R = config.DT / 2;
-
-            // V_act から実液高 H_eff を取得
             const { H_eff } = calcHfromVact();
 
             let hb_m = 0;
@@ -659,23 +656,19 @@
             const rhTarget = CW * 0.26;
             const scl = rhTarget / R;
             const rh = R * scl;
-            const hb = hb_m * scl;                 // 鏡板の深さ [px]
+            const hb = hb_m * scl;
 
-            // ── 修正①: oy を正しい等角投影の式で算出 ──
-            // iso(X,Y,Z) の y成分 = oy + (X*sin(az)+Y*cos(az))*sin(el) - Z*cos(el)
-            // 最下点 (中心軸上, Z = -hb): y = oy + hb*cos(el)
-            // 鏡板下端の横広がりを考慮した最大 y: oy + hb*cos(el) + rh*sin(el)
-            // これを CH-30 に合わせる:
             const cosElev = Math.cos(camElevation);
             const sinElev = Math.sin(camElevation);
             oy = (CH - 30) - rh * sinElev - hb * cosElev;
             ox = CW / 2;
 
-            // ── 修正②: 設計高さと実液高を分離 ──
-            const ht_design = config.H * scl;   // 設計液高 [px] → 槽・シャフト・インペラ配置の基準
-            const ht = H_eff * scl;    // 実液高   [px] → 液面 zLiq の計算のみ
+            // config.H は円筒部高さ → 設計全高 = 円筒部 + 鏡板
+            const H_total_design = config.H + hb_m;
+            const ht_design = H_total_design * scl;
+            // H_eff も円筒部高さ → 実液全高 = H_eff + hb_m
+            const ht = (H_eff + hb_m) * scl;
 
-            // zDesignTop: 設計液高に対応する Z 座標（フランジ・モーター・多段インペラの基準）
             const zDesignTop = ht_design;
 
             return { rh, ht, ht_design, zDesignTop, hb, scl, R, H_eff, hb_m };
@@ -687,21 +680,19 @@
             grd.addColorStop(0, 'rgba(6,182,212,0.04)'); grd.addColorStop(1, 'rgba(6,182,212,0)');
             ctx2.fillStyle = grd; ctx2.fillRect(0, 0, CW, CH);
 
-            // ── 修正済み computeLayout() から設計値と実液高を両方取得 ──
             const { rh, ht, ht_design, zDesignTop, hb, scl } = computeLayout();
 
             const zCyl = 0;
-            const zBot = zCyl - hb;          // 鏡板最深点
+            const zBot = zCyl - hb;       // 鏡板最深点
 
-            // ── 修正②: 液面は H_eff (実液高) ベース ──
-            const zLiq = zBot + ht;          // 実際の液面 Z 座標
+            // 液面: zBot + 実液全高(px)
+            const zLiq = zBot + ht;
 
-            // ── 修正②: フランジ・モーターは設計値ベース ──
-            const zFla = zDesignTop + 20;    // フランジ Z 座標（設計高基準）
-            const zMot = zDesignTop + 52;    // モーター Z 座標（設計高基準）
+            const zFla = zDesignTop + 20;
+            const zMot = zDesignTop + 52;
 
             // 1. Bottom head
-            const liquidFrac = Math.min(1.0, ht / hb);
+            const liquidFrac = hb > 0 ? Math.min(1.0, ht / hb) : 1.0;
             if (config.headType === 'flat') {
                 drawEllipse(ctx2, rh, zCyl, ox, oy, 'rgba(6,182,212,0.18)', '#94a3b8', 1.5);
             } else {
@@ -715,7 +706,6 @@
                 drawCylSector(ctx2, rh, zCyl, zLiq, aEnd, aStart + 2 * Math.PI, 'rgba(28,55,80,0.95)', '#7a97b0', 1.8, 40);
                 drawCylSector(ctx2, rh * 0.98, zCyl, zLiq, aEnd, aStart + 2 * Math.PI, 'rgba(6,182,212,0.10)', null, 0, 32);
             }
-            // 液面より上の空間（設計高まで）をガスゾーンとして薄く表示
             if (zDesignTop > zLiq) {
                 drawCylSector(ctx2, rh, zLiq, zDesignTop, aEnd, aStart + 2 * Math.PI, 'rgba(28,45,65,0.40)', '#5a7898', 1.0, 40);
             }
@@ -723,7 +713,6 @@
             // 4. Baffles
             if (config.baffleActive) {
                 const nB_ = parseInt(config.nB) || 4, bwR = config.Bw * scl;
-                // バッフルは設計高さ基準で配置
                 const zB0 = zCyl, zBT = zDesignTop * 0.96;
                 for (let bi = 0; bi < nB_; bi++) {
                     const phi = (bi / nB_) * 2 * Math.PI, cx_ = Math.cos(phi), sy_ = Math.sin(phi);
@@ -744,7 +733,6 @@
                 drawCylSector(ctx2, rh, zCyl, zLiq, aStart, aEnd, 'rgba(32,68,100,0.90)', '#8aacc0', 2, 40);
                 drawCylSector(ctx2, rh * 0.98, zCyl, zLiq, aStart, aEnd, 'rgba(6,182,212,0.07)', null, 0, 32);
             }
-            // 液面より上（前面）
             if (zDesignTop > zLiq) {
                 drawCylSector(ctx2, rh, zLiq, zDesignTop, aStart, aEnd, 'rgba(30,58,85,0.40)', '#6a8faa', 1.0, 40);
             }
@@ -753,7 +741,6 @@
             drawEllipse(ctx2, rh, zLiq, ox, oy, 'rgba(6,182,212,0.20)', 'rgba(6,182,212,0.80)', 1.8);
 
             // 8. Shaft
-            // ── 修正②: シャフト上端はモーター（設計高基準）、下端は鏡板内部 ──
             const shTop = iso(0, 0, zMot - 2, ox, oy), shBot = iso(0, 0, zCyl - hb * 0.1, ox, oy);
             ctx2.save(); ctx2.strokeStyle = '#52525b'; ctx2.lineWidth = 5; ctx2.lineCap = 'round';
             ctx2.beginPath(); ctx2.moveTo(shTop.x, shTop.y); ctx2.lineTo(shBot.x, shBot.y); ctx2.stroke();
@@ -762,18 +749,21 @@
             ctx2.restore();
 
             // 9. Impeller stages
-            // ── 修正③: インペラ段配置は設計値 (config.H) を基準に計算 ──
             const n_stages = getActiveStages();
-            const c_Z = (config.clearance) * scl, bh_Z = (config.b / 2) * scl, rImp = (config.d / 2) * scl;
-            // zImp0: 最下段インペラの中心 Z 座標（鏡板底 + クリアランス + 半翼幅）
-            const zImp0 = zBot + c_Z + bh_Z;  // zBot = zCyl - hb
+            const c_Z = config.clearance * scl;
+            const bh_Z = (config.b / 2) * scl;
+            const rImp = (config.d / 2) * scl;
+
+            // 最下段: 鏡板最深点 + クリアランス + 半翼幅
+            const zImp0 = zBot + c_Z + bh_Z;
 
             const stages_z = [];
             if (n_stages === 1) {
                 stages_z.push(zImp0);
             } else {
-                // ── 修正③: 上限を zLiq ではなく zDesignTop（設計高）で計算 ──
-                const gap = (zDesignTop - bh_Z - zImp0) / (n_stages - 1);
+                // 最上段上限: 設計液面 - 半翼幅
+                const zTop = zDesignTop - bh_Z;
+                const gap = (zTop - zImp0) / (n_stages - 1);
                 for (let i = 0; i < n_stages; i++) stages_z.push(zImp0 + i * gap);
             }
 
@@ -865,11 +855,11 @@
                 drawBlades(ctx2, rImp, bh_Z, config.impellerType, impAngle, zI);
             });
 
-            // 10. Top flange（設計高基準）
+            // 10. Top flange
             drawEllipse(ctx2, rh * 1.05, zFla, ox, oy, null, '#d4d4d8', 3.5);
             drawEllipse(ctx2, rh, zFla, ox, oy, null, '#8a9aab', 1);
 
-            // 11. Motor housing（設計高基準）
+            // 11. Motor housing
             const mBot = iso(0, 0, zFla + 2, ox, oy), mTop = iso(0, 0, zMot, ox, oy);
             ctx2.save(); ctx2.strokeStyle = '#52525b'; ctx2.lineWidth = 16; ctx2.lineCap = 'round';
             ctx2.beginPath(); ctx2.moveTo(mBot.x, mBot.y); ctx2.lineTo(mTop.x, mTop.y); ctx2.stroke();
@@ -878,21 +868,20 @@
             ctx2.restore();
 
             // 12. Dimension annotations
-            // DT ラベル: 液面位置に表示
             const dtR = iso(rh * Math.cos(-camAzimuth), rh * Math.sin(-camAzimuth), zLiq + 18, ox, oy);
             const dtL = iso(rh * Math.cos(Math.PI - camAzimuth), rh * Math.sin(Math.PI - camAzimuth), zLiq + 18, ox, oy);
             const dtM = iso(0, 0, zLiq + 18, ox, oy);
             dimLine(ctx2, dtR.x, dtR.y, dtL.x, dtL.y);
             dimLabel(ctx2, `DT = ${config.DT.toFixed(3)} m`, dtM.x - 40, dtM.y - 10);
 
-            // H ラベル: 実液高 (H_eff) を矢印で表示
             const { H_eff: H_eff_draw } = calcHfromVact();
             const hTop = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zLiq, ox, oy);
             const hBot = iso((rh + 18) * Math.cos(-camAzimuth), (rh + 18) * Math.sin(-camAzimuth), zBot, ox, oy);
             dimLine(ctx2, hTop.x, hTop.y, hBot.x, hBot.y);
-            dimLabel(ctx2, `H = ${H_eff_draw.toFixed(3)} m`, hTop.x + 4, (hTop.y + hBot.y) / 2);
+            // H ラベルは鏡板最深部からの全液高 = H_eff + hb_m
+            const { hb_m: hb_m_draw } = computeLayout();
+            dimLabel(ctx2, `H = ${(H_eff_draw + hb_m_draw).toFixed(3)} m`, hTop.x + 4, (hTop.y + hBot.y) / 2);
 
-            // 設計高さを別途薄く表示（実液高と設計高が異なる場合）
             if (Math.abs(H_eff_draw - config.H) > 0.001) {
                 const hdR = iso((rh + 36) * Math.cos(-camAzimuth), (rh + 36) * Math.sin(-camAzimuth), zDesignTop, ox, oy);
                 const hdB = iso((rh + 36) * Math.cos(-camAzimuth), (rh + 36) * Math.sin(-camAzimuth), zBot, ox, oy);
@@ -934,7 +923,6 @@
 
             animId = requestAnimationFrame(draw);
         }
-
         // ─── UI update ────────────────────────────────────────────
         function updateUI() {
             document.getElementById('val-DT').textContent = `${config.DT.toFixed(4)} m`;

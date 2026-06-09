@@ -266,14 +266,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parsed.config) {
                 config = { ...config, ...parsed.config };
             }
-            
+
             if (parsed.rheologyData) {
                 rheologyData = parsed.rheologyData;
             }
 
             initInputs();
             updateRheologyUI();
-            
+
             if (parsed.expBlocks && parsed.expBlocks.length > 0) {
                 expBlocks = [];
                 document.getElementById('blocks-container').innerHTML = '';
@@ -303,11 +303,11 @@ document.addEventListener('DOMContentLoaded', () => {
 function syncSpeedUIElements() {
     const speed = config.simSpeed ?? 300;
     const sync = config.simSpeedSync ?? true;
-    
+
     const slider1 = document.getElementById('sim-speed-slider');
     const val1 = document.getElementById('sim-speed-val');
     const sync1 = document.getElementById('sim-speed-sync');
-    
+
     const slider2 = document.getElementById('heat-sim-speed-slider');
     const val2 = document.getElementById('heat-sim-speed-val');
     const sync2 = document.getElementById('heat-sim-speed-sync');
@@ -380,10 +380,10 @@ function initInputs() {
     document.getElementById('solid-conc-val').value = config.solidConcVal ?? 1.0;
     document.getElementById('s-factor-mode').value = config.sFactorMode ?? 'auto';
     document.getElementById('s-factor-custom').value = config.sFactorCustom ?? 5.0;
-    
+
     const cModel = document.getElementById('cavern-model');
     if (cModel) cModel.value = config.cavernModel ?? 'spherical';
-    
+
     syncSpeedUIElements();
 
     // 伝熱データのロード
@@ -398,9 +398,9 @@ function initInputs() {
     // コイル寸法入力の初期値セット
     document.getElementById('coil-outer-dia').value = config.coilOuterDia ?? 0.010;
     document.getElementById('coil-inner-dia').value = config.coilInnerDia ?? 0.008;
-    document.getElementById('coil-pitch').value      = config.coilPitch    ?? 0.025;
+    document.getElementById('coil-pitch').value = config.coilPitch ?? 0.025;
     document.getElementById('coil-center-dia').value = config.coilCenterDia ?? '';
-    document.getElementById('coil-k').value          = config.coilK        ?? 16.3;
+    document.getElementById('coil-k').value = config.coilK ?? 16.3;
     // パネル表示切替
     const coilPanel = document.getElementById('coil-params');
     if (coilPanel) coilPanel.style.display = config.coilActive ? 'flex' : 'none';
@@ -461,7 +461,7 @@ function initEventListeners() {
                 val = parsed;
             }
             config[getPropName(id)] = val;
-            
+
             // インペラ種類変更時にks値を自動セット
             if (id === 'impeller-type') {
                 const presetMap = {
@@ -495,7 +495,7 @@ function initEventListeners() {
                     }
                 }
             }
-            
+
             recalculateAll();
         });
     });
@@ -521,13 +521,13 @@ function initEventListeners() {
     document.getElementById('add-block-btn').addEventListener('click', () => {
         const userInput = prompt("追加する測定ブロックの初期回転数 N (rpm) を入力してください:", "300");
         if (userInput === null) return; // Cancelled
-        
+
         const rpmVal = parseInt(userInput);
         if (isNaN(rpmVal) || rpmVal <= 0) {
             showToast('無効な回転数が入力されました。', 'error');
             return;
         }
-        
+
         addBlock({ name: `測定ブロック (N = ${rpmVal} rpm)`, N_default: rpmVal });
         showToast(`N = ${rpmVal} rpm の測定ブロックを追加しました。`, 'success');
     });
@@ -539,7 +539,7 @@ function initEventListeners() {
         }
         const confirmed = confirm(`全 ${expBlocks.length} ブロックを削除します。この操作は元に戻せません。よろしいですか？`);
         if (!confirmed) return;
-        
+
         // 全ブロックを一括クリア
         expBlocks = [];
         const container = document.getElementById('blocks-container');
@@ -652,13 +652,13 @@ function initEventListeners() {
     // --- Particle Simulator Speed Controls ---
     document.getElementById('sim-speed-slider').addEventListener('input', (e) => {
         config.simSpeed = parseFloat(e.target.value) || 0;
-        
+
         // スライダーを手動で動かしたら自動同期を解除
         if (config.simSpeedSync) {
             config.simSpeedSync = false;
         }
         syncSpeedUIElements();
-        
+
         if (simAnimId) {
             simLastFrameTime = performance.now();
         }
@@ -766,14 +766,14 @@ function initEventListeners() {
                     val = parseFloat(val) || 0;
                 }
                 config[getHeatPropName(id)] = val;
-                
+
                 if (id === 'jacket-type') {
                     toggleJacketGapInput();
                 }
                 if (id === 'media-type') {
                     toggleMediaTypeInputs();
                 }
-                
+
                 recalculateAll();
             });
         }
@@ -790,8 +790,8 @@ function initEventListeners() {
     [
         ['coil-outer-dia', 'coilOuterDia', 0.010],
         ['coil-inner-dia', 'coilInnerDia', 0.008],
-        ['coil-pitch',     'coilPitch',    0.025],
-        ['coil-k',         'coilK',        16.3],
+        ['coil-pitch', 'coilPitch', 0.025],
+        ['coil-k', 'coilK', 16.3],
     ].forEach(([id, key, def]) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', (e) => {
@@ -885,7 +885,7 @@ function toggleBaffleInputs() {
 
 function toggleSolidLiquidInputs() {
     const active = config.solidLiquidActive;
-    
+
     // Toggle container elements visibility via class
     const ids = [
         'dp-um-container',
@@ -901,24 +901,24 @@ function toggleSolidLiquidInputs() {
         if (!el) return;
         el.classList.toggle('sl-hidden', !active);
     });
-    
+
     // Toggle Effective Properties children based on solid-liquid active state
     const elWsCont = document.getElementById('sl-eff-ws-container');
     const elPhisCont = document.getElementById('sl-eff-phis-container');
     const elKDetailsCont = document.getElementById('sl-eff-k-details-container');
     const elKSingleCont = document.getElementById('sl-eff-k-single-container');
-    
+
     if (elWsCont) elWsCont.style.display = active ? 'block' : 'none';
     if (elPhisCont) elPhisCont.style.display = active ? 'block' : 'none';
     if (elKDetailsCont) elKDetailsCont.style.display = active ? 'block' : 'none';
     if (elKSingleCont) elKSingleCont.style.display = active ? 'none' : 'block';
-    
+
     // Section and divider are always displayed as general summary of physical properties
     const elDivider = document.getElementById('sl-eff-divider');
     const elSection = document.getElementById('sl-effective-properties-section');
     if (elDivider) elDivider.style.display = 'block';
     if (elSection) elSection.style.display = 'block';
-    
+
     // Custom S factor container visibility
     toggleSFactorCustom();
 
@@ -949,7 +949,7 @@ function toggleSolidLiquidInputs() {
 function updateSlurryDensityUI() {
     const el = document.getElementById('rho-sl-display');
     const container = document.getElementById('rho-sl-container');
-    
+
     console.log("updateSlurryDensityUI", {
         elExist: !!el,
         containerExist: !!container,
@@ -1092,7 +1092,7 @@ function getKameiHiraokaIntermediateVars() {
     const thetaRad = (theta * Math.PI) / 180;
 
     const beta = (2 * Math.log(D_d)) / (D_d - d_D);
-    
+
     // np in log term instead of eta (Self-consistent bug correction)
     const etaNumerator = 0.711 * (0.157 + Math.pow(np * Math.log(D_d), 0.611));
     const etaDenominator = Math.pow(np, 0.52) * (1 - Math.pow(d_D, 2));
@@ -1132,55 +1132,30 @@ function getKameiHiraokaIntermediateVars() {
 }
 
 // Calculate liquid volume based on dish head shape
-// H = height from deepest point of bottom to liquid surface
+// H = height of cylindrical section (NOT from deepest point)
 function calcLiquidVolume(H = config.H) {
     const R = config.DT / 2;
     const headType = config.headType;
 
-    let h_dish = 0; // depth of bottom dish
-    let V_dish = 0; // volume of bottom dish portion
+    let h_dish = 0;
+    let V_dish = 0;
 
     if (headType === 'semi-elliptical') {
-        // 2:1 semi-ellipsoidal: depth = R/2
         h_dish = R / 2;
-        V_dish = Math.PI * R * R * R / 3; // (2/3)*pi*R^2*(R/2)
+        V_dish = Math.PI * R * R * R / 3;
     } else if (headType === 'dish') {
-        // Torispherical (dish): depth ≈ 0.1935 * DT (standard ratio)
         h_dish = 0.1935 * config.DT;
-        // Volume approximation for torispherical head: V ≈ 0.084 * pi * DT^3
         V_dish = 0.084 * Math.PI * Math.pow(config.DT, 3);
     } else if (headType === 'hemispherical') {
-        // Full hemisphere: depth = R
         h_dish = R;
         V_dish = (2 / 3) * Math.PI * R * R * R;
     } else {
-        // Flat bottom: no dish volume
         h_dish = 0;
         V_dish = 0;
     }
 
-    // Cylindrical section filled with liquid
-    const h_cyl = Math.max(0, H - h_dish);
-    const V_cyl = Math.PI * R * R * h_cyl;
-
-    // If liquid height is less than dish depth, calculate partial dish fill
-    if (H <= h_dish && h_dish > 0) {
-        // Partial fill of ellipsoidal/hemispherical/dish bottom
-        // Use spheroidal cap approximation: V = pi*H^2*(3*a - H)/3 where a = h_dish
-        // For ellipsoid with semi-axes R, R, h_dish:
-        // V(z) = pi*R^2/h_dish^2 * (h_dish*H^2/2 - H^3/3)
-        //       = pi*R^2*H^2/(h_dish^2) * (h_dish/2 - H/3)
-        if (headType === 'hemispherical') {
-            return Math.PI * H * H * (3 * R - H) / 3;
-        } else if (headType === 'semi-elliptical') {
-            // Corrected formula: V(H) = pi*(R^2/h_dish^2)*(h_dish*H^2 - H^3/3)
-            return (Math.PI * R * R / (h_dish * h_dish)) * (h_dish * H * H - Math.pow(H, 3) / 3);
-        } else {
-            // dish: approximate linearly
-            return V_dish * (H / h_dish);
-        }
-    }
-
+    // H は円筒部高さなので V_cyl に直接使う（h_dish を引かない）
+    const V_cyl = Math.PI * R * R * Math.max(0, H);
     return V_dish + V_cyl;
 }
 
@@ -1234,22 +1209,37 @@ function getLiquidVolume() {
 // Calculate the actual number of stages that physically fit in the vessel geometry
 // and respect the clearance and the minimum stage gap (1.3 * b)
 function getActiveStages() {
-    const H = config.H;
+    const H = config.H; // 円筒部高さ
     const { clearance, b, n_stage } = config;
-    const max_stages = Math.max(1, Math.floor((H - clearance - b) / (1.3 * b)) + 1);
+    // クリアランスは鏡板最深部から → 有効な円筒部内の高さ = H - (clearance - hb_m) だが
+    // 簡略化: インペラは円筒部内に収まる前提で計算
+    const max_stages = Math.max(1, Math.floor((H - b) / (1.3 * b)) + 1);
     return Math.min(parseInt(n_stage) || 1, max_stages);
 }
 
+
 function getImpellerStagePositions(coords) {
-    const { clearance, b } = config;
+    const { clearance, b, H } = config;
     const n_stages = getActiveStages();
-    const clearance_px = (clearance || 0) * coords.scale;
-    const b_px = (b || 0) * coords.scale;
+    const scale = coords.scale;
+    const clearance_px = clearance * scale;
+    const b_px = b * scale;
+
+    // 最下段中心: 槽底(deepest)から C + b/2 だけ上
     const y_bottom_impeller = coords.y_deepest - clearance_px - b_px / 2;
-    const stage_gap = Math.max(b_px * 1.3, b_px);
+
     const positions = [];
-    for (let i = 0; i < n_stages; i++) {
-        positions.push(y_bottom_impeller - (i * stage_gap));
+    if (n_stages === 1) {
+        positions.push(y_bottom_impeller);
+    } else {
+        // 段間隔 = (H - C - b/2) / (n-1) を物理値[m]で計算し scale でpx変換
+        // H: 設計槽高（入力値）、C: クリアランス、b: 翼幅
+        const gap_m = (H - clearance - b / 2) / (n_stages - 1);
+        const gap_px = gap_m * scale;
+        for (let i = 0; i < n_stages; i++) {
+            // i=0: 最下段、i=n-1: 最上段
+            positions.push(y_bottom_impeller - i * gap_px);
+        }
     }
     return positions;
 }
@@ -1324,7 +1314,7 @@ function getNpMax(coords) {
 // Calculate Np0 (unbaffled) and Np (baffled) for a given Reynolds number
 function calculateNpCurve(Re) {
     if (Re <= 0) return { Np0: 0, Np: 0 };
-    
+
     const coords = getVesselVisualCoords();
     const stageFraction = getSubmergedImpellerStageFraction(coords);
     const vars = getKameiHiraokaIntermediateVars();
@@ -1336,7 +1326,7 @@ function calculateNpCurve(Re) {
     const Cu_ReG = Cu / ReG;
     const bracketTerm = Math.pow(Cu_ReG + ReG, -1);
     const f_ratio_term = Math.pow(f_infty / Ct, 1 / m);
-    
+
     const f = CL / ReG + Ct * Math.pow(bracketTerm + f_ratio_term, m);
 
     // Unbaffled Power number Np0
@@ -1421,11 +1411,13 @@ function recalculateAll() {
         { name: 'updateNStageWarning', fn: updateNStageWarning },
         { name: 'updateIntermediateVarsUI', fn: updateIntermediateVarsUI },
         { name: 'recalculateExperimentalData', fn: recalculateExperimentalData },
-        { name: 'syncSpeed', fn: () => {
-            if (config.simSpeedSync) {
-                syncSimulatorSpeedWithBlock();
+        {
+            name: 'syncSpeed', fn: () => {
+                if (config.simSpeedSync) {
+                    syncSimulatorSpeedWithBlock();
+                }
             }
-        }},
+        },
         { name: 'updateChart', fn: updateChart },
         { name: 'updateLowReWarning', fn: updateLowReWarning },
         { name: 'updateSimulatorResults', fn: updateSimulatorResults },
@@ -1481,7 +1473,7 @@ function updateIntermediateVarsUI() {
 function addBlock(opts = {}) {
     const blockId = 'block-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     const N_val = opts.N_default || 300;
-    
+
     const block = {
         id: blockId,
         name: opts.name || `測定ブロック (N = ${N_val} rpm)`,
@@ -1517,7 +1509,7 @@ function renderBlockHTML(block) {
     const blockEl = document.createElement('div');
     blockEl.className = 'block-card';
     blockEl.id = block.id;
-    
+
     let rowsHTML = '';
     block.rows.forEach((row, idx) => {
         rowsHTML += createRowHTML(row, idx, block.id);
@@ -1633,7 +1625,7 @@ function addEmptyRow(blockId) {
             T: 0,
             Tb: 0
         });
-        
+
         // Re-render rows
         const tbody = document.getElementById(`${blockId}-rows`);
         let rowsHTML = '';
@@ -1642,7 +1634,7 @@ function addEmptyRow(blockId) {
         });
         tbody.innerHTML = rowsHTML;
         feather.replace();
-        
+
         recalculateBlock(blockId);
         updateChart();
     }
@@ -1660,7 +1652,7 @@ function deleteRow(blockId, idx) {
         });
         tbody.innerHTML = rowsHTML;
         feather.replace();
-        
+
         recalculateBlock(blockId);
         updateChart();
     } else {
@@ -1690,7 +1682,7 @@ function recalculateBlock(blockId) {
         const Pv = P / V;
         const Re = calculateReVal(n);
         const Fr = calculateFrVal(n);
-        
+
         // Power number Np
         let Np = 0;
         if (n > 0 && Math.abs(T_net) > 0) {
@@ -1780,7 +1772,7 @@ function updateLowReWarning() {
 const chartAreaBorder = {
     id: 'chartAreaBorder',
     afterDraw(chart) {
-        const {ctx, chartArea: {top, right, bottom, left, width, height}} = chart;
+        const { ctx, chartArea: { top, right, bottom, left, width, height } } = chart;
         ctx.save();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; // Bright Frame color for premium look
         ctx.lineWidth = 2.0; // Slightly thicker
@@ -1793,7 +1785,7 @@ const chartAreaBorder = {
 const chartRegions = {
     id: 'chartRegions',
     beforeDraw(chart) {
-        const {ctx, chartArea: {top, bottom, left, right, height}, scales: {x}} = chart;
+        const { ctx, chartArea: { top, bottom, left, right, height }, scales: { x } } = chart;
         if (!x) return;
         ctx.save();
 
@@ -1870,7 +1862,7 @@ const chartRegions = {
 const lightChartRegions = {
     id: 'lightChartRegions',
     beforeDraw(chart) {
-        const {ctx, chartArea: {top, bottom, left, right, height}, scales: {x}} = chart;
+        const { ctx, chartArea: { top, bottom, left, right, height }, scales: { x } } = chart;
         if (!x) return;
         ctx.save();
 
@@ -1947,28 +1939,28 @@ const lightChartRegions = {
 const chartNjsLabel = {
     id: 'chartNjsLabel',
     afterDatasetsDraw(chart) {
-        const {ctx, scales: {x, y}} = chart;
+        const { ctx, scales: { x, y } } = chart;
         if (!x || !y) return;
-        
+
         const njsDataset = chart.data.datasets.find(ds => ds.label === '完全浮遊限界速度 Njs');
         if (!njsDataset || !njsDataset.data || njsDataset.data.length === 0) return;
-        
+
         const pt = njsDataset.data[0];
         const px = x.getPixelForValue(pt.x);
         const py = y.getPixelForValue(pt.y);
-        
+
         if (px === undefined || py === undefined) return;
-        
+
         ctx.save();
         const text = 'Njs (完全浮遊)';
         ctx.font = 'bold 11px Inter, Outfit, Noto Sans JP, sans-serif';
         const textWidth = ctx.measureText(text).width;
-        
+
         // Draw background pill to mask overlapping elements
         ctx.fillStyle = 'rgba(11, 15, 25, 0.92)'; // Dark background matching theme
         ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)'; // Red border matching dot
         ctx.lineWidth = 1.2;
-        
+
         ctx.beginPath();
         if (ctx.roundRect) {
             ctx.roundRect(px + 12, py - 9, textWidth + 12, 18, 4);
@@ -1977,7 +1969,7 @@ const chartNjsLabel = {
         }
         ctx.fill();
         ctx.stroke();
-        
+
         // Draw white text inside the pill
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
@@ -1991,12 +1983,12 @@ const chartNjsLabel = {
 const chartSimSpeedLine = {
     id: 'chartSimSpeedLine',
     afterDraw(chart) {
-        const {ctx, chartArea: {top, bottom, left, right}, scales: {x}} = chart;
+        const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
         if (!x) return;
-        
+
         const n_sim = (config.simSpeed ?? 300) / 60;
         const Re_sim = calculateReVal(n_sim);
-        
+
         if (Re_sim >= x.min && Re_sim <= x.max) {
             const px = x.getPixelForValue(Re_sim);
             if (px >= left && px <= right) {
@@ -2004,12 +1996,12 @@ const chartSimSpeedLine = {
                 ctx.strokeStyle = '#06b6d4'; // Cyan matching current speed theme
                 ctx.lineWidth = 2.0;
                 ctx.setLineDash([4, 4]); // Dashed line
-                
+
                 ctx.beginPath();
                 ctx.moveTo(px, top);
                 ctx.lineTo(px, bottom);
                 ctx.stroke();
-                
+
                 // Calculate Np and Pv (Sv) from curve
                 const { Np } = calculateNpCurve(Re_sim);
                 const effRho = getEffectiveDensity();
@@ -2024,25 +2016,25 @@ const chartSimSpeedLine = {
                     `Np: ${Np.toFixed(3)}`,
                     `Pv: ${Pv_sim.toFixed(1)} W/m³`
                 ];
-                
+
                 ctx.font = 'bold 9px Inter, Outfit, Noto Sans JP, sans-serif';
-                
+
                 // Calculate max width among all lines
                 let maxWidth = 0;
                 lines.forEach(line => {
                     const w = ctx.measureText(line).width;
                     if (w > maxWidth) maxWidth = w;
                 });
-                
+
                 const pillWidth = maxWidth + 12;
                 const pillHeight = lines.length * 12 + 8; // 4 * 12 + 8 = 56px
                 const halfWidth = pillWidth / 2;
                 const pillX = Math.max(left + halfWidth, Math.min(right - halfWidth, px));
-                
+
                 // Draw background pill
                 ctx.fillStyle = 'rgba(11, 15, 25, 0.9)'; // Dark semi-transparent
                 ctx.fillRect(pillX - halfWidth, top + 32, pillWidth, pillHeight);
-                
+
                 // Draw lines of text
                 ctx.fillStyle = '#06b6d4';
                 ctx.textAlign = 'center';
@@ -2060,28 +2052,28 @@ const chartSimSpeedLine = {
 const lightChartNjsLabel = {
     id: 'lightChartNjsLabel',
     afterDatasetsDraw(chart) {
-        const {ctx, scales: {x, y}} = chart;
+        const { ctx, scales: { x, y } } = chart;
         if (!x || !y) return;
-        
+
         const njsDataset = chart.data.datasets.find(ds => ds.label === '完全浮遊限界速度 Njs');
         if (!njsDataset || !njsDataset.data || njsDataset.data.length === 0) return;
-        
+
         const pt = njsDataset.data[0];
         const px = x.getPixelForValue(pt.x);
         const py = y.getPixelForValue(pt.y);
-        
+
         if (px === undefined || py === undefined) return;
-        
+
         ctx.save();
         const text = 'Njs (完全浮遊)';
         ctx.font = 'bold 9px Inter, Outfit, Noto Sans JP, sans-serif';
         const textWidth = ctx.measureText(text).width;
-        
+
         // Draw light background pill for print mode
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.strokeStyle = 'rgba(220, 38, 38, 0.85)';
         ctx.lineWidth = 1.0;
-        
+
         ctx.beginPath();
         if (ctx.roundRect) {
             ctx.roundRect(px + 10, py - 8, textWidth + 10, 16, 3);
@@ -2090,7 +2082,7 @@ const lightChartNjsLabel = {
         }
         ctx.fill();
         ctx.stroke();
-        
+
         // Draw dark text inside the pill
         ctx.fillStyle = '#111827';
         ctx.textAlign = 'left';
@@ -2104,12 +2096,12 @@ const lightChartNjsLabel = {
 const lightChartSimSpeedLine = {
     id: 'lightChartSimSpeedLine',
     afterDraw(chart) {
-        const {ctx, chartArea: {top, bottom, left, right}, scales: {x}} = chart;
+        const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
         if (!x) return;
-        
+
         const n_sim = (config.simSpeed ?? 300) / 60;
         const Re_sim = calculateReVal(n_sim);
-        
+
         if (Re_sim >= x.min && Re_sim <= x.max) {
             const px = x.getPixelForValue(Re_sim);
             if (px >= left && px <= right) {
@@ -2117,12 +2109,12 @@ const lightChartSimSpeedLine = {
                 ctx.strokeStyle = '#0891b2'; // Slightly darker cyan for print contrast
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([4, 4]);
-                
+
                 ctx.beginPath();
                 ctx.moveTo(px, top);
                 ctx.lineTo(px, bottom);
                 ctx.stroke();
-                
+
                 // Calculate Np and Pv (Sv) from curve
                 const { Np } = calculateNpCurve(Re_sim);
                 const effRho = getEffectiveDensity();
@@ -2137,15 +2129,15 @@ const lightChartSimSpeedLine = {
                     `Np: ${Np.toFixed(3)}`,
                     `Pv: ${Pv_sim.toFixed(1)} W/m³`
                 ];
-                
+
                 ctx.font = 'bold 8px Inter, Noto Sans JP, sans-serif';
-                
+
                 let maxWidth = 0;
                 lines.forEach(line => {
                     const w = ctx.measureText(line).width;
                     if (w > maxWidth) maxWidth = w;
                 });
-                
+
                 const pillWidth = maxWidth + 8;
                 const pillHeight = lines.length * 10 + 6;
                 const halfWidth = pillWidth / 2;
@@ -2153,7 +2145,7 @@ const lightChartSimSpeedLine = {
 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Semi-transparent white
                 ctx.fillRect(pillX - halfWidth, top + 28, pillWidth, pillHeight);
-                
+
                 ctx.fillStyle = '#0891b2';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
@@ -2208,7 +2200,7 @@ function calcEffectiveViscosity(n_rps) {
             return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gamma_dot, pr.m));
         case 'carreau':
             return pr.eta_inf + (pr.eta_0 - pr.eta_inf) *
-                   Math.pow(1 + Math.pow(pr.lambda * gamma_dot, 2), (pr.n - 1) / 2);
+                Math.pow(1 + Math.pow(pr.lambda * gamma_dot, 2), (pr.n - 1) / 2);
         default:
             break;
     }
@@ -2249,11 +2241,11 @@ function calcKsMetznerOtto() {
             function residual(gd) {
                 switch (m) {
                     case 'powerlaw': return pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
-                    case 'bingham':  return pr.tau_y / gd + pr.eta_p - mu_eff;
+                    case 'bingham': return pr.tau_y / gd + pr.eta_p - mu_eff;
                     case 'casson': { const s = Math.sqrt(pr.eta_p) + Math.sqrt(pr.tau_y / gd); return s * s - mu_eff; }
-                    case 'hb':       return pr.tau_y / gd + pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
-                    case 'cross':    return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gd, pr.m)) - mu_eff;
-                    case 'carreau':  return pr.eta_inf + (pr.eta_0 - pr.eta_inf) * Math.pow(1 + Math.pow(pr.lambda * gd, 2), (pr.n - 1) / 2) - mu_eff;
+                    case 'hb': return pr.tau_y / gd + pr.K * Math.pow(gd, pr.n - 1) - mu_eff;
+                    case 'cross': return pr.eta_inf + (pr.eta_0 - pr.eta_inf) / (1 + Math.pow(pr.K * gd, pr.m)) - mu_eff;
+                    case 'carreau': return pr.eta_inf + (pr.eta_0 - pr.eta_inf) * Math.pow(1 + Math.pow(pr.lambda * gd, 2), (pr.n - 1) / 2) - mu_eff;
                     default: return NaN;
                 }
             }
@@ -2271,7 +2263,7 @@ function calcKsMetznerOtto() {
 
     if (ksValues.length === 0) return null;
     const ksMean = ksValues.reduce((a, b) => a + b, 0) / ksValues.length;
-    const ksStd  = Math.sqrt(ksValues.reduce((a, b) => a + (b - ksMean) ** 2, 0) / ksValues.length);
+    const ksStd = Math.sqrt(ksValues.reduce((a, b) => a + (b - ksMean) ** 2, 0) / ksValues.length);
     return { ksValues, ksMean, ksStd };
 }
 
@@ -2306,27 +2298,27 @@ function processRheologyCSV(text) {
         cols.push(cur);
         const clean = cols.map(c => c.trim());
         const sampleName = clean[idx['Sample']] || '';
-        const modelName  = clean[idx['Model']]  || '';
+        const modelName = clean[idx['Model']] || '';
         const modelId = MODEL_ID_MAP[modelName] || modelName.toLowerCase();
         const g = key => { const x = parseFloat(clean[idx[key]]); return isNaN(x) ? undefined : x; };
 
         const params = {};
-        if (g('eta_0_Pas')   !== undefined) params.eta_0   = g('eta_0_Pas');
-        if (g('tau_y_Pa')    !== undefined) params.tau_y   = g('tau_y_Pa');
-        if (g('eta_p_Pas')   !== undefined) params.eta_p   = g('eta_p_Pas');
-        if (g('K_Pasn')      !== undefined) params.K       = g('K_Pasn');
-        if (g('n_flow')      !== undefined) params.n       = g('n_flow');
-        if (g('lambda_s')    !== undefined) params.lambda  = g('lambda_s');
-        if (g('m_cross')     !== undefined) params.m       = g('m_cross');
+        if (g('eta_0_Pas') !== undefined) params.eta_0 = g('eta_0_Pas');
+        if (g('tau_y_Pa') !== undefined) params.tau_y = g('tau_y_Pa');
+        if (g('eta_p_Pas') !== undefined) params.eta_p = g('eta_p_Pas');
+        if (g('K_Pasn') !== undefined) params.K = g('K_Pasn');
+        if (g('n_flow') !== undefined) params.n = g('n_flow');
+        if (g('lambda_s') !== undefined) params.lambda = g('lambda_s');
+        if (g('m_cross') !== undefined) params.m = g('m_cross');
         if (g('eta_inf_Pas') !== undefined) params.eta_inf = g('eta_inf_Pas');
 
         if (!samples[sampleName]) samples[sampleName] = [];
         samples[sampleName].push({
             modelId, name: modelName,
             rating: clean[idx['Rating']] || '',
-            r2:   parseFloat(clean[idx['R2']])      || 0,
+            r2: parseFloat(clean[idx['R2']]) || 0,
             rmse: parseFloat(clean[idx['RMSE_Pa']]) || 0,
-            mae:  parseFloat(clean[idx['MAE_Pa']])  || 0,
+            mae: parseFloat(clean[idx['MAE_Pa']]) || 0,
             params
         });
     });
@@ -2342,7 +2334,7 @@ function processRheologyCSV(text) {
 
 function loadRheologyCSV(file) {
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         processRheologyCSV(e.target.result);
     };
     reader.readAsText(file);
@@ -2350,9 +2342,9 @@ function loadRheologyCSV(file) {
 
 function updateRheologyUI() {
     const sampleSel = document.getElementById('rheology-sample-select');
-    const modelSel  = document.getElementById('rheology-model-select');
-    const muEffDiv  = document.getElementById('mu-eff-display');
-    const ksGroup   = document.getElementById('ks-group');
+    const modelSel = document.getElementById('rheology-model-select');
+    const muEffDiv = document.getElementById('mu-eff-display');
+    const ksGroup = document.getElementById('ks-group');
     const muEffContainer = document.getElementById('mu-eff-container');
     const clearBtn = document.getElementById('btn-clear-rheology');
 
@@ -2389,13 +2381,13 @@ function updateRheologyUI() {
     // 非ニュートン流体が選択されている場合も、config.mu は上書きしない（ベース液粘度として保持）
     const selectedModelInfo = rheologyData.samples[rheologyData.activeSample]?.find(r => r.modelId === rheologyData.activeModel);
     // NOTE: config.mu はユーザー入力値として保持し、レオロジーデータ選択時に上書きしない
-    
+
     // μ_eff 列の表示/非表示を制御
     const muEffCells = document.querySelectorAll('.col-mu-eff');
     muEffCells.forEach(cell => {
         cell.style.display = isNewt ? 'none' : 'table-cell';
     });
-    
+
     const cavernModelGroup = document.getElementById('cavern-model-group');
     if (cavernModelGroup) {
         const isYieldFluid = rheologyData.activeModel === 'bingham' || rheologyData.activeModel === 'casson' || rheologyData.activeModel === 'hb';
@@ -2477,7 +2469,7 @@ function calculateFrVal(n) {
 
 function initChart() {
     const ctx = document.getElementById('rushtonChart').getContext('2d');
-    
+
     // Draw empty grid
     chart = new Chart(ctx, {
         type: 'scatter',
@@ -2504,7 +2496,7 @@ function initChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.dataset.label}: (Re: ${context.raw.x.toFixed(1)}, Np: ${context.raw.y.toFixed(3)})`;
                         }
                     }
@@ -2529,7 +2521,7 @@ function initChart() {
                         width: 2.0
                     },
                     grid: {
-                        color: function(context) {
+                        color: function (context) {
                             if (!context.tick) return 'rgba(255, 255, 255, 0.05)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2538,7 +2530,7 @@ function initChart() {
                             }
                             return 'rgba(255, 255, 255, 0.22)'; // Clear Minor gridline
                         },
-                        lineWidth: function(context) {
+                        lineWidth: function (context) {
                             if (!context.tick) return 1;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2547,7 +2539,7 @@ function initChart() {
                             }
                             return 0.8;
                         },
-                        tickColor: function(context) {
+                        tickColor: function (context) {
                             if (!context.tick) return 'rgba(255, 255, 255, 0.15)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2556,7 +2548,7 @@ function initChart() {
                             }
                             return 'rgba(255, 255, 255, 0.35)';
                         },
-                        tickLength: function(context) {
+                        tickLength: function (context) {
                             if (!context.tick) return 6;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2568,7 +2560,7 @@ function initChart() {
                     },
                     ticks: {
                         color: '#f3f4f6',
-                        callback: function(value) {
+                        callback: function (value) {
                             const log10 = Math.log10(value);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) {
                                 return '10' + getSuperScript(Math.round(log10));
@@ -2576,7 +2568,7 @@ function initChart() {
                             return ''; // Return empty string so the tick and gridline are preserved
                         }
                     },
-                    afterBuildTicks: function(scale) {
+                    afterBuildTicks: function (scale) {
                         const ticks = [];
                         const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 1.0);
                         const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100000000);
@@ -2587,7 +2579,7 @@ function initChart() {
                             for (let i = 1; i <= 9; i++) {
                                 const val = base * i;
                                 if (val >= minVal && val <= maxVal) {
-                                    ticks.push({ 
+                                    ticks.push({
                                         value: val,
                                         major: (i === 1)
                                     });
@@ -2617,7 +2609,7 @@ function initChart() {
                         width: 2.0
                     },
                     grid: {
-                        color: function(context) {
+                        color: function (context) {
                             if (!context.tick) return 'rgba(255, 255, 255, 0.05)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2626,7 +2618,7 @@ function initChart() {
                             }
                             return 'rgba(255, 255, 255, 0.22)'; // Clear Minor gridline
                         },
-                        lineWidth: function(context) {
+                        lineWidth: function (context) {
                             if (!context.tick) return 1;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2635,7 +2627,7 @@ function initChart() {
                             }
                             return 0.8;
                         },
-                        tickColor: function(context) {
+                        tickColor: function (context) {
                             if (!context.tick) return 'rgba(255, 255, 255, 0.15)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2644,7 +2636,7 @@ function initChart() {
                             }
                             return 'rgba(255, 255, 255, 0.35)';
                         },
-                        tickLength: function(context) {
+                        tickLength: function (context) {
                             if (!context.tick) return 6;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -2656,7 +2648,7 @@ function initChart() {
                     },
                     ticks: {
                         color: '#f3f4f6',
-                        callback: function(value) {
+                        callback: function (value) {
                             const log10 = Math.log10(value);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) {
                                 return '10' + getSuperScript(Math.round(log10));
@@ -2664,7 +2656,7 @@ function initChart() {
                             return ''; // Return empty string so the tick and gridline are preserved
                         }
                     },
-                    afterBuildTicks: function(scale) {
+                    afterBuildTicks: function (scale) {
                         const ticks = [];
                         const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 0.01);
                         const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100);
@@ -2675,7 +2667,7 @@ function initChart() {
                             for (let i = 1; i <= 9; i++) {
                                 const val = base * i;
                                 if (val >= minVal && val <= maxVal) {
-                                    ticks.push({ 
+                                    ticks.push({
                                         value: val,
                                         major: (i === 1)
                                     });
@@ -2760,7 +2752,7 @@ function updateChart() {
     for (let i = startLog * stepsPerDecade; i <= endLog * stepsPerDecade; i++) {
         const Re = Math.pow(10, i / stepsPerDecade);
         const { Np0, Np } = calculateNpCurve(Re);
-        
+
         if (Np0 > 0) unbaffledData.push({ x: Re, y: Np0 });
         if (Np > 0) baffledData.push({ x: Re, y: Np });
         if (NpMax > 0) maxData.push({ x: Re, y: NpMax });
@@ -2790,8 +2782,8 @@ function updateChart() {
         },
         {
             label: (config.baffleActive && config.coilActive) ? '邪魔板＋コイル 推算曲線 (Np)' :
-                   (config.coilActive) ? 'コイルあり 推算曲線 (Np)' :
-                   (config.baffleActive) ? '邪魔板あり推算曲線 (Np)' : '邪魔板なし推算曲線 (Np)',
+                (config.coilActive) ? 'コイルあり 推算曲線 (Np)' :
+                    (config.baffleActive) ? '邪魔板あり推算曲線 (Np)' : '邪魔板なし推算曲線 (Np)',
             data: baffledData,
             showLine: true,
             borderColor: '#06b6d4',
@@ -2836,7 +2828,7 @@ function updateChart() {
             const Re_Njs = (effRho * njsRes.Njs_rps * Math.pow(config.d, 2)) / njsRes.mu;
             // Calculate Np at Re_Njs
             const { Np } = calculateNpCurve(Re_Njs);
-            
+
             datasets.push({
                 label: '完全浮遊限界速度 Njs',
                 data: [{ x: Re_Njs, y: Np }],
@@ -2879,7 +2871,7 @@ function loadSampleData() {
     config.baffleActive = true;
     config.nB = 1;
     config.Bw = 0.014;
-    
+
     // 伝熱シミュレーション用の代表初期値セット
     config.liquidTempInit = 20;
     config.liquidCp = 4184;
@@ -2972,7 +2964,7 @@ function loadSampleData() {
     expBlocks.forEach(b => renderBlockHTML(b));
 
     recalculateAll();
-    
+
     // サンプル用のレオロジーCSVデータを読み込む
     const sampleCSV = `Sample,Model,Rating,R2,RMSE_Pa,MAE_Pa,eta_0_Pas,tau_y_Pa,eta_p_Pas,K_Pasn,n_flow,lambda_s,m_cross,eta_inf_Pas
 カオリンスラリー (40wt%),Bingham,Excellent,0.995,0.12,0.08,0,5.2,0.025,0,0,0,0,0
@@ -2984,7 +2976,7 @@ function loadSampleData() {
 歯磨き粉,Bingham,Good,0.980,2.5,1.8,0,120.0,25.0,0,0,0,0,0`;
 
     processRheologyCSV(sampleCSV);
-    
+
     showToast('サンプルデータを読み込みました。', 'success');
 }
 
@@ -2995,7 +2987,7 @@ function exportCSV() {
     }
 
     let csvContent = '\uFEFF'; // UTF-8 BOM
-    
+
     // 1. Export Config Settings
     csvContent += '--- CONFIGURATION ---\n';
     csvContent += 'Key,Value\n';
@@ -3013,7 +3005,7 @@ function exportCSV() {
     // 2. Export Experimental Blocks
     csvContent += '--- EXPERIMENTAL DATA ---\n';
     csvContent += 'BlockName,Time(s),N(rpm),T_raw(N.m),Tb_blank(N.m),n(1/s),P(W),Pv(W/m3),Re(-),Np(-),Fr(-)\n';
-    
+
     const { rho, mu, d, DT, g, H } = config;
     const V = calcLiquidVolumeForPv(); // use measured V_act if set, else dish-corrected estimate
 
@@ -3026,7 +3018,7 @@ function exportCSV() {
             const Pv = P / V;
             const Re = calculateReVal(n);
             const Fr = calculateFrVal(n);
-            
+
             let Np = 0;
             if (n > 0 && Math.abs(T_net) > 0) {
                 Np = P / (rho * Math.pow(n, 3) * Math.pow(d, 5));
@@ -3040,7 +3032,7 @@ function exportCSV() {
     csvContent += '\n';
     csvContent += '--- CALCULATED INTERMEDIATE VARIABLES ---\n';
     csvContent += 'Variable,Definition,Value\n';
-    
+
     const vars = getKameiHiraokaIntermediateVars();
     const csvVarsRows = [
         { name: 'beta', def: '2ln(D/d) / (D/d - d/D)', val: vars.beta },
@@ -3055,7 +3047,7 @@ function exportCSV() {
         { name: 'ReG_ratio', def: '流動モデルにおけるレイノルズ数比', val: vars.ReG_ratio },
         { name: 'NpMax', def: '完全邪魔板条件での最大動力数(段数補正済)', val: vars.NpMax }
     ];
-    
+
     csvVarsRows.forEach(r => {
         csvContent += `"${r.name}","${r.def}",${r.val.toFixed(5)}\n`;
     });
@@ -3086,7 +3078,7 @@ function exportCSV() {
             csvContent += `"Re_Njs","Njs時のレイノルズ数",${Re_Njs.toFixed(1)},"-"\n`;
             csvContent += `"Np_Njs","Njs時の動力数",${Np_njs.toFixed(4)},"-"\n`;
             csvContent += `"P_Njs","Njs時の攪拌所要動力",${P_njs.toFixed(4)},"W"\n`;
-            csvContent += `"Pv_Njs","Njs時の単位体積動力",${(P_njs/V_njs).toFixed(2)},"W/m3"\n`;
+            csvContent += `"Pv_Njs","Njs時の単位体積動力",${(P_njs / V_njs).toFixed(2)},"W/m3"\n`;
         } else {
             csvContent += `# エラー: ${njsRes.error}\n`;
         }
@@ -3111,8 +3103,8 @@ function exportCSV() {
             csvContent += `"RMSE","RMSE",${mInfo.rmse.toFixed(5)},"Pa"\n`;
             if (p.tau_y !== undefined) csvContent += `"tau_y","降伏応力",${p.tau_y.toFixed(5)},"Pa"\n`;
             if (p.eta_p !== undefined) csvContent += `"eta_p","塑性粘度 / Casson粘度",${p.eta_p.toFixed(5)},"Pa.s"\n`;
-            if (p.K    !== undefined) csvContent += `"K","粘性係数",${p.K.toFixed(5)},"Pa.s^n"\n`;
-            if (p.n    !== undefined) csvContent += `"n","流動指数",${p.n.toFixed(5)},"-"\n`;
+            if (p.K !== undefined) csvContent += `"K","粘性係数",${p.K.toFixed(5)},"Pa.s^n"\n`;
+            if (p.n !== undefined) csvContent += `"n","流動指数",${p.n.toFixed(5)},"-"\n`;
             if (p.eta_0 !== undefined) csvContent += `"eta_0","ゼロせん断粘度",${p.eta_0.toFixed(5)},"Pa.s"\n`;
             if (p.eta_inf !== undefined) csvContent += `"eta_inf","無限せん断粘度",${p.eta_inf.toFixed(5)},"Pa.s"\n`;
             if (p.lambda !== undefined) csvContent += `"lambda","時定数 lambda",${p.lambda.toFixed(5)},"s"\n`;
@@ -3123,7 +3115,7 @@ function exportCSV() {
             const n_rps = b.aveCalculated ? (b.aveCalculated.N / 60) : 0;
             const gamma_eff = rheologyData.ks * n_rps;
             const mu_eff = calcEffectiveViscosity(n_rps);
-            csvContent += `"${b.name}",${(n_rps*60).toFixed(1)},${gamma_eff.toFixed(3)},${mu_eff.toFixed(6)}\n`;
+            csvContent += `"${b.name}",${(n_rps * 60).toFixed(1)},${gamma_eff.toFixed(3)},${mu_eff.toFixed(6)}\n`;
         });
     } else {
         csvContent += '# 非ニュートン流体モデルが選択されていません\n';
@@ -3137,7 +3129,7 @@ function exportCSV() {
     const effU = totalArea > 0 ? (heatRes.UA_total / totalArea) : 0;
     const effH1 = totalArea > 0 ? ((heatRes.h1_j * heatRes.Aj + (config.coilActive ? heatRes.h1_c * heatRes.Ac : 0)) / totalArea) : 0;
     const effH2 = totalArea > 0 ? ((heatRes.h2_j * heatRes.Aj + (config.coilActive ? heatRes.h2_c * heatRes.Ac : 0)) / totalArea) : 0;
-    
+
     csvContent += 'Variable,Value,Unit\n';
     csvContent += `"h1_eff (有効 液側境膜伝熱係数)",${effH1.toFixed(4)},"W/(m2.K)"\n`;
     csvContent += `"h2_eff (有効 熱媒側境膜伝熱係数)",${effH2.toFixed(4)},"W/(m2.K)"\n`;
@@ -3146,7 +3138,7 @@ function exportCSV() {
 
     // 1時間後の温度推算
     const V_act_heat = getLiquidVolume();
-    const M_L = heatRes.rho_L * V_act_heat; 
+    const M_L = heatRes.rho_L * V_act_heat;
     let tempAt1hr = config.liquidTempInit ?? 20.0;
     if (effU > 0) {
         if (!heatRes.isSteam) {
@@ -3178,14 +3170,14 @@ function importCSV(e) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(evt) {
+    reader.onload = function (evt) {
         const text = evt.target.result;
         const lines = text.split('\n');
-        
+
         let inConfig = false;
         let inData = false;
         let inRheology = false;
-        
+
         let importedConfig = {};
         let importedBlocksMap = {};
         let importedRheology = null;
@@ -3212,7 +3204,7 @@ function importCSV(e) {
                 if (firstComma > 0) {
                     const key = trimmed.substring(0, firstComma).trim();
                     let val = trimmed.substring(firstComma + 1).trim();
-                    
+
                     if (val.startsWith('"') && val.endsWith('"')) {
                         val = val.substring(1, val.length - 1).replace(/""/g, '"');
                     } else {
@@ -3226,7 +3218,7 @@ function importCSV(e) {
                     } else if (inRheology && key === 'rheologyDataJson') {
                         try {
                             importedRheology = JSON.parse(val);
-                        } catch(e) { console.warn("Failed to parse rheology JSON", e); }
+                        } catch (e) { console.warn("Failed to parse rheology JSON", e); }
                     }
                 }
             } else if (inData) {
@@ -3264,7 +3256,7 @@ function importCSV(e) {
         if (Object.keys(importedBlocksMap).length > 0) {
             expBlocks = [];
             document.getElementById('blocks-container').innerHTML = '';
-            
+
             Object.keys(importedBlocksMap).forEach(name => {
                 const blockId = 'block-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
                 const block = {
@@ -3298,7 +3290,7 @@ function drawCanvasArrow(ctx, x1, y1, x2, y2, color = '#0891b2', arrowSize = 6, 
 
     // Arrow heads
     const angle = Math.atan2(y2 - y1, x2 - x1);
-    
+
     // Head at (x2, y2)
     ctx.beginPath();
     ctx.moveTo(x2, y2);
@@ -3456,7 +3448,7 @@ function drawVesselForPDF() {
     const d_px = config.d * scale;
     const b_px = config.b * scale;
     const clearance_px = config.clearance * scale;
-    const y_bottom_impeller = y_deepest - clearance_px - b_px/2;
+    const y_bottom_impeller = y_deepest - clearance_px - b_px / 2;
 
     ctx.save();
     ctx.strokeStyle = '#4b5563';
@@ -3482,7 +3474,7 @@ function drawVesselForPDF() {
         ctx.save();
         // Hub
         ctx.fillStyle = '#4b5563';
-        ctx.fillRect(cx - 5, y_imp - b_px/2, 10, b_px);
+        ctx.fillRect(cx - 5, y_imp - b_px / 2, 10, b_px);
 
         const blade_w = (d_px - 10) / 2;
         ctx.fillStyle = '#ec4899';
@@ -3492,19 +3484,19 @@ function drawVesselForPDF() {
         if (config.impellerType === 'pitched-paddle') {
             // Left angled blade
             ctx.beginPath();
-            ctx.moveTo(cx - 5, y_imp - b_px/3);
-            ctx.lineTo(cx - 5 - blade_w, y_imp - b_px/2);
-            ctx.lineTo(cx - 5 - blade_w, y_imp + b_px/6);
-            ctx.lineTo(cx - 5, y_imp + b_px/3);
+            ctx.moveTo(cx - 5, y_imp - b_px / 3);
+            ctx.lineTo(cx - 5 - blade_w, y_imp - b_px / 2);
+            ctx.lineTo(cx - 5 - blade_w, y_imp + b_px / 6);
+            ctx.lineTo(cx - 5, y_imp + b_px / 3);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
 
             // Right angled blade
             ctx.beginPath();
-            ctx.moveTo(cx + 5, y_imp - b_px/3);
-            ctx.lineTo(cx + 5 + blade_w, y_imp - b_px/6);
-            ctx.lineTo(cx + 5 + blade_w, y_imp + b_px/2);
-            ctx.lineTo(cx + 5, y_imp + b_px/3);
+            ctx.moveTo(cx + 5, y_imp - b_px / 3);
+            ctx.lineTo(cx + 5 + blade_w, y_imp - b_px / 6);
+            ctx.lineTo(cx + 5 + blade_w, y_imp + b_px / 2);
+            ctx.lineTo(cx + 5, y_imp + b_px / 3);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
 
@@ -3512,43 +3504,43 @@ function drawVesselForPDF() {
             // Left curve
             ctx.beginPath();
             ctx.moveTo(cx - 5, y_imp);
-            ctx.bezierCurveTo(cx - 5 - blade_w/2, y_imp - b_px/2, cx - 5 - blade_w, y_imp - b_px/4, cx - 5 - blade_w, y_imp);
-            ctx.bezierCurveTo(cx - 5 - blade_w, y_imp + b_px/2, cx - 5 - blade_w/2, y_imp, cx - 5, y_imp);
+            ctx.bezierCurveTo(cx - 5 - blade_w / 2, y_imp - b_px / 2, cx - 5 - blade_w, y_imp - b_px / 4, cx - 5 - blade_w, y_imp);
+            ctx.bezierCurveTo(cx - 5 - blade_w, y_imp + b_px / 2, cx - 5 - blade_w / 2, y_imp, cx - 5, y_imp);
             ctx.fill(); ctx.stroke();
 
             // Right curve
             ctx.beginPath();
             ctx.moveTo(cx + 5, y_imp);
-            ctx.bezierCurveTo(cx + 5 + blade_w/2, y_imp - b_px/2, cx + 5 + blade_w, y_imp - b_px/4, cx + 5 + blade_w, y_imp);
-            ctx.bezierCurveTo(cx + 5 + blade_w, y_imp + b_px/2, cx + 5 + blade_w/2, y_imp, cx + 5, y_imp);
+            ctx.bezierCurveTo(cx + 5 + blade_w / 2, y_imp - b_px / 2, cx + 5 + blade_w, y_imp - b_px / 4, cx + 5 + blade_w, y_imp);
+            ctx.bezierCurveTo(cx + 5 + blade_w, y_imp + b_px / 2, cx + 5 + blade_w / 2, y_imp, cx + 5, y_imp);
             ctx.fill(); ctx.stroke();
 
         } else if (config.impellerType === 'faudler') {
             // Left curve
             ctx.beginPath();
-            ctx.moveTo(cx - 5, y_imp - b_px/4);
-            ctx.quadraticCurveTo(cx - 5 - blade_w/2, y_imp - b_px/2, cx - 5 - blade_w, y_imp);
-            ctx.lineTo(cx - 5 - blade_w, y_imp + b_px/2);
-            ctx.quadraticCurveTo(cx - 5 - blade_w/2, y_imp + b_px/4, cx - 5, y_imp + b_px/4);
+            ctx.moveTo(cx - 5, y_imp - b_px / 4);
+            ctx.quadraticCurveTo(cx - 5 - blade_w / 2, y_imp - b_px / 2, cx - 5 - blade_w, y_imp);
+            ctx.lineTo(cx - 5 - blade_w, y_imp + b_px / 2);
+            ctx.quadraticCurveTo(cx - 5 - blade_w / 2, y_imp + b_px / 4, cx - 5, y_imp + b_px / 4);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
 
             // Right curve
             ctx.beginPath();
-            ctx.moveTo(cx + 5, y_imp - b_px/4);
-            ctx.quadraticCurveTo(cx + 5 + blade_w/2, y_imp - b_px/2, cx + 5 + blade_w, y_imp);
-            ctx.lineTo(cx + 5 + blade_w, y_imp + b_px/2);
-            ctx.quadraticCurveTo(cx + 5 + blade_w/2, y_imp + b_px/4, cx + 5, y_imp + b_px/4);
+            ctx.moveTo(cx + 5, y_imp - b_px / 4);
+            ctx.quadraticCurveTo(cx + 5 + blade_w / 2, y_imp - b_px / 2, cx + 5 + blade_w, y_imp);
+            ctx.lineTo(cx + 5 + blade_w, y_imp + b_px / 2);
+            ctx.quadraticCurveTo(cx + 5 + blade_w / 2, y_imp + b_px / 4, cx + 5, y_imp + b_px / 4);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
 
         } else {
             // Flat paddle / turbine (rectangles)
-            ctx.fillRect(cx - 5 - blade_w, y_imp - b_px/2, blade_w, b_px);
-            ctx.strokeRect(cx - 5 - blade_w, y_imp - b_px/2, blade_w, b_px);
+            ctx.fillRect(cx - 5 - blade_w, y_imp - b_px / 2, blade_w, b_px);
+            ctx.strokeRect(cx - 5 - blade_w, y_imp - b_px / 2, blade_w, b_px);
 
-            ctx.fillRect(cx + 5, y_imp - b_px/2, blade_w, b_px);
-            ctx.strokeRect(cx + 5, y_imp - b_px/2, blade_w, b_px);
+            ctx.fillRect(cx + 5, y_imp - b_px / 2, blade_w, b_px);
+            ctx.strokeRect(cx + 5, y_imp - b_px / 2, blade_w, b_px);
         }
 
         if (config.impellerType === 'flat-turbine') {
@@ -3599,7 +3591,7 @@ function drawVesselForPDF() {
 
     ctx.setLineDash([]);
     drawCanvasArrow(ctx, 450, y_liquid, 450, y_deepest);
-    
+
     // Vertical text rotation
     ctx.save();
     ctx.translate(458, (y_liquid + y_deepest) / 2);
@@ -3612,27 +3604,27 @@ function drawVesselForPDF() {
     const y_d_line = y_bottom_impeller - b_px - 20;
     setGuideStyle();
     ctx.beginPath();
-    ctx.moveTo(cx - d_px/2, y_bottom_impeller);
-    ctx.lineTo(cx - d_px/2, y_d_line - 10);
-    ctx.moveTo(cx + d_px/2, y_bottom_impeller);
-    ctx.lineTo(cx + d_px/2, y_d_line - 10);
+    ctx.moveTo(cx - d_px / 2, y_bottom_impeller);
+    ctx.lineTo(cx - d_px / 2, y_d_line - 10);
+    ctx.moveTo(cx + d_px / 2, y_bottom_impeller);
+    ctx.lineTo(cx + d_px / 2, y_d_line - 10);
     ctx.stroke();
 
     ctx.setLineDash([]);
-    drawCanvasArrow(ctx, cx - d_px/2, y_d_line, cx + d_px/2, y_d_line);
+    drawCanvasArrow(ctx, cx - d_px / 2, y_d_line, cx + d_px / 2, y_d_line);
     ctx.textAlign = 'center';
     ctx.fillText(`d = ${config.d.toFixed(3)} m`, cx, y_d_line - 6);
 
     // C (Clearance)
     ctx.setLineDash([]);
-    const y_c_start_pdf = y_bottom_impeller + b_px/2;
+    const y_c_start_pdf = y_bottom_impeller + b_px / 2;
     drawCanvasArrow(ctx, cx + 25, y_c_start_pdf, cx + 25, y_deepest);
     ctx.textAlign = 'left';
     ctx.fillText(`C = ${config.clearance.toFixed(3)} m`, cx + 35, (y_c_start_pdf + y_deepest) / 2 + 4);
 
     // b (Blade width)
-    const x_b_line = cx + d_px/2 + 25;
-    drawCanvasArrow(ctx, x_b_line, y_bottom_impeller - b_px/2, x_b_line, y_bottom_impeller + b_px/2);
+    const x_b_line = cx + d_px / 2 + 25;
+    drawCanvasArrow(ctx, x_b_line, y_bottom_impeller - b_px / 2, x_b_line, y_bottom_impeller + b_px / 2);
     ctx.textAlign = 'left';
     ctx.fillText(`b = ${config.b.toFixed(3)} m`, x_b_line + 10, y_bottom_impeller + 4);
 
@@ -3640,7 +3632,7 @@ function drawVesselForPDF() {
     if (config.baffleActive) {
         drawCanvasArrow(ctx, lx, y_top - 15, lx + bw_px, y_top - 15);
         ctx.textAlign = 'center';
-        ctx.fillText(`Bw=${config.Bw.toFixed(3)}m`, lx + bw_px/2, y_top - 23);
+        ctx.fillText(`Bw=${config.Bw.toFixed(3)}m`, lx + bw_px / 2, y_top - 23);
     }
     ctx.restore();
 
@@ -3672,7 +3664,7 @@ function generatePDFReport() {
 
     document.getElementById('pdf-val-dt').textContent = config.DT.toFixed(3);
     document.getElementById('pdf-val-h').textContent = getLiquidHeight().toFixed(3);
-    
+
     // Map bottom head type
     const headMap = {
         'flat': '平底',
@@ -3730,7 +3722,7 @@ function generatePDFReport() {
         slSection.style.display = 'block';
         document.getElementById('pdf-val-dp').textContent = config.dp_um;
         document.getElementById('pdf-val-rhos').textContent = config.rho_S;
-        
+
         let S = 5.0;
         if (config.sFactorMode === 'auto') {
             S = getZwieteringPresetS();
@@ -3738,7 +3730,7 @@ function generatePDFReport() {
             S = config.sFactorCustom ?? 5.0;
         }
         document.getElementById('pdf-val-sfactor').textContent = S.toFixed(2);
-        
+
         // Calculate Njs values directly for full detail
         const njsRes = calculateNjs();
         if (!njsRes.error) {
@@ -3768,12 +3760,12 @@ function generatePDFReport() {
     // 3. Render Light Mode Chart on Hidden Canvas
     const pdfCanvas = document.getElementById('pdfChartCanvas');
     const pdfCtx = pdfCanvas.getContext('2d');
-    
+
     // Custom plugins for Light Mode PDF Chart
     const lightChartAreaBorder = {
         id: 'lightChartAreaBorder',
         afterDraw(c) {
-            const {ctx: cCtx, chartArea: {top, right, bottom, left, width, height}} = c;
+            const { ctx: cCtx, chartArea: { top, right, bottom, left, width, height } } = c;
             cCtx.save();
             cCtx.strokeStyle = '#4b5563'; // Darker gray frame for clear boundary
             cCtx.lineWidth = 1.5;
@@ -3785,7 +3777,7 @@ function generatePDFReport() {
     const customCanvasBackgroundColor = {
         id: 'customCanvasBackgroundColor',
         beforeDraw(c) {
-            const {ctx: cCtx} = c;
+            const { ctx: cCtx } = c;
             cCtx.save();
             cCtx.globalCompositeOperation = 'destination-over';
             cCtx.fillStyle = '#ffffff'; // Force solid white background
@@ -3844,7 +3836,7 @@ function generatePDFReport() {
                     },
                     border: { display: true, color: '#4b5563', width: 1.5 },
                     grid: {
-                        color: function(context) {
+                        color: function (context) {
                             if (!context.tick) return 'rgba(0, 0, 0, 0.02)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -3853,21 +3845,21 @@ function generatePDFReport() {
                             }
                             return 'rgba(0, 0, 0, 0.05)'; // Minor gridline
                         },
-                        lineWidth: function(context) {
+                        lineWidth: function (context) {
                             if (!context.tick) return 1;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) return 1.0;
                             return 0.6;
                         },
-                        tickColor: function(context) {
+                        tickColor: function (context) {
                             if (!context.tick) return 'rgba(0, 0, 0, 0.05)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) return 'rgba(0, 0, 0, 0.3)';
                             return 'rgba(0, 0, 0, 0.1)';
                         },
-                        tickLength: function(context) {
+                        tickLength: function (context) {
                             if (!context.tick) return 6;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -3877,7 +3869,7 @@ function generatePDFReport() {
                     },
                     ticks: {
                         color: '#374151',
-                        callback: function(value) {
+                        callback: function (value) {
                             const log10 = Math.log10(value);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) {
                                 return '10' + getSuperScript(Math.round(log10));
@@ -3885,7 +3877,7 @@ function generatePDFReport() {
                             return '';
                         }
                     },
-                    afterBuildTicks: function(scale) {
+                    afterBuildTicks: function (scale) {
                         const ticks = [];
                         const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 0.1);
                         const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100000);
@@ -3915,7 +3907,7 @@ function generatePDFReport() {
                     },
                     border: { display: true, color: '#4b5563', width: 1.5 },
                     grid: {
-                        color: function(context) {
+                        color: function (context) {
                             if (!context.tick) return 'rgba(0, 0, 0, 0.02)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -3924,21 +3916,21 @@ function generatePDFReport() {
                             }
                             return 'rgba(0, 0, 0, 0.05)'; // Minor gridline
                         },
-                        lineWidth: function(context) {
+                        lineWidth: function (context) {
                             if (!context.tick) return 1;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) return 1.0;
                             return 0.6;
                         },
-                        tickColor: function(context) {
+                        tickColor: function (context) {
                             if (!context.tick) return 'rgba(0, 0, 0, 0.05)';
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) return 'rgba(0, 0, 0, 0.3)';
                             return 'rgba(0, 0, 0, 0.1)';
                         },
-                        tickLength: function(context) {
+                        tickLength: function (context) {
                             if (!context.tick) return 6;
                             const val = context.tick.value;
                             const log10 = Math.log10(val);
@@ -3948,7 +3940,7 @@ function generatePDFReport() {
                     },
                     ticks: {
                         color: '#374151',
-                        callback: function(value) {
+                        callback: function (value) {
                             const log10 = Math.log10(value);
                             if (Math.abs(log10 - Math.round(log10)) < 1e-10) {
                                 return '10' + getSuperScript(Math.round(log10));
@@ -3956,7 +3948,7 @@ function generatePDFReport() {
                             return '';
                         }
                     },
-                    afterBuildTicks: function(scale) {
+                    afterBuildTicks: function (scale) {
                         const ticks = [];
                         const minVal = (scale.min !== undefined && scale.min !== null && !isNaN(scale.min)) ? scale.min : ((scale.dataMin !== undefined && scale.dataMin !== null) ? scale.dataMin : 0.01);
                         const maxVal = (scale.max !== undefined && scale.max !== null && !isNaN(scale.max)) ? scale.max : ((scale.dataMax !== undefined && scale.dataMax !== null) ? scale.dataMax : 100);
@@ -3982,14 +3974,14 @@ function generatePDFReport() {
 
     const chartImgUrl = pdfChart.toBase64Image();
     document.getElementById('pdf-chart-img').src = chartImgUrl;
-    
+
     // Clean up temporary chart instance
     pdfChart.destroy();
 
     // 3.5 Fill PDF Calculated Intermediate Variables
     const pdfVarsBody = document.getElementById('pdf-calculated-vars-body');
     pdfVarsBody.innerHTML = '';
-    
+
     const vars = getKameiHiraokaIntermediateVars();
     const pdfVarsRows = [
         { name: 'β (ベータ)', def: '2ln(D/d) / (D/d - d/D)', val: vars.beta },
@@ -4032,16 +4024,16 @@ function generatePDFReport() {
     // 3.5 Non-Newtonian Information
     const pdfNonNewtSection = document.getElementById('pdf-non-newtonian-section');
     const pdfNonNewtContent = document.getElementById('pdf-non-newtonian-content');
-    
+
     if (rheologyData.activeModel && rheologyData.activeModel !== 'newtonian') {
         const models = rheologyData.samples[rheologyData.activeSample] || [];
         const modelInfo = models.find(m => m.modelId === rheologyData.activeModel);
-        
+
         if (modelInfo) {
             let formulaStr = '';
             let paramStr = '';
             const p = modelInfo.params;
-            
+
             if (rheologyData.activeModel === 'bingham') {
                 formulaStr = `τ = τ<sub>y</sub> + η<sub>p</sub> D`;
                 paramStr = `降伏値 τ<sub>y</sub> = ${p.tau_y ? p.tau_y.toFixed(4) : 0} Pa, 塑性粘度 η<sub>p</sub> = ${p.eta_p ? p.eta_p.toFixed(4) : 0} Pa·s`;
@@ -4055,12 +4047,12 @@ function generatePDFReport() {
                 formulaStr = `τ = τ<sub>y</sub> + K D<sup>n</sup>`;
                 paramStr = `降伏値 τ<sub>y</sub> = ${p.tau_y ? p.tau_y.toFixed(4) : 0} Pa, 粘性係数 K = ${p.K ? p.K.toFixed(4) : 0} Pa·s<sup>n</sup>, 流動指数 n = ${p.n ? p.n.toFixed(4) : 0}`;
             }
-            
+
             let allN_pdf = [];
             expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN_pdf.push(r.N / 60); }));
             const n_rep_pdf = allN_pdf.length > 0 ? allN_pdf.reduce((a, b) => a + b, 0) / allN_pdf.length : 100 / 60;
             const mu_eff_rep = calcEffectiveViscosity(n_rep_pdf);
-            
+
             pdfNonNewtContent.innerHTML = `
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <div><strong style="color:#0f172a;">適合モデル:</strong> ${modelInfo.name}</div>
@@ -4075,7 +4067,7 @@ function generatePDFReport() {
                     <ul style="margin:0; padding-left:16px; color:#334155;">
                         <li>装置定数 k<sub>s</sub> = ${rheologyData.ks.toFixed(2)}</li>
                         <li>有効せん断速度式: &gamma;<sub>eff</sub> = k<sub>s</sub> × N &nbsp;[1/s]</li>
-                        <li>代表有効粘度 (N ≈ ${(n_rep_pdf*60).toFixed(0)} rpm時): &mu;<sub>eff</sub> ≈ ${mu_eff_rep.toFixed(5)} Pa·s</li>
+                        <li>代表有効粘度 (N ≈ ${(n_rep_pdf * 60).toFixed(0)} rpm時): &mu;<sub>eff</sub> ≈ ${mu_eff_rep.toFixed(5)} Pa·s</li>
                     </ul>
                 </div>
                 <div style="border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 8px;">
@@ -4092,18 +4084,18 @@ function generatePDFReport() {
                         </thead>
                         <tbody>
                             ${expBlocks.map(b => {
-                                const n_rps_b = b.aveCalculated ? (b.aveCalculated.N / 60) : 0;
-                                const gamma_eff_b = rheologyData.ks * n_rps_b;
-                                const mu_eff_b = calcEffectiveViscosity(n_rps_b);
-                                const Re_eff_b = mu_eff_b > 0 ? (config.rho * n_rps_b * config.d * config.d / mu_eff_b) : 0;
-                                return `<tr style="text-align:center;">
+                const n_rps_b = b.aveCalculated ? (b.aveCalculated.N / 60) : 0;
+                const gamma_eff_b = rheologyData.ks * n_rps_b;
+                const mu_eff_b = calcEffectiveViscosity(n_rps_b);
+                const Re_eff_b = mu_eff_b > 0 ? (config.rho * n_rps_b * config.d * config.d / mu_eff_b) : 0;
+                return `<tr style="text-align:center;">
                                     <td style="padding:3px 6px; border:1px solid #e5e7eb; text-align:left; font-weight:500;">${b.name}</td>
-                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${(n_rps_b*60).toFixed(1)}</td>
+                                    <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${(n_rps_b * 60).toFixed(1)}</td>
                                     <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${gamma_eff_b.toFixed(2)}</td>
                                     <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace; color:#0284c7; font-weight:600;">${mu_eff_b.toFixed(5)}</td>
                                     <td style="padding:3px 6px; border:1px solid #e5e7eb; font-family:monospace;">${Math.round(Re_eff_b).toLocaleString()}</td>
                                 </tr>`;
-                            }).join('')}
+            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -4149,16 +4141,16 @@ function generatePDFReport() {
 
     // 5. Run html2pdf
     const element = document.getElementById('pdf-report-template');
-    
+
     // Display temporarily to let html2pdf render correctly
     element.style.display = 'block';
 
     const opt = {
-        margin:       15, // standard margin
-        filename:     `攪拌槽動力特性レポート_${config.expNumber || 'EXP'}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        margin: 15, // standard margin
+        filename: `攪拌槽動力特性レポート_${config.expNumber || 'EXP'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     showToast('PDF生成中...', 'info');
@@ -4309,7 +4301,7 @@ function syncDiagramWindow() {
     try {
         window.diagramWindow.postMessage({
             type: 'AgitatorSimRealtimeSync',
-            config: {...config}
+            config: { ...config }
         }, '*');
     } catch (e) {
         console.warn('Failed to postMessage to diagram window', e);
@@ -4326,12 +4318,12 @@ window.addEventListener('message', (event) => {
  */
 function getEffectiveProperties() {
     const isSL = config.solidLiquidActive;
-    
+
     // 液物性 (デフォルト)
     const rhoL = config.rho;
     const CpL = config.liquidCp ?? 4184;
     const kL = config.liquidK ?? 0.60;
-    
+
     if (!isSL) {
         return {
             rho: rhoL,
@@ -4345,12 +4337,12 @@ function getEffectiveProperties() {
             k_maxwell_upper: kL
         };
     }
-    
+
     // 固体物性
     const rhoS = config.rho_S ?? 2500;
     const CpS = config.solidCp ?? 800;
     const kS = config.solidK ?? 1.0;
-    
+
     // 固体質量分率 c_s (0〜1)
     let c_s = 0;
     if (config.solidConcMode === 'wt-total') {
@@ -4360,32 +4352,32 @@ function getEffectiveProperties() {
         const X = config.solidConcVal ?? 1.0;
         c_s = X / (100 + X);
     }
-    
+
     // 有効密度 (逆数和 = スラリー密度)
     let rho_eff = rhoL;
     if (rhoS > 0 && rhoL > 0) {
         rho_eff = 1 / (c_s / rhoS + (1 - c_s) / rhoL);
     }
-    
+
     // 容積分率 phi_s
     let phi_s = 0;
     if (rhoS > 0 && rhoL > 0) {
         phi_s = (c_s / rhoS) / (c_s / rhoS + (1 - c_s) / rhoL);
     }
-    
+
     // 有効比熱 (単純な加算則)
     const Cp_eff = c_s * CpS + (1 - c_s) * CpL;
-    
+
     // 有効熱伝導率
     // 並列モデル (上限値)
     const k_parallel = phi_s * kS + (1 - phi_s) * kL;
-    
+
     // 直列モデル (下限値)
     let k_series = kL;
     if (kS > 0 && kL > 0) {
         k_series = 1 / (phi_s / kS + (1 - phi_s) / kL);
     }
-    
+
     // Maxwell下限モデル (液連続相)
     let k_maxwell_lower = kL;
     if (kS > 0 && kL > 0) {
@@ -4406,9 +4398,9 @@ function getEffectiveProperties() {
             k_maxwell_upper = kS * (numerator / denominator);
         }
     }
-    
+
     const k_eff = phi_s >= 0.2 ? k_maxwell_upper : k_maxwell_lower;
-    
+
     return {
         rho: rho_eff,
         Cp: Cp_eff,
@@ -4475,7 +4467,7 @@ function updateEffectivePropertiesUI() {
         expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
         const n_rep = allN.length > 0 ? allN.reduce((a, b) => a + b, 0) / allN.length : 100 / 60;
         const isNewt = rheologyData.activeModel === 'newtonian';
-        
+
         if (!isNewt && typeof calcEffectiveViscosity === 'function') {
             const mu_eff = calcEffectiveViscosity(n_rep);
             elMu.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;opacity:0.8;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
@@ -4500,7 +4492,7 @@ function updateEffectivePropertiesUI() {
     const props = getEffectiveProperties();
     if (elWs) elWs.textContent = (props.c_s * 100).toFixed(2) + ' wt%';
     if (elPhis) elPhis.textContent = (props.phi_s * 100).toFixed(2) + ' vol%';
-    
+
     // 熱伝導率詳細
     const isUpper = props.phi_s >= 0.2;
     if (elKMaxwellLower) {
@@ -4575,7 +4567,7 @@ function calculateNjs() {
     const rhoS = config.rho_S ?? 2500;
     const rhoL = config.rho;
     const delta_rho = rhoS - rhoL;
-    
+
     if (delta_rho <= 0) {
         return {
             error: "粒子密度が液密度以下です（浮上または中性浮遊）",
@@ -4587,7 +4579,7 @@ function calculateNjs() {
             nu: 0
         };
     }
-    
+
     let X = config.solidConcVal ?? 1.0;
     if (config.solidConcMode === 'wt-total') {
         const w = config.solidConcVal ?? 1.0;
@@ -4604,21 +4596,21 @@ function calculateNjs() {
         }
         X = (w / (100 - w)) * 100;
     }
-    
+
     let S = 5.0;
     if (config.sFactorMode === 'auto') {
         S = getZwieteringPresetS();
     } else {
         S = config.sFactorCustom ?? 5.0;
     }
-    
+
     const d = config.d;
     const g = config.g;
-    
+
     // Newton / non-Newtonian solver
     let Njs_rps = 1.0; // initial guess
     const isNewt = (rheologyData.activeModel === 'newtonian' || !rheologyData.activeModel);
-    
+
     if (isNewt) {
         const nu = config.mu / rhoL;
         Njs_rps = S * Math.pow(nu, 0.1) * Math.pow(dp, 0.2) * Math.pow(g * delta_rho / rhoL, 0.45) * Math.pow(X, 0.13) * Math.pow(d, -0.85);
@@ -4637,19 +4629,19 @@ function calculateNjs() {
         const tolerance = 1e-5;
         let nu = 0;
         let mu_eff = 0;
-        
+
         for (let iter = 0; iter < maxIter; iter++) {
             mu_eff = calcEffectiveViscosity(Njs_rps);
             nu = mu_eff / rhoL;
             const next_Njs_rps = S * Math.pow(nu, 0.1) * Math.pow(dp, 0.2) * Math.pow(g * delta_rho / rhoL, 0.45) * Math.pow(X, 0.13) * Math.pow(d, -0.85);
-            
+
             if (Math.abs(next_Njs_rps - Njs_rps) < tolerance) {
                 Njs_rps = next_Njs_rps;
                 break;
             }
             Njs_rps = 0.7 * next_Njs_rps + 0.3 * Njs_rps;
         }
-        
+
         return {
             Njs_rps,
             Njs_rpm: Njs_rps * 60,
@@ -4730,13 +4722,13 @@ function updateSimulatorResults() {
     const res = calculateNjs();
     const warnBox = document.getElementById('sim-warning-box');
     const warnText = document.getElementById('sim-warning-text');
-    
+
     if (!warnBox) return;
-    
+
     if (res.error) {
         warnBox.style.display = 'block';
         warnText.textContent = res.error;
-        
+
         document.getElementById('sim-res-S').textContent = '--';
         document.getElementById('sim-res-deltarho').textContent = '-- kg/m³';
         document.getElementById('sim-res-nu').textContent = '-- m²/s';
@@ -4745,31 +4737,31 @@ function updateSimulatorResults() {
         document.getElementById('sim-res-Njs-rpm').textContent = '-- rpm';
         document.getElementById('sim-res-P-njs').textContent = '-- W';
         document.getElementById('sim-res-Pv-njs').textContent = '-- W/m³';
-        
+
         updateSimStatusBadge(0, 100);
         updateFlowCharacteristics();
         return;
     }
-    
+
     warnBox.style.display = 'none';
-    
+
     document.getElementById('sim-res-S').textContent = res.S.toFixed(2);
     document.getElementById('sim-res-deltarho').textContent = Math.round(res.delta_rho) + ' kg/m³';
     document.getElementById('sim-res-nu').textContent = res.nu.toExponential(4) + ' m²/s';
     document.getElementById('sim-res-X').textContent = res.X.toFixed(3) + ' wt%';
     document.getElementById('sim-res-njs-rps').textContent = res.Njs_rps.toFixed(3) + ' 1/s';
     document.getElementById('sim-res-Njs-rpm').textContent = Math.round(res.Njs_rpm) + ' rpm';
-    
+
     const effRho = getEffectiveDensity();
     const Re_Njs = (effRho * res.Njs_rps * Math.pow(config.d, 2)) / res.mu;
     const { Np } = calculateNpCurve(Re_Njs);
     const P_njs = Np * effRho * Math.pow(res.Njs_rps, 3) * Math.pow(config.d, 5);
     const V = calcLiquidVolumeForPv();
     const Pv_njs = P_njs / V;
-    
+
     document.getElementById('sim-res-P-njs').textContent = P_njs.toFixed(3) + ' W';
     document.getElementById('sim-res-Pv-njs').textContent = Pv_njs.toFixed(1) + ' W/m³';
-    
+
     updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
     updateCavernDiameter();
     if (typeof _updateNjsCache === 'function') _updateNjsCache();
@@ -4791,20 +4783,20 @@ function updateCavernDiameter() {
     const cavernRow = document.getElementById('cavern-row');
     const dcLabel = document.getElementById('sim-res-cavern-dc');
     if (!cavernRow || !dcLabel) return;
-    
+
     const mod = rheologyData?.activeModel;
     const isYieldFluid = mod === 'bingham' || mod === 'casson' || mod === 'hb';
-    
+
     const models = rheologyData?.samples?.[rheologyData?.activeSample] || [];
     const modelInfo = models.find(m => m.modelId === mod);
     const pr = modelInfo?.params;
-    
+
     if (!isYieldFluid || !pr || !pr.tau_y || pr.tau_y <= 0) {
         cavernRow.style.display = 'none';
         config.cavern_Dc = null;
         return;
     }
-    
+
     const n_rps = config.simSpeed / 60;
     if (n_rps <= 0) {
         dcLabel.textContent = '0.000 m';
@@ -4812,25 +4804,25 @@ function updateCavernDiameter() {
         cavernRow.style.display = 'table-row';
         return;
     }
-    
+
     // 現在の回転数での動力 P を計算
     const mu_eff = calcEffectiveViscosity(n_rps);
     const effRho = getEffectiveDensity();
     const Re = (effRho * n_rps * Math.pow(config.d, 2)) / mu_eff;
     const { Np } = calculateNpCurve(Re);
     const P = Np * effRho * Math.pow(n_rps, 3) * Math.pow(config.d, 5);
-    
+
     // キャバーンモデルに応じた係数 K_c
     const Kc = (config.cavernModel === 'cylindrical') ? 1.0 : 1.36;
-    
+
     // Dc = (Kc * P / (pi^2 * tau_y * N))^(1/3)
-    let Dc = Math.pow((Kc * P) / (Math.pow(Math.PI, 2) * pr.tau_y * n_rps), 1/3);
-    
+    let Dc = Math.pow((Kc * P) / (Math.pow(Math.PI, 2) * pr.tau_y * n_rps), 1 / 3);
+
     // キャバーン径は槽径 DT を超えない（壁に到達）
     if (Dc > config.DT) {
         Dc = config.DT;
     }
-    
+
     dcLabel.textContent = Dc.toFixed(3) + ' m';
     config.cavern_Dc = Dc;
     cavernRow.style.display = 'table-row';
@@ -4839,7 +4831,7 @@ function updateCavernDiameter() {
 function updateSimStatusBadge(currentN, njsN) {
     const badge = document.getElementById('sim-status-badge');
     if (!badge) return;
-    
+
     if (currentN === 0) {
         badge.textContent = '完全沈降';
         badge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
@@ -4870,7 +4862,7 @@ function syncSimulatorSpeedWithBlock() {
         firstBlock.rows.forEach(r => sumN += r.N);
         const aveN = sumN / firstBlock.rows.length;
         config.simSpeed = Math.round(aveN);
-        
+
         syncSpeedUIElements();
     }
 }
@@ -4981,8 +4973,8 @@ function updateTempGrid(coords, dt_sim) {
                 return tempGrid[i2];
             };
             const laplacian = get(row, col - 1) + get(row, col + 1)
-                            + get(row - 1, col) + get(row + 1, col)
-                            - 4 * tempGrid[idx];
+                + get(row - 1, col) + get(row + 1, col)
+                - 4 * tempGrid[idx];
             next[idx] += r_fac * laplacian;
 
             // --- 移流項（温度差による自然対流） ---
@@ -4999,15 +4991,15 @@ function updateTempGrid(coords, dt_sim) {
             const dT = T_local - T_bulk;
             const g_val = config.g || 9.806;
             const beta_val = 2e-4;
-            
+
             // 浮力による鉛直速度 [m/s] を格子単位に変換
             const v_buoy_phys = g_val * beta_val * dT;  // [m/s]
             const v_buoy_px = v_buoy_phys * scale * dt_sim;  // [px]
-            
+
             // 温度勾配から水平移流速度を推定（温度が高い側へ広がる傾向）
             const C_conv = 0.15;  // 移流強度係数（調整可能）
             const u_conv_px = -C_conv * dTdx;  // [px/frame]
-            
+
             // 移流項: -u*∂T/∂x - v*∂T/∂y
             const advection = u_conv_px * dTdx + v_buoy_px * dTdy;
             next[idx] -= advection * dt_sim;
@@ -5106,7 +5098,7 @@ function getTempAtPoint(px, py, coords) {
         return tempGrid[ri * cols + ci];
     };
     return (1 - fr) * ((1 - fc) * get(r0, c0) + fc * get(r0, c1))
-         +      fr  * ((1 - fc) * get(r1, c0) + fc * get(r1, c1));
+        + fr * ((1 - fc) * get(r1, c0) + fc * get(r1, c1));
 }
 
 // ── OU (Ornstein-Uhlenbeck) 乱流ノイズ ─────────────────────
@@ -5300,10 +5292,10 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
     const NqcMap = {
         'pitched-paddle': 1.6,
-        'flat-paddle':    1.2,
-        'flat-turbine':   1.4,
-        'propeller':      2.0,
-        'faudler':        1.3
+        'flat-paddle': 1.2,
+        'flat-turbine': 1.4,
+        'propeller': 2.0,
+        'faudler': 1.3
     };
     const Nqc = NqcMap[config.impellerType] || 1.4;
     const n_rps = speed_rpm / 60;
@@ -5696,7 +5688,7 @@ function drawParticleSimulation() {
     if (config.coilActive) {
         const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
+            ? config.coilCenterDia : 0.7 * config.DT;
         const D_c_px = D_c_real * scale;
         const coilR = Math.max(4, (d_co_m / 2) * scale);
         const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
@@ -5886,12 +5878,12 @@ function drawParticleSimulation() {
     // コイル描画
     if (config.coilActive) {
         simCtx.save();
-        const coilFill   = 'rgba(6,182,212,1.0)';
+        const coilFill = 'rgba(6,182,212,1.0)';
         const coilStroke = 'rgba(2,120,150,1.0)';
         const coilFillBack = 'rgba(4,140,160,1.0)';
         const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
+            ? config.coilCenterDia : 0.7 * config.DT;
         const D_c_px = D_c_real * scale;
         const coilR = Math.max(4, (d_co_m / 2) * scale);
         const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
@@ -5905,31 +5897,31 @@ function drawParticleSimulation() {
             const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
             const cy_mid = cy_coil + pitch / 2;
             // 左断面（後ろ）
-            simCtx.beginPath(); simCtx.ellipse(cx - D_c_px/2, cy_mid, coilR*0.55, coilR, 0, 0, Math.PI*2);
+            simCtx.beginPath(); simCtx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFillBack; simCtx.fill();
             simCtx.strokeStyle = coilStroke; simCtx.lineWidth = 1.5; simCtx.stroke();
             // 右断面（後ろ）
-            simCtx.beginPath(); simCtx.ellipse(cx + D_c_px/2, cy_coil, coilR*0.55, coilR, 0, 0, Math.PI*2);
+            simCtx.beginPath(); simCtx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFillBack; simCtx.fill(); simCtx.stroke();
             // 連結
-            simCtx.beginPath(); simCtx.strokeStyle = coilFill; simCtx.lineWidth = coilR*1.1; simCtx.lineCap='round';
-            simCtx.moveTo(cx + D_c_px/2, cy_coil);
-            simCtx.bezierCurveTo(cx+D_c_px/2-coilR*1.5, cy_coil+pitch*0.15, cx-D_c_px/2+coilR*1.5, cy_mid-pitch*0.15, cx-D_c_px/2, cy_mid);
+            simCtx.beginPath(); simCtx.strokeStyle = coilFill; simCtx.lineWidth = coilR * 1.1; simCtx.lineCap = 'round';
+            simCtx.moveTo(cx + D_c_px / 2, cy_coil);
+            simCtx.bezierCurveTo(cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15, cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15, cx - D_c_px / 2, cy_mid);
             simCtx.stroke();
-            simCtx.beginPath(); simCtx.strokeStyle = coilStroke; simCtx.lineWidth=1; simCtx.lineCap='butt';
-            simCtx.moveTo(cx+D_c_px/2, cy_coil);
-            simCtx.bezierCurveTo(cx+D_c_px/2-coilR*1.5, cy_coil+pitch*0.15, cx-D_c_px/2+coilR*1.5, cy_mid-pitch*0.15, cx-D_c_px/2, cy_mid);
+            simCtx.beginPath(); simCtx.strokeStyle = coilStroke; simCtx.lineWidth = 1; simCtx.lineCap = 'butt';
+            simCtx.moveTo(cx + D_c_px / 2, cy_coil);
+            simCtx.bezierCurveTo(cx + D_c_px / 2 - coilR * 1.5, cy_coil + pitch * 0.15, cx - D_c_px / 2 + coilR * 1.5, cy_mid - pitch * 0.15, cx - D_c_px / 2, cy_mid);
             simCtx.stroke();
             // 前面断面
-            simCtx.beginPath(); simCtx.ellipse(cx-D_c_px/2, cy_mid, coilR*0.55, coilR, 0, 0, Math.PI*2);
+            simCtx.beginPath(); simCtx.ellipse(cx - D_c_px / 2, cy_mid, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFill; simCtx.fill();
-            simCtx.strokeStyle = coilStroke; simCtx.lineWidth=1.5; simCtx.stroke();
-            simCtx.beginPath(); simCtx.ellipse(cx+D_c_px/2, cy_coil, coilR*0.55, coilR, 0, 0, Math.PI*2);
+            simCtx.strokeStyle = coilStroke; simCtx.lineWidth = 1.5; simCtx.stroke();
+            simCtx.beginPath(); simCtx.ellipse(cx + D_c_px / 2, cy_coil, coilR * 0.55, coilR, 0, 0, Math.PI * 2);
             simCtx.fillStyle = coilFill; simCtx.fill(); simCtx.stroke();
             // ハイライト
-            simCtx.beginPath(); simCtx.ellipse(cx-D_c_px/2-coilR*0.15, cy_mid-coilR*0.28, coilR*0.18, coilR*0.3, -0.3, 0, Math.PI*2);
+            simCtx.beginPath(); simCtx.ellipse(cx - D_c_px / 2 - coilR * 0.15, cy_mid - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
             simCtx.fillStyle = 'rgba(255,255,255,0.4)'; simCtx.fill();
-            simCtx.beginPath(); simCtx.ellipse(cx+D_c_px/2-coilR*0.15, cy_coil-coilR*0.28, coilR*0.18, coilR*0.3, -0.3, 0, Math.PI*2);
+            simCtx.beginPath(); simCtx.ellipse(cx + D_c_px / 2 - coilR * 0.15, cy_coil - coilR * 0.28, coilR * 0.18, coilR * 0.3, -0.3, 0, Math.PI * 2);
             simCtx.fill();
         }
         simCtx.restore();
@@ -5954,7 +5946,7 @@ function drawParticleSimulation() {
     simLastFrameTime = nowPerfMs2;
     const angle = simImpellerAngle;
 
-    const bladeCountMap = { 'flat-turbine':6, 'pitched-paddle':4, 'flat-paddle':2, 'propeller':3, 'faudler':3 };
+    const bladeCountMap = { 'flat-turbine': 6, 'pitched-paddle': 4, 'flat-paddle': 2, 'propeller': 3, 'faudler': 3 };
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
 
@@ -5976,46 +5968,52 @@ function drawParticleSimulation() {
 
     stages_y.forEach(y_imp => {
         if (config.impellerType === 'flat-turbine') {
-            drawElements.push({ avgZ: 0.01, draw: () => {
-                simCtx.save();
-                simCtx.fillStyle = '#a1a1aa'; simCtx.strokeStyle = '#52525b'; simCtx.lineWidth = 0.8;
-                simCtx.fillRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
-                simCtx.strokeRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
-                simCtx.restore();
-            }});
+            drawElements.push({
+                avgZ: 0.01, draw: () => {
+                    simCtx.save();
+                    simCtx.fillStyle = '#a1a1aa'; simCtx.strokeStyle = '#52525b'; simCtx.lineWidth = 0.8;
+                    simCtx.fillRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    simCtx.strokeRect(cx - r_out * 0.7, y_imp - 1.5, r_out * 1.4, 3);
+                    simCtx.restore();
+                }
+            });
         }
 
-        drawElements.push({ avgZ: 0.02, draw: () => {
-            simCtx.save();
-            simCtx.fillStyle = '#3f3f46'; simCtx.strokeStyle = '#27272a'; simCtx.lineWidth = 1;
-            simCtx.beginPath(); simCtx.arc(cx, y_imp, r_hub, 0, Math.PI*2); simCtx.fill(); simCtx.stroke();
-            const markerRadius = 2.5;
-            const markerAngle = angle;
-            const mx = cx + Math.cos(markerAngle) * (r_hub - 3);
-            const my = y_imp + Math.sin(markerAngle) * (r_hub - 3);
-            simCtx.fillStyle = '#fde047';
-            simCtx.beginPath(); simCtx.arc(mx, my, markerRadius, 0, Math.PI*2); simCtx.fill();
-            simCtx.strokeStyle = '#fde047'; simCtx.lineWidth = 2;
-            simCtx.beginPath(); simCtx.moveTo(cx, y_imp); simCtx.lineTo(mx, my); simCtx.stroke();
-            simCtx.beginPath(); simCtx.arc(cx, y_imp, r_hub-1.5, markerAngle-0.35, markerAngle+0.35); simCtx.stroke();
-            simCtx.restore();
-        }});
+        drawElements.push({
+            avgZ: 0.02, draw: () => {
+                simCtx.save();
+                simCtx.fillStyle = '#3f3f46'; simCtx.strokeStyle = '#27272a'; simCtx.lineWidth = 1;
+                simCtx.beginPath(); simCtx.arc(cx, y_imp, r_hub, 0, Math.PI * 2); simCtx.fill(); simCtx.stroke();
+                const markerRadius = 2.5;
+                const markerAngle = angle;
+                const mx = cx + Math.cos(markerAngle) * (r_hub - 3);
+                const my = y_imp + Math.sin(markerAngle) * (r_hub - 3);
+                simCtx.fillStyle = '#fde047';
+                simCtx.beginPath(); simCtx.arc(mx, my, markerRadius, 0, Math.PI * 2); simCtx.fill();
+                simCtx.strokeStyle = '#fde047'; simCtx.lineWidth = 2;
+                simCtx.beginPath(); simCtx.moveTo(cx, y_imp); simCtx.lineTo(mx, my); simCtx.stroke();
+                simCtx.beginPath(); simCtx.arc(cx, y_imp, r_hub - 1.5, markerAngle - 0.35, markerAngle + 0.35); simCtx.stroke();
+                simCtx.restore();
+            }
+        });
 
         for (let k = 0; k < nBlades; k++) {
             const phi = angle + (k * 2 * Math.PI / nBlades);
             const { points, avgZ } = getBladePointsAndDepth(phi, r_in, r_out, b_px, config.impellerType, cx, y_imp);
             const brightness = 0.65 + 0.35 * ((avgZ / r_out) * 0.5 + 0.5);
             const baseH = 330;
-            drawElements.push({ avgZ, draw: () => {
-                simCtx.save();
-                simCtx.fillStyle = `hsl(${baseH},75%,${Math.round(50*brightness)}%)`;
-                simCtx.strokeStyle = `hsl(${baseH},80%,${Math.round(38*brightness)}%)`;
-                simCtx.lineWidth = 1.2;
-                simCtx.beginPath(); simCtx.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) simCtx.lineTo(points[i].x, points[i].y);
-                simCtx.closePath(); simCtx.fill(); simCtx.stroke();
-                simCtx.restore();
-            }});
+            drawElements.push({
+                avgZ, draw: () => {
+                    simCtx.save();
+                    simCtx.fillStyle = `hsl(${baseH},75%,${Math.round(50 * brightness)}%)`;
+                    simCtx.strokeStyle = `hsl(${baseH},80%,${Math.round(38 * brightness)}%)`;
+                    simCtx.lineWidth = 1.2;
+                    simCtx.beginPath(); simCtx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) simCtx.lineTo(points[i].x, points[i].y);
+                    simCtx.closePath(); simCtx.fill(); simCtx.stroke();
+                    simCtx.restore();
+                }
+            });
         }
     });
 
@@ -6078,11 +6076,11 @@ function switchMainTab(tab) {
     const btnRushton = document.getElementById('tab-btn-rushton');
     const btnPartsim = document.getElementById('tab-btn-partsim');
     const btnHeatsim = document.getElementById('tab-btn-heatsim');
-    
+
     const contentRushton = document.getElementById('tab-content-rushton');
     const contentPartsim = document.getElementById('tab-content-partsim');
     const contentHeatsim = document.getElementById('tab-content-heatsim');
-    
+
     const controlsRushton = document.getElementById('rushton-controls');
     const controlsPartsim = document.getElementById('partsim-controls');
 
@@ -6121,7 +6119,7 @@ function switchMainTab(tab) {
         btnRushton.style.fontWeight = '600';
         contentRushton.style.display = 'flex';
         if (controlsRushton) controlsRushton.style.display = 'flex';
-        
+
         if (chart) {
             chart.resize();
             chart.update();
@@ -6133,7 +6131,7 @@ function switchMainTab(tab) {
         btnPartsim.style.fontWeight = '600';
         contentPartsim.style.display = 'flex';
         if (controlsPartsim) controlsPartsim.style.display = 'block';
-        
+
         initParticleSimulation();
     } else if (tab === 'heatsim') {
         btnHeatsim.classList.add('active');
@@ -6141,7 +6139,7 @@ function switchMainTab(tab) {
         btnHeatsim.style.borderBottom = '2px solid var(--accent-color)';
         btnHeatsim.style.fontWeight = '600';
         contentHeatsim.style.display = 'flex';
-        
+
         initHeatSimulation();
     }
 }
@@ -6186,7 +6184,7 @@ function switchInnerTab(tab) {
 function initParticleSimulation() {
     simCanvas = document.getElementById('particleSimCanvas');
     if (!simCanvas) return;
-    
+
     // キャンバスのサイズを親コンテナに合わせる（非表示→表示時のリサイズ対応）
     const canvasParent = simCanvas.parentElement;
     if (canvasParent) {
@@ -6198,9 +6196,9 @@ function initParticleSimulation() {
         simCanvas.width = 450;
         simCanvas.height = 320;
     }
-    
+
     simCtx = simCanvas.getContext('2d');
-    
+
     if (simAnimId) {
         cancelAnimationFrame(simAnimId);
         simAnimId = null;
@@ -6208,7 +6206,7 @@ function initParticleSimulation() {
     simImpellerAngle = 0;
     simLastFrameTime = null;
     _cachedNjsResult = calculateNjs(); // 初期化時にNjsをキャッシュ
-    
+
     const coords = getVesselVisualCoords();
     const { lx, D_px, cx, scale, hb, y_deepest, y_cyl, y_liquid, rx } = coords;
 
@@ -6267,7 +6265,7 @@ function initParticleSimulation() {
             color: (config.particleStartMode === 'settled') ? '#78350f' : '#f1c27d'
         });
     }
-    
+
     function loop() {
         drawParticleSimulation();
         simAnimId = requestAnimationFrame(loop);
@@ -6278,7 +6276,7 @@ function initParticleSimulation() {
 function getBladePointsAndDepth(phi, r_in, r_out, b_px, impellerType, cx, y_imp) {
     const N = 8;
     const points = [];
-    
+
     // Determine pitch angle (tilt around radial axis)
     let pitchAngle = 0;
     if (impellerType === 'pitched-paddle') {
@@ -6286,12 +6284,12 @@ function getBladePointsAndDepth(phi, r_in, r_out, b_px, impellerType, cx, y_imp)
     } else if (impellerType === 'propeller') {
         pitchAngle = Math.PI / 6; // 30 degrees
     }
-    
+
     // 1. Calculate top edge points (from r_in to r_out)
     for (let i = 0; i <= N; i++) {
         const t = i / N;
         const r = r_in + t * (r_out - r_in);
-        
+
         let w = b_px;
         if (impellerType === 'propeller') {
             w = b_px * Math.sin(Math.PI * t);
@@ -6299,65 +6297,65 @@ function getBladePointsAndDepth(phi, r_in, r_out, b_px, impellerType, cx, y_imp)
             // Faudler blades are slightly tapered
             w = b_px * (1.0 - 0.4 * t);
         }
-        
+
         let localPhi = phi;
         if (impellerType === 'faudler') {
             localPhi = phi - 0.45 * t; // Curve backward
         }
-        
+
         const chi = -w / 2;
-        
+
         // 3D coordinates relative to (cx, y_imp, 0)
         const x3d = r * Math.cos(localPhi) - chi * Math.sin(pitchAngle) * Math.sin(localPhi);
         const y3d = chi * Math.cos(pitchAngle);
         const z3d = r * Math.sin(localPhi) + chi * Math.sin(pitchAngle) * Math.cos(localPhi);
-        
+
         points.push({ x: cx + x3d, y: y_imp + y3d, z: z3d });
     }
-    
+
     // 2. Calculate bottom edge points (from r_out back to r_in)
     for (let i = N; i >= 0; i--) {
         const t = i / N;
         const r = r_in + t * (r_out - r_in);
-        
+
         let w = b_px;
         if (impellerType === 'propeller') {
             w = b_px * Math.sin(Math.PI * t);
         } else if (impellerType === 'faudler') {
             w = b_px * (1.0 - 0.4 * t);
         }
-        
+
         let localPhi = phi;
         if (impellerType === 'faudler') {
             localPhi = phi - 0.45 * t;
         }
-        
+
         const chi = w / 2;
-        
+
         const x3d = r * Math.cos(localPhi) - chi * Math.sin(pitchAngle) * Math.sin(localPhi);
         const y3d = chi * Math.cos(pitchAngle);
         const z3d = r * Math.sin(localPhi) + chi * Math.sin(pitchAngle) * Math.cos(localPhi);
-        
+
         points.push({ x: cx + x3d, y: y_imp + y3d, z: z3d });
     }
-    
+
     // Average Z depth for sorting
     let sumZ = 0;
     points.forEach(pt => sumZ += pt.z);
     const avgZ = sumZ / points.length;
-    
+
     return { points, avgZ };
 }
 
 function drawParticleSimulation() {
     if (!simCanvas || !simCtx) return;
-    
+
     const coords = getVesselVisualCoords();
     const { cx, D_px, scale, hb, y_deepest, y_cyl, y_liquid, y_top, lx, rx } = coords;
-    
+
     if (document.hidden) { simLastFrameTime = null; return; }
     simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
-    
+
     // Calculate local parabolic vortex surface height based on rotation speed
     const rpm = config.simSpeed || 0;
     let vortexDepth = Math.pow(rpm / 600, 2) * D_px * 0.05;
@@ -6366,12 +6364,12 @@ function drawParticleSimulation() {
     }
     const maxAllowedDepth = Math.max(0, (y_deepest - y_liquid) * 0.6);
     vortexDepth = Math.min(vortexDepth, maxAllowedDepth);
-    
+
     // Wave parameters
     const t = performance.now() / 1000;
     const waveAmp = (rpm / 600) * (config.baffleActive ? 0.7 : 2.2);
     const waveFreq = 2.0 + (rpm / 300) * 5.0;
-    
+
     // Helper to get local surface Y coordinate at any X
     const getLocalSurfaceY = (x_val) => {
         const u = (x_val - cx) / (D_px / 2);
@@ -6384,12 +6382,12 @@ function drawParticleSimulation() {
         const y_surf = y_liquid + vortexDepth * (0.5 - u * u) + waveOffset;
         return Math.max(y_liquid - 10, y_surf);
     };
-    
+
     // 1. Draw Liquid Region Fill
     simCtx.save();
     simCtx.fillStyle = 'rgba(6, 182, 212, 0.05)';
     simCtx.beginPath();
-    
+
     // Draw curved top surface from left (lx) to right (rx)
     const steps = 40;
     for (let i = 0; i <= steps; i++) {
@@ -6402,10 +6400,10 @@ function drawParticleSimulation() {
             simCtx.lineTo(px, py);
         }
     }
-    
+
     // Go down to bottom right cylindrical wall
     simCtx.lineTo(rx, y_cyl);
-    
+
     // Trace the bottom vessel head from right to left
     if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
         simCtx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
@@ -6416,7 +6414,7 @@ function drawParticleSimulation() {
     }
     simCtx.closePath();
     simCtx.fill();
-    
+
     // Draw Liquid Surface Outline (parabolic curve)
     simCtx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; // Made more visible to match heat sim
     simCtx.lineWidth = 2;
@@ -6433,7 +6431,7 @@ function drawParticleSimulation() {
     }
     simCtx.stroke();
     simCtx.restore();
-    
+
     // 2. Draw Baffles (adaptive height to local liquid surface at walls)
     if (config.baffleActive) {
         simCtx.save();
@@ -6443,17 +6441,17 @@ function drawParticleSimulation() {
         const bw_px = Math.max(4, config.Bw * scale);
         const y_surf_wall = getLocalSurfaceY(lx); // liquid level at the wall
         const baffle_h = y_cyl - y_surf_wall;
-        
+
         simCtx.fillRect(lx, y_surf_wall, bw_px, baffle_h);
         simCtx.strokeRect(lx, y_surf_wall, bw_px, baffle_h);
-        
+
         if (config.nB > 1) {
             simCtx.fillRect(rx - bw_px, y_surf_wall, bw_px, baffle_h);
             simCtx.strokeRect(rx - bw_px, y_surf_wall, bw_px, baffle_h);
         }
         simCtx.restore();
     }
-    
+
     // 2.5 Draw Dead Water Zone and Cavern (for Yield Stress Fluids, respects curved surface)
     if (config.cavern_Dc > 0) {
         simCtx.save();
@@ -6461,7 +6459,7 @@ function drawParticleSimulation() {
         const clearance_px = config.clearance * scale;
         const b_px = config.b * scale;
         const y_imp = y_deepest - clearance_px - b_px / 2;
-        
+
         // タンク全体を暗くして死水域を表現
         simCtx.fillStyle = 'rgba(15, 23, 42, 0.5)';
         simCtx.beginPath();
@@ -6486,13 +6484,13 @@ function drawParticleSimulation() {
         }
         simCtx.closePath();
         simCtx.fill();
-        
+
         // キャバーン領域を「くり抜く」 (流動領域) - グラデーションとぼかしフィルターの両方を用いて境界を非常に曖昧にする
         simCtx.globalCompositeOperation = 'destination-out';
-        
+
         // Use filter blur (if supported) for extra softness
         simCtx.filter = 'blur(32px)';
-        
+
         if (config.cavernModel === 'cylindrical') {
             // 円筒モデル: 縦横比を調整した楕円グラデーションでくり抜く
             simCtx.save();
@@ -6518,39 +6516,39 @@ function drawParticleSimulation() {
             simCtx.arc(cx, y_imp, cavernRadius * 1.2, 0, 2 * Math.PI);
             simCtx.fill();
         }
-        
+
         simCtx.filter = 'none';
-        
+
         // 通常の描画モードに戻す
         simCtx.globalCompositeOperation = 'source-over';
-        
+
         // ラベル描画
         simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
         simCtx.font = '10px sans-serif';
         simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp - 5);
-        
+
         simCtx.fillStyle = 'rgba(148, 163, 184, 0.9)';
         simCtx.fillText('死水域 (Dead Zone)', lx + 10, y_liquid + 20);
         simCtx.restore();
     }
-    
+
     // Update simCoilPositions for collision
     simCoilPositions = [];
     if (config.coilActive) {
-        const d_co_m   = config.coilOuterDia ?? 0.010;
+        const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
-        const D_c_px   = D_c_real * scale;
-        const coilR    = Math.max(4, (d_co_m / 2) * scale);
+            ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px = D_c_real * scale;
+        const coilR = Math.max(4, (d_co_m / 2) * scale);
 
         // Use the outer edge of the coil (cx + D_c_px/2 + coilR) to determine the deepest point it can go
         // without protruding into the curved bottom head.
         const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
         const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
-        const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
-        const p_c_px   = p_c_m * scale;
-        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
-        const pitch    = coilSpan / N_t;
+        const p_c_m = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
+        const p_c_px = p_c_m * scale;
+        const N_t = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch = coilSpan / N_t;
 
         for (let j = 0; j < N_t; j++) {
             const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
@@ -6586,7 +6584,7 @@ function drawParticleSimulation() {
     const njsResult = _cachedNjsResult;
     const njs_rpm = njsResult.error ? 1000 : njsResult.Njs_rpm;
     const liftOffThreshold = 0.15 * njs_rpm;
-    
+
     // Base radius scales with config.dp_um
     const baseRadius = Math.max(0.8, Math.min(6.0, 0.5 + 0.1 * Math.sqrt(config.dp_um || 150)));
     const collisionCellSize = Math.max(16, baseRadius * 2.4);
@@ -6602,7 +6600,7 @@ function drawParticleSimulation() {
 
         const decay = getCavernDecay(p.x, p.y, coords);
         const fluidVel = getMeanFlowVelocity(p.x, p.y, config.simSpeed, coords, p.relVortexX, p.relVortexY);
-        
+
         // Stokes 終端沈降速度 [m/s]
         const dp = Math.max(0.1, config.dp_um || 150);
         const dp_m = dp * 1e-6;
@@ -6632,7 +6630,7 @@ function drawParticleSimulation() {
         const turb = 0.45 * (config.simSpeed / 300) * (p.relSize || 1.0) * turbFactor;
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
-        
+
         // Update coordinates
         p.x += p.vx;
         p.y += p.vy;
@@ -6644,7 +6642,7 @@ function drawParticleSimulation() {
             p.vx = 0;
             p.vy = 0;
         }
-        
+
         // Boundary collision with minimum velocity retention
         if (p.x < lx + p.radius) {
             p.x = lx + p.radius;
@@ -6658,7 +6656,7 @@ function drawParticleSimulation() {
             // 壁での反弾後、最小の接線速度（上下）を保持（粘着防止）
             if (Math.abs(p.vy) < 0.2) p.vy = 0.2 * Math.sign(p.vy || 1);
         }
-        
+
         const t_sec = performance.now() / 1000;
         const rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
         const y_surf = getSharedSurfaceY(p.x, coords, rpm, t_sec);
@@ -6743,7 +6741,7 @@ function drawParticleSimulation() {
         collisionGrid.get(gridKey).push(p);
 
         const y_bot = getVesselBottomY(p.x, coords);
-        
+
         if (p.y > y_bot - p.radius - 1) {
             p.y = y_bot - p.radius - 1;
             const isBuoyant = delta_rho < 0;
@@ -6778,7 +6776,7 @@ function drawParticleSimulation() {
                 p.color = '#d97706'; // partially suspended: medium orange
             }
         }
-        
+
         // Draw particle
         simCtx.fillStyle = p.color;
         simCtx.beginPath();
@@ -6790,23 +6788,23 @@ function drawParticleSimulation() {
     // --- コイル描画（半割表現） ---
     if (config.coilActive) {
         simCtx.save();
-        const coilFill   = 'rgba(6,182,212,1.0)'; 
+        const coilFill = 'rgba(6,182,212,1.0)';
         const coilStroke = 'rgba(2,120,150,1.0)';
         const coilFillBack = 'rgba(4,140,160,1.0)';
 
-        const d_co_m   = config.coilOuterDia ?? 0.010;
+        const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
-        const D_c_px   = D_c_real * scale;
-        const coilR    = Math.max(4, (d_co_m / 2) * scale);
+            ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px = D_c_real * scale;
+        const coilR = Math.max(4, (d_co_m / 2) * scale);
 
         // Use the outer edge of the coil for the bottom limit
         const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
         const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
-        const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
-        const p_c_px   = p_c_m * scale;
-        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
-        const pitch    = coilSpan / N_t;
+        const p_c_m = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
+        const p_c_px = p_c_m * scale;
+        const N_t = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch = coilSpan / N_t;
 
         for (let j = 0; j < N_t; j++) {
             const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
@@ -6890,7 +6888,7 @@ function drawParticleSimulation() {
     const r_hub = 5;
     const r_in = r_hub;
     const r_out = d_px / 2;
-    
+
     // Calculate current rotation angle using delta-time accumulation
     // (avoids float precision loss from large Date.now() values)
     const nowPerfMs = performance.now();
@@ -6903,24 +6901,24 @@ function drawParticleSimulation() {
     }
     simLastFrameTime = nowPerfMs;
     const angle = simImpellerAngle;
-    
+
     // Determine blade count per impeller type.
     // Allow the configured np to override default blade counts.
     const bladeCountMap = {
-        'flat-turbine':   6,
+        'flat-turbine': 6,
         'pitched-paddle': 4,
-        'flat-paddle':    2,
-        'propeller':      3,
-        'faudler':        3,
+        'flat-paddle': 2,
+        'propeller': 3,
+        'faudler': 3,
     };
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
-    
+
     const stages_y = getImpellerStagePositions(coords);
-    
+
     // Build draw-element list for depth sorting
     const drawElements = [];
-    
+
     // Shaft (drawn at Z = -0.1, i.e., behind everything except blades behind it)
     drawElements.push({
         avgZ: -0.1,
@@ -6936,7 +6934,7 @@ function drawParticleSimulation() {
             simCtx.restore();
         }
     });
-    
+
     stages_y.forEach(y_imp => {
         // --- Turbine disc (Rushton only) — drawn slightly in front of back blades ---
         if (config.impellerType === 'flat-turbine') {
@@ -6953,7 +6951,7 @@ function drawParticleSimulation() {
                 }
             });
         }
-        
+
         // --- Hub at Z = 0 (slightly in front of disc) ---
         drawElements.push({
             avgZ: 0.02,
@@ -6992,20 +6990,20 @@ function drawParticleSimulation() {
                 simCtx.restore();
             }
         });
-        
+
         // --- Blades ---
         for (let k = 0; k < nBlades; k++) {
             const phi = angle + (k * 2 * Math.PI / nBlades);
             const { points, avgZ } = getBladePointsAndDepth(
                 phi, r_in, r_out, b_px, config.impellerType, cx, y_imp
             );
-            
+
             // Depth-dependent shading: front blades are brighter
             const brightness = 0.65 + 0.35 * ((avgZ / r_out) * 0.5 + 0.5);
             const baseH = 330; // pink hue
             const fillColor = `hsl(${baseH}, 75%, ${Math.round(50 * brightness)}%)`;
             const strokeColor = `hsl(${baseH}, 80%, ${Math.round(38 * brightness)}%)`;
-            
+
             drawElements.push({
                 avgZ,
                 draw: () => {
@@ -7026,11 +7024,11 @@ function drawParticleSimulation() {
             });
         }
     });
-    
+
     // Sort elements back-to-front (ascending Z)
     drawElements.sort((a, b) => a.avgZ - b.avgZ);
     drawElements.forEach(el => el.draw());
-    
+
     // Draw vessel outline so the tank height change is visible
     simCtx.save();
     simCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
@@ -7051,10 +7049,10 @@ function drawParticleSimulation() {
     simCtx.restore();
 
     simCtx.stroke();
-    
+
     // Draw simulation parameters badge in the top-right corner
     simCtx.save();
-    
+
     // Calculate Np and Pv
     const n_sim = config.simSpeed / 60;
     const Re_sim = calculateReVal(n_sim);
@@ -7079,12 +7077,12 @@ function drawParticleSimulation() {
         simCtx.measureText(txtPv).width
     ];
     const maxTextWidth = Math.max(...textWidths);
-    
+
     const badgeW = maxTextWidth + 16;
     const badgeH = 50;
     const badgeX = simCanvas.width - badgeW - 10;
     const badgeY = 15;
-    
+
     // Draw background glassmorphism pill
     simCtx.fillStyle = 'rgba(15, 23, 42, 0.75)'; // Dark translucent slate
     simCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -7097,7 +7095,7 @@ function drawParticleSimulation() {
     }
     simCtx.fill();
     simCtx.stroke();
-    
+
     // Draw texts
     simCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     simCtx.textBaseline = 'top';
@@ -7108,7 +7106,7 @@ function drawParticleSimulation() {
     simCtx.fillText(txtRe, badgeX + 8, badgeY + 18);
     simCtx.fillText(txtNp, badgeX + 8, badgeY + 28);
     simCtx.fillText(txtPv, badgeX + 8, badgeY + 38);
-    
+
     simCtx.restore();
     simCtx.restore();
 }
@@ -7132,8 +7130,8 @@ function calculateHeatTransfer() {
     const r_d = config.foulingFactor || 0.0001;
 
     // 代表粘度の取得
-    const mu_L = (rheologyData.activeModel !== 'newtonian' && typeof getEffectiveViscosity === 'function') 
-        ? (getEffectiveViscosity() || config.mu) 
+    const mu_L = (rheologyData.activeModel !== 'newtonian' && typeof getEffectiveViscosity === 'function')
+        ? (getEffectiveViscosity() || config.mu)
         : config.mu;
 
     // 現在の回転数 (rps)
@@ -7147,8 +7145,8 @@ function calculateHeatTransfer() {
     // --- (1) 槽内液側境膜伝熱係数 h1 の計算 ---
     let K_j = 0.36;
     let K_c = 0.87;
-    let alpha_j = 2/3, alpha_c = 0.62;
-    let beta_j = 1/3, beta_c = 1/3;
+    let alpha_j = 2 / 3, alpha_c = 0.62;
+    let beta_j = 1 / 3, beta_c = 1 / 3;
     let f_factor = 1.0;
 
     const isBaffled = config.baffleActive && config.nB > 0 && config.Bw > 0;
@@ -7160,14 +7158,14 @@ function calculateHeatTransfer() {
     } else if (type === 'propeller') {
         K_j = isBaffled ? 0.50 : 0.37;
     } else { // パドル系
-        K_j = 0.36; 
+        K_j = 0.36;
     }
 
     // コイル用定数
     if (type === 'flat-turbine') {
-        K_c = 1.50; alpha_c = 2/3;
+        K_c = 1.50; alpha_c = 2 / 3;
     } else if (type === 'propeller') {
-        K_c = 0.83; alpha_c = 2/3;
+        K_c = 0.83; alpha_c = 2 / 3;
     } else {
         K_c = 0.87; alpha_c = 0.62;
     }
@@ -7198,14 +7196,14 @@ function calculateHeatTransfer() {
     const A_cyl = Math.PI * D_T * h_cyl;
     const Aj = A_cyl + A_dish;
 
-    const d_co   = config.coilOuterDia  ?? 0.010;
-    const d_ci   = config.coilInnerDia  ?? 0.008;
-    const p_c    = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
-    const D_c    = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * D_T;
+    const d_co = config.coilOuterDia ?? 0.010;
+    const d_ci = config.coilInnerDia ?? 0.008;
+    const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
+    const D_c = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * D_T;
     const clearance = config.clearance ?? 0;
-    const N_t    = Math.max(1, Math.floor((H_geom - 2 * clearance) / p_c));
-    const L_c    = N_t * Math.PI * D_c;
-    const Ac     = config.coilActive ? (Math.PI * d_co * L_c) : 0;
+    const N_t = Math.max(1, Math.floor((H_geom - 2 * clearance) / p_c));
+    const L_c = N_t * Math.PI * D_c;
+    const Ac = config.coilActive ? (Math.PI * d_co * L_c) : 0;
 
     // --- (3) 熱媒体側境膜伝熱係数 h2 の計算 ---
     let h2_j = 0;
@@ -7222,7 +7220,7 @@ function calculateHeatTransfer() {
     if (isSteam) {
         // スチームの凝縮伝熱係数 (新潟大学晶析工学研究室解説資料に基づく)
         // 飽和水(100℃)の物性
-        const rho_cl = 958; 
+        const rho_cl = 958;
         const mu_cl = 0.00028;
         const k_cl = 0.68;
         const g = config.g || 9.806;
@@ -7230,10 +7228,10 @@ function calculateHeatTransfer() {
         // ジャケット側の凝縮 (垂直管外)
         const Gamma_j = W_j / (Math.PI * D_T);
         const Ref_j = 4 * Gamma_j / mu_cl;
-        const prop_factor = Math.pow(Math.pow(k_cl, 3) * Math.pow(rho_cl, 2) * g / Math.pow(mu_cl, 2), 1/3);
+        const prop_factor = Math.pow(Math.pow(k_cl, 3) * Math.pow(rho_cl, 2) * g / Math.pow(mu_cl, 2), 1 / 3);
 
         if (Ref_j < 2100) {
-            h2_j = 1.88 * prop_factor * Math.pow(Ref_j, -1/3);
+            h2_j = 1.88 * prop_factor * Math.pow(Ref_j, -1 / 3);
         } else {
             h2_j = 0.0077 * prop_factor * Math.pow(Ref_j, 0.4);
         }
@@ -7242,7 +7240,7 @@ function calculateHeatTransfer() {
         if (config.coilActive) {
             const Gamma_c = W_j / L_c;
             const Ref_c = 4 * Gamma_c / mu_cl;
-            h2_c = 0.76 * prop_factor * Math.pow(Ref_c, -1/3);
+            h2_c = 0.76 * prop_factor * Math.pow(Ref_c, -1 / 3);
         }
     } else {
         // ジャケット側水流速と伝熱係数
@@ -7275,13 +7273,13 @@ function calculateHeatTransfer() {
         let Nu_j = 0;
         if (Re_j < 2100) {
             // 層流: Sieder-Tate式（流路長 L_flow を利用）
-            Nu_j = 1.86 * Math.pow(Re_j * Pr_j * (D_eq / L_flow), 1/3) * Math.pow(1.0, 0.14);
+            Nu_j = 1.86 * Math.pow(Re_j * Pr_j * (D_eq / L_flow), 1 / 3) * Math.pow(1.0, 0.14);
         } else if (Re_j < 10000) {
             // 遷移流: Hausenの修正式
-            Nu_j = 0.116 * (Math.pow(Re_j, 2/3) - 125) * Math.pow((Cp_j * mu_j) / k_j, 1/3) * (1 + Math.pow(D_eq / L_flow, 2/3));
+            Nu_j = 0.116 * (Math.pow(Re_j, 2 / 3) - 125) * Math.pow((Cp_j * mu_j) / k_j, 1 / 3) * (1 + Math.pow(D_eq / L_flow, 2 / 3));
         } else {
             // 乱流: Sieder-Tate式
-            Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1/3) * viscCorr;
+            Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1 / 3) * viscCorr;
         }
         Nu_j = Math.max(Nu_j, 0.0);
         h2_j = (Nu_j * k_j) / Math.max(1e-6, D_eq);
@@ -7295,7 +7293,7 @@ function calculateHeatTransfer() {
             if (Re_c < 2300) {
                 Nu_c = 3.66;
             } else {
-                Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1/3) * viscCorr * (1 + 3.5 * (d_ci / D_c));
+                Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1 / 3) * viscCorr * (1 + 3.5 * (d_ci / D_c));
             }
             h2_c = (Nu_c * k_j) / d_ci;
         }
@@ -7305,15 +7303,15 @@ function calculateHeatTransfer() {
     const R_wall_j = t_w / k_w;
     let U_j = 0;
     if (h1_j > 0 && h2_j > 0) {
-        U_j = 1 / (1/h1_j + R_wall_j + 1/h2_j + r_d);
+        U_j = 1 / (1 / h1_j + R_wall_j + 1 / h2_j + r_d);
     }
-    
+
     const t_c_wall = Math.max(0.0005, (d_co - d_ci) / 2);
-    const k_c_wall = config.coilK ?? 16.3; 
+    const k_c_wall = config.coilK ?? 16.3;
     const R_wall_c = t_c_wall / k_c_wall;
     let U_c = 0;
     if (config.coilActive && h1_c > 0 && h2_c > 0) {
-        U_c = 1 / (1/h1_c + R_wall_c + 1/h2_c + r_d);
+        U_c = 1 / (1 / h1_c + R_wall_c + 1 / h2_c + r_d);
     }
 
     const UA_total = U_j * Aj + (config.coilActive ? U_c * Ac : 0);
@@ -7328,7 +7326,7 @@ function calculateHeatTransfer() {
 
 function updateHeatCalcUI() {
     const res = calculateHeatTransfer();
-    
+
     const elH1j = document.getElementById('heat-res-h1-j');
     if (elH1j) {
         elH1j.textContent = res.h1_j.toFixed(1);
@@ -7389,7 +7387,7 @@ function updateHeatCalcUI() {
         tempDisp.textContent = T_L.toFixed(2) + " °C";
         const tMin = 10, tMax = 90;
         const ratio = Math.max(0, Math.min(1, (T_L - tMin) / (tMax - tMin)));
-        const hue = Math.round(240 - 240 * ratio); 
+        const hue = Math.round(240 - 240 * ratio);
         tempDisp.style.color = `hsl(${hue}, 85%, 55%)`;
     }
     updateHeatResistChart(res);
@@ -7411,12 +7409,12 @@ function initHeatSimulation() {
     heatSimTemp = config.liquidTempInit ?? 20.0;
     heatParticles = [];
     heatSimLastTime = null;
-    
+
     heatChartData.times = [0];
     heatChartData.liquidTemp = [heatSimTemp];
     const res = calculateHeatTransfer();
     heatChartData.mediaTempOut = [res.T_in];
-    
+
     initHeatChart();
     initHeatResistChart();
 
@@ -7444,7 +7442,7 @@ function initHeatSimulation() {
     for (let i = 0; i < count; i++) {
         let px = lx + Math.random() * D_px;
         let py = y_liquid + Math.random() * (getVesselBottomY(px, coords) - y_liquid);
-        
+
         px = Math.max(lx + 2, Math.min(rx - 2, px));
         py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 2, py));
 
@@ -7460,7 +7458,7 @@ function initHeatSimulation() {
             y: py,
             vx: 0,
             vy: 0,
-            temp: heatSimTemp, 
+            temp: heatSimTemp,
             relSize: relSize,
             isSolid: isSolid,
             rho: rho_i,
@@ -7478,7 +7476,7 @@ function initHeatSimulation() {
 function startHeatSimulation() {
     if (heatSimActive) return;
     heatSimActive = true;
-    
+
     const btnStart = document.getElementById('btn-heat-sim-start');
     const btnPause = document.getElementById('btn-heat-sim-pause');
     if (btnStart && btnPause) {
@@ -7487,7 +7485,7 @@ function startHeatSimulation() {
     }
 
     heatSimLastTime = performance.now();
-    
+
     function loop() {
         if (!heatSimActive) return;
         updateHeatPhysics();
@@ -7584,7 +7582,7 @@ function updateHeatPhysics() {
         heatSimLastTime = now;
         return;
     }
-    const dt = Math.min(0.03, (now - heatSimLastTime) / 1000) * 1.5; 
+    const dt = Math.min(0.03, (now - heatSimLastTime) / 1000) * 1.5;
     heatSimLastTime = now;
 
     heatSimTime += dt;
@@ -7592,7 +7590,7 @@ function updateHeatPhysics() {
 
     const res = calculateHeatTransfer();
     const V_act = getLiquidVolume();
-    const M_L = res.rho_L * V_act; 
+    const M_L = res.rho_L * V_act;
 
     let Q = 0;
     let T_out = res.T_in;
@@ -7613,13 +7611,13 @@ function updateHeatPhysics() {
         heatChartData.times.push(Math.round(heatSimTime));
         heatChartData.liquidTemp.push(heatSimTemp);
         heatChartData.mediaTempOut.push(T_out);
-        
+
         if (heatChartData.times.length > 150) {
             heatChartData.times.shift();
             heatChartData.liquidTemp.shift();
             heatChartData.mediaTempOut.shift();
         }
-        
+
         updateHeatChart();
     }
 
@@ -7628,16 +7626,16 @@ function updateHeatPhysics() {
     const coords = getVesselVisualCoords();
     const { cx, D_px, scale, y_deepest, y_cyl, y_liquid, lx, rx } = coords;
     const N_rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
-    const wallThresh_px = 12; 
+    const wallThresh_px = 12;
     // コイル中心径（px）
     const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * config.DT;
     const D_c_px = D_c_real * scale;
-    
+
     let coils = [];
     if (config.coilActive) {
         const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real_h = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
+            ? config.coilCenterDia : 0.7 * config.DT;
         const D_c_px_h = D_c_real_h * scale;
         const c_r = Math.max(4, (d_co_m / 2) * scale);
         const p_c_m = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
@@ -7650,8 +7648,8 @@ function updateHeatPhysics() {
         for (let j = 0; j < N_t; j++) {
             // 描画と同じ cy_coil / cy_mid を使用（左右で異なる位置）
             const cy_coil = y_liquid + 14 + j * pitchUsed_px + pitchUsed_px / 2;
-            const cy_mid  = cy_coil + pitchUsed_px / 2;
-            coils.push({ x: cx - D_c_px_h / 2, y: cy_mid,  r: c_r }); // 左側断面
+            const cy_mid = cy_coil + pitchUsed_px / 2;
+            coils.push({ x: cx - D_c_px_h / 2, y: cy_mid, r: c_r }); // 左側断面
             coils.push({ x: cx + D_c_px_h / 2, y: cy_coil, r: c_r }); // 右側断面
         }
     }
@@ -7688,18 +7686,18 @@ function updateHeatPhysics() {
         // 密度勾配の逆方向への力（分散・嵇均化）
         // speedMagnitude と同じ尺度系の定数にする：典型的な
         // speedMagnitude(基準条件で 1.75 px/frame) に対して 2% 程度。
-        const diffCoeff = 0.02 * Math.max(0.05, 0.00487 * (1.6 * (N_rpm/60) * Math.pow(config.d,3) / Math.pow(config.DT,2)) * scale);
+        const diffCoeff = 0.02 * Math.max(0.05, 0.00487 * (1.6 * (N_rpm / 60) * Math.pow(config.d, 3) / Math.pow(config.DT, 2)) * scale);
         const diffX = (dL - dR) * diffCoeff;
         const diffY = (dU - dD) * diffCoeff;
 
         const fluidVel = getMeanFlowVelocity(p.x, p.y, N_rpm, coords, p.relVortexX, p.relVortexY);
-        const Nqc_heat = { 'pitched-paddle':1.6,'flat-paddle':1.2,'flat-turbine':1.4,'propeller':2.0,'faudler':1.3 }[config.impellerType] || 1.4;
+        const Nqc_heat = { 'pitched-paddle': 1.6, 'flat-paddle': 1.2, 'flat-turbine': 1.4, 'propeller': 2.0, 'faudler': 1.3 }[config.impellerType] || 1.4;
 
         // 流速への追従性を高める (0.08 -> 0.16)
         // インペラからの強力な吐出や壁沿いの循環といった「対流の動き（流動パターン）」をダイナミックかつ滑らかに見せる
         p.vx += (fluidVel.vx - p.vx) * 0.16;
         p.vy += (fluidVel.vy - p.vy) * 0.16;
-        
+
         // 密度補正（斥力）を適用
         p.vx += diffX;
         p.vy += diffY;
@@ -7707,23 +7705,23 @@ function updateHeatPhysics() {
         // 乱流揺らぎ（ランダムウォーク）
         // speedMagnitude = C×v_phys×scale なので、乱流も同じ尺度系で表現する。
         // heatSpeedRef: 現在の運転条件での speedMagnitude 相当値
-        const heatSpeedRef = Math.max(0.05, 0.00487 * (Nqc_heat * (N_rpm/60) * Math.pow(config.d,3) / Math.pow(config.DT,2)) * scale);
+        const heatSpeedRef = Math.max(0.05, 0.00487 * (Nqc_heat * (N_rpm / 60) * Math.pow(config.d, 3) / Math.pow(config.DT, 2)) * scale);
         const turb = (0.20 + 0.10 * (N_rpm / 300)) * (p.relSize || 1.0) * (heatSpeedRef / 1.75);
-        
+
         p.vx += (Math.random() - 0.5) * turb;
         p.vy += (Math.random() - 0.5) * turb;
 
         // 壁・底面近傍の引き寄せ力（ジャケット伝熱の表現）
         // wallMargin・wallPull も speedMagnitude と同じ尺度系。
         const wallMargin = D_px * 0.07; // 槽径の7%（スケール不問で一定割合）
-        const distToLeft  = p.x - lx;
+        const distToLeft = p.x - lx;
         const distToRight = rx - p.x;
-        const y_bot_p     = getVesselBottomY(p.x, coords);
-        const distToBot   = y_bot_p - p.y;
-        const wallPull    = 0.015 * heatSpeedRef; // speedMagnitude 典型値に対する小数割合
-        if (distToLeft  < wallMargin) p.vx -= wallPull * (1 - distToLeft  / wallMargin);
+        const y_bot_p = getVesselBottomY(p.x, coords);
+        const distToBot = y_bot_p - p.y;
+        const wallPull = 0.015 * heatSpeedRef; // speedMagnitude 典型値に対する小数割合
+        if (distToLeft < wallMargin) p.vx -= wallPull * (1 - distToLeft / wallMargin);
         if (distToRight < wallMargin) p.vx += wallPull * (1 - distToRight / wallMargin);
-        if (distToBot   < wallMargin) p.vy += wallPull * (1 - distToBot   / wallMargin);
+        if (distToBot < wallMargin) p.vy += wallPull * (1 - distToBot / wallMargin);
 
         // 速度の抗力（ダンピング）を緩和し、流れの慣性と循環速度をしっかりと表現する (0.88 -> 0.95)
         p.vx *= 0.95;
@@ -7747,15 +7745,15 @@ function updateHeatPhysics() {
             const t_sec = performance.now() / 1000;
             const rpm = config.simSpeedSync ? (expBlocks[0]?.rows[0]?.N || 300) : config.simSpeed;
             const y_surf = getSharedSurfaceY(p.x, coords, rpm, t_sec);
-            if (p.y < y_surf + 2) { 
-                p.y = y_surf + 2; 
-                p.vy = Math.abs(p.vy) * 0.1; 
-                p.vx *= 0.8; 
+            if (p.y < y_surf + 2) {
+                p.y = y_surf + 2;
+                p.vy = Math.abs(p.vy) * 0.1;
+                p.vx *= 0.8;
             }
         }
         if (p.y > y_bot_p - 2) { p.y = y_bot_p - 2; p.vy = -Math.abs(p.vy) * 0.15; p.vx *= 0.9; }
 
-        let trRate = 0.05 * dt; 
+        let trRate = 0.05 * dt;
 
         const distToBottom = y_bot_p - p.y;
         if (distToLeft < wallThresh_px || distToRight < wallThresh_px || distToBottom < wallThresh_px) {
@@ -7766,22 +7764,22 @@ function updateHeatPhysics() {
             coils.forEach(c => {
                 const dx = p.x - c.x;
                 const dy = p.y - c.y;
-                const distSq = dx*dx + dy*dy;
+                const distSq = dx * dx + dy * dy;
                 const dist = Math.sqrt(distSq);
                 const minDist = c.r + (p.relSize || 1.0) * 2; // 熱粒子の見た目の半径は約2px
-                
+
                 // コイル近傍での伝熱判定
-                if (distSq < (c.r + 15)*(c.r + 15)) { 
+                if (distSq < (c.r + 15) * (c.r + 15)) {
                     p.temp += (res.T_in - p.temp) * trRate * 45.0;
                 }
-                
+
                 // 剛体衝突（透過防止）
                 if (dist < minDist && dist > 0.01) {
                     const nx = dx / dist;
                     const ny = dy / dist;
                     p.x = c.x + nx * minDist;
                     p.y = c.y + ny * minDist;
-                    
+
                     const vDotN = p.vx * nx + p.vy * ny;
                     if (vDotN < 0) {
                         p.vx -= 1.4 * vDotN * nx;
@@ -7797,10 +7795,10 @@ function updateHeatPhysics() {
         const rowIdx = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y - y_liquid) / gridHeight)));
         const gIdx = rowIdx * gridCols + colIdx;
         grid[gIdx].temps.push(p);
-        
+
         const p_m = (p.m !== undefined && !isNaN(p.m)) ? p.m : (p.relSize * p.relSize * 1.0);
         const p_cp = (p.cp !== undefined && !isNaN(p.cp)) ? p.cp : 4184;
-        
+
         grid[gIdx].sum_mCpT += p_m * p_cp * p.temp;
         grid[gIdx].sum_mCp += p_m * p_cp;
         grid[gIdx].count++;
@@ -7829,15 +7827,15 @@ function updateHeatPhysics() {
         sum_mCp += mCp;
         sum_mCpT += mCp * p.temp;
     }
-    
+
     if (sum_mCp > 0) {
         const tMeanPart = sum_mCpT / sum_mCp;
         const dT_shift = heatSimTemp - tMeanPart;
-        
+
         // 平均からの差分を維持したまま、全体をシフトして平均値を heatSimTemp に一致させる
         for (let i = 0; i < heatParticles.length; i++) {
             heatParticles[i].temp += dT_shift;
-            
+
             // 温度の物理的な上下限のクリップ (凍結や極端な高温を防ぐ安全弁)
             const lowerBound = Math.min(heatSimTemp, res.T_in) - 5.0;
             const upperBound = Math.max(heatSimTemp, res.T_in) + 5.0;
@@ -7861,7 +7859,7 @@ function drawHeatSimulation() {
     ctx.save();
     const T_in = config.mediaTempIn;
     const mediaRatio = Math.max(0, Math.min(1, (T_in - 10) / 80));
-    const mediaHue = Math.round(240 - 240 * mediaRatio); 
+    const mediaHue = Math.round(240 - 240 * mediaRatio);
     const jacketColor = `hsla(${mediaHue}, 85%, 55%, 0.15)`;
     const jacketBorder = `hsla(${mediaHue}, 80%, 45%, 0.4)`;
 
@@ -7891,12 +7889,12 @@ function drawHeatSimulation() {
     }
     const maxAllowedDepth = Math.max(0, (y_deepest - y_liquid) * 0.6);
     vortexDepth = Math.min(vortexDepth, maxAllowedDepth);
-    
+
     // Wave parameters
     const t_wave = performance.now() / 1000;
     const waveAmp = (N_rpm / 600) * (config.baffleActive ? 0.7 : 2.2);
     const waveFreq = 2.0 + (N_rpm / 300) * 5.0;
-    
+
     // Helper to get local surface Y coordinate at any X
     const getLocalSurfaceY = (x_val) => {
         const u = (x_val - cx) / (D_px / 2);
@@ -7911,9 +7909,9 @@ function drawHeatSimulation() {
     };
 
     ctx.save();
-    ctx.fillStyle = 'rgba(6, 182, 212, 0.03)'; 
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.03)';
     ctx.beginPath();
-    
+
     // Draw curved top surface
     const steps = 40;
     for (let i = 0; i <= steps; i++) {
@@ -7926,7 +7924,7 @@ function drawHeatSimulation() {
             ctx.lineTo(px, py);
         }
     }
-    
+
     ctx.lineTo(rx, y_cyl);
     if (config.headType === 'semi-elliptical' || config.headType === 'dish') {
         ctx.ellipse(cx, y_cyl, D_px / 2, hb, 0, 0, Math.PI, false);
@@ -7974,7 +7972,7 @@ function drawHeatSimulation() {
     }
 
     ctx.save();
-    
+
     // 液相領域にクリップするためのパスを作成（容器の底と液面を合わせたパス）
     ctx.beginPath();
     const steps_clip = 40;
@@ -8061,7 +8059,7 @@ function drawHeatSimulation() {
                         const p_m = (p.m !== undefined && !isNaN(p.m)) ? p.m : ((p.relSize || 1.0) * (p.relSize || 1.0) * 1.0);
                         const p_cp = (p.cp !== undefined && !isNaN(p.cp)) ? p.cp : 4184;
                         const mCp = p_m * p_cp;
-                        
+
                         const p_temp = isNaN(p.temp) ? meanTemp : p.temp;
                         sum_w_mCpT += weight * mCp * p_temp;
                         sum_w_mCp += weight * mCp;
@@ -8102,7 +8100,7 @@ function drawHeatSimulation() {
         heatParticles.forEach(p => {
             const ratio = Math.max(0, Math.min(1, (p.temp - tMin) / Math.max(1e-3, tMax - tMin)));
             const hue = Math.round(240 - 240 * ratio);
-            
+
             ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
             ctx.beginPath();
             ctx.arc(p.x, p.y, 1.8 * p.relSize, 0, Math.PI * 2);
@@ -8131,23 +8129,23 @@ function drawHeatSimulation() {
     // --- コイル描画（粒子より前面・インペラより後面） ---
     if (config.coilActive) {
         ctx.save();
-        const coilFill   = `hsl(${mediaHue}, 80%, 48%)`;
+        const coilFill = `hsl(${mediaHue}, 80%, 48%)`;
         const coilStroke = `hsl(${mediaHue}, 70%, 35%)`;
 
         // コイル寸法（configから読む）
-        const d_co_m   = config.coilOuterDia ?? 0.010;
+        const d_co_m = config.coilOuterDia ?? 0.010;
         const D_c_real = (config.coilCenterDia && config.coilCenterDia > 0)
-                           ? config.coilCenterDia : 0.7 * config.DT;
-        const D_c_px   = D_c_real * scale;
-        const coilR    = Math.max(4, (d_co_m / 2) * scale); // 管断面半径 [px]
+            ? config.coilCenterDia : 0.7 * config.DT;
+        const D_c_px = D_c_real * scale;
+        const coilR = Math.max(4, (d_co_m / 2) * scale); // 管断面半径 [px]
 
         // Use the outer edge of the coil for the bottom limit
         const y_bot_vessel = getVesselBottomY(cx + D_c_px / 2 + coilR, coords);
         const coilSpan = y_bot_vessel - coilR - y_liquid - 20;
-        const p_c_m    = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
-        const p_c_px   = p_c_m * scale;
-        const N_t      = Math.max(1, Math.floor(coilSpan / p_c_px));
-        const pitch    = coilSpan / N_t; // 実際に使うピッチ [px]
+        const p_c_m = Math.max(d_co_m * 1.01, config.coilPitch ?? (2.5 * d_co_m));
+        const p_c_px = p_c_m * scale;
+        const N_t = Math.max(1, Math.floor(coilSpan / p_c_px));
+        const pitch = coilSpan / N_t; // 実際に使うピッチ [px]
 
         for (let j = 0; j < N_t; j++) {
             const cy_coil = y_liquid + 14 + j * pitch + pitch / 2;
@@ -8233,11 +8231,11 @@ function drawHeatSimulation() {
 
     // --- 設定に基づく翼枚数 ---
     const bladeCountMap = {
-        'flat-turbine':   6,
+        'flat-turbine': 6,
         'pitched-paddle': 4,
-        'flat-paddle':    2,
-        'propeller':      3,
-        'faudler':        3,
+        'flat-paddle': 2,
+        'propeller': 3,
+        'faudler': 3,
     };
     const defaultBlades = bladeCountMap[config.impellerType] || 2;
     const nBlades = Math.max(1, Number.isFinite(config.np) ? config.np : defaultBlades);
@@ -8365,10 +8363,10 @@ function drawHeatSimulation() {
     }
     ctx.lineTo(rx, y_top);
     ctx.stroke();
-    
+
     // Draw simulation parameters badge in the top-right corner
     ctx.save();
-    
+
     // Calculate Np and Pv (Sv) from curve
     const n_sim = N_rpm / 60;
     const Re_sim = calculateReVal(n_sim);
@@ -8393,12 +8391,12 @@ function drawHeatSimulation() {
         ctx.measureText(txtPv).width
     ];
     const maxTextWidth = Math.max(...textWidths);
-    
+
     const badgeW = maxTextWidth + 16;
     const badgeH = 50;
     const badgeX = canvas.width - badgeW - 10;
     const badgeY = 15;
-    
+
     // Draw background glassmorphism pill
     ctx.fillStyle = 'rgba(15, 23, 42, 0.75)'; // Dark translucent slate
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -8411,7 +8409,7 @@ function drawHeatSimulation() {
     }
     ctx.fill();
     ctx.stroke();
-    
+
     // Draw texts
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.textBaseline = 'top';
@@ -8422,7 +8420,7 @@ function drawHeatSimulation() {
     ctx.fillText(txtRe, badgeX + 8, badgeY + 18);
     ctx.fillText(txtNp, badgeX + 8, badgeY + 28);
     ctx.fillText(txtPv, badgeX + 8, badgeY + 38);
-    
+
     ctx.restore();
     ctx.restore();
 }
@@ -8439,7 +8437,7 @@ function _syncHeatChartYAxisMode() {
     heatChart.options.scales.y.title.text = heatColorScaleMode === 'relative'
         ? '温度差 ΔT (°C)'
         : '温度 (°C)';
-    heatChart.options.scales.y.ticks.callback = function(value) {
+    heatChart.options.scales.y.ticks.callback = function (value) {
         const num = Number(value);
         if (!Number.isFinite(num)) return '';
         return heatColorScaleMode === 'relative'
@@ -8493,7 +8491,7 @@ function initHeatChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const value = context.parsed.y;
                             const baseline = _getHeatChartBaseline();
                             const display = heatColorScaleMode === 'relative'
@@ -8513,13 +8511,15 @@ function initHeatChart() {
                 y: {
                     title: { display: true, text: '温度 (°C)', color: '#6b7280', font: { size: 9 } },
                     grid: { color: 'rgba(255,255,255,0.03)' },
-                    ticks: { color: '#9ca3af', font: { size: 8 }, callback: function(value) {
-                        const num = Number(value);
-                        if (!Number.isFinite(num)) return '';
-                        return heatColorScaleMode === 'relative'
-                            ? (num - _getHeatChartBaseline()).toFixed(1)
-                            : num.toFixed(1);
-                    }}
+                    ticks: {
+                        color: '#9ca3af', font: { size: 8 }, callback: function (value) {
+                            const num = Number(value);
+                            if (!Number.isFinite(num)) return '';
+                            return heatColorScaleMode === 'relative'
+                                ? (num - _getHeatChartBaseline()).toFixed(1)
+                                : num.toFixed(1);
+                        }
+                    }
                 }
             }
         }
@@ -8532,7 +8532,7 @@ function updateHeatChart() {
         heatChart.data.datasets[0].data = heatChartData.liquidTemp;
         heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
         _syncHeatChartYAxisMode();
-        heatChart.update('none'); 
+        heatChart.update('none');
     }
 }
 
@@ -8591,7 +8591,7 @@ function initHeatResistChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
                         }
                     }
@@ -8606,7 +8606,7 @@ function initHeatResistChart() {
                     ticks: {
                         color: '#9ca3af',
                         font: { size: 8 },
-                        callback: function(value) { return value + '%'; }
+                        callback: function (value) { return value + '%'; }
                     }
                 },
                 y: {
@@ -8631,16 +8631,16 @@ function updateHeatResistChart(res) {
     // ジャケット側
     const R_h1_j = res.h1_j > 0 ? (1 / res.h1_j) : 0;
     const R_h2_j = res.h2_j > 0 ? (1 / res.h2_j) : 0;
-    const R_w_j  = res.R_wall_j || 0;
-    const R_d    = res.r_d || 0;
+    const R_w_j = res.R_wall_j || 0;
+    const R_d = res.r_d || 0;
     const total_j = R_h1_j + R_w_j + R_h2_j + R_d;
 
     let pct_h1_j = 0, pct_w_j = 0, pct_h2_j = 0, pct_d_j = 0;
     if (total_j > 0) {
         pct_h1_j = (R_h1_j / total_j) * 100;
-        pct_w_j  = (R_w_j / total_j) * 100;
+        pct_w_j = (R_w_j / total_j) * 100;
         pct_h2_j = (R_h2_j / total_j) * 100;
-        pct_d_j  = (R_d / total_j) * 100;
+        pct_d_j = (R_d / total_j) * 100;
     }
 
     // コイル側
@@ -8648,14 +8648,14 @@ function updateHeatResistChart(res) {
     if (config.coilActive) {
         const R_h1_c = res.h1_c > 0 ? (1 / res.h1_c) : 0;
         const R_h2_c = res.h2_c > 0 ? (1 / res.h2_c) : 0;
-        const R_w_c  = res.R_wall_c || 0;
+        const R_w_c = res.R_wall_c || 0;
         const total_c = R_h1_c + R_w_c + R_h2_c + R_d;
-        
+
         if (total_c > 0) {
             pct_h1_c = (R_h1_c / total_c) * 100;
-            pct_w_c  = (R_w_c / total_c) * 100;
+            pct_w_c = (R_w_c / total_c) * 100;
             pct_h2_c = (R_h2_c / total_c) * 100;
-            pct_d_c  = (R_d / total_c) * 100;
+            pct_d_c = (R_d / total_c) * 100;
         }
     }
 
