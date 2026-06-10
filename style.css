@@ -617,8 +617,6 @@ body {
 @media (max-width: 1200px) {
     .chart-card {
         grid-column: span 12;
-        /* Ensure the chart doesn't stretch excessively when stacked */
-        max-height: 500px;
     }
     
     .chart-container {
@@ -629,14 +627,16 @@ body {
         grid-column: span 12;
     }
 
-    /* Stack tab contents vertically */
+    /* Stack tab contents vertically and allow natural scrolling */
     #tab-content-rushton {
         flex-direction: column !important;
-        overflow-y: auto !important;
+        overflow: visible !important;
     }
     #tab-content-rushton .chart-container {
-        min-height: 350px !important;
-        flex: none !important; /* Prevent it from shrinking too much */
+        height: 380px !important;
+        min-height: 380px !important;
+        max-height: 380px !important;
+        flex: none !important;
     }
     #tab-content-rushton > div:nth-child(2) {
         min-height: 300px !important;
@@ -645,7 +645,18 @@ body {
     #tab-content-partsim > div[style*="grid-template-columns"],
     #tab-content-heatsim > div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
-        overflow-y: auto !important;
+        overflow: visible !important;
+    }
+    #tab-content-partsim > div > div,
+    #tab-content-heatsim > div > div {
+        min-width: 0 !important;
+        height: auto !important;
+    }
+    #tab-content-settings {
+        overflow: visible !important;
+    }
+    #settings-list-container > div {
+        grid-column: span 1 !important;
     }
 
     .top-nav .actions .btn span {

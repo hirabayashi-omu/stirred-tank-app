@@ -31,11 +31,10 @@
                     <span>AgitatorSim</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="badge">Kamei-Hiraoka</span>
                     <button id="sidebar-toggle-btn" title="サイドバーを折りたたむ"
-                        style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text-secondary);border-radius:6px;display:flex;align-items:center;transition:background 0.2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                        onmouseout="this.style.background='none'">
+                        style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); cursor: pointer; padding: 6px 8px; color: var(--accent-color); border-radius: 6px; display: flex; align-items: center; transition: all 0.2s; box-shadow: 0 0 8px rgba(6, 182, 212, 0.1);"
+                        onmouseover="this.style.background='rgba(6, 182, 212, 0.18)'; this.style.color='#38bdf8'; this.style.border='1px solid rgba(6, 182, 212, 0.5)'; this.style.boxShadow='0 0 12px rgba(6, 182, 212, 0.45)';"
+                        onmouseout="this.style.background='rgba(6, 182, 212, 0.08)'; this.style.color='var(--accent-color)'; this.style.border='1px solid rgba(6, 182, 212, 0.3)'; this.style.boxShadow='0 0 8px rgba(6, 182, 212, 0.1)';">
                         <i data-feather="sidebar" style="width:18px;height:18px;"></i>
                     </button>
                 </div>
@@ -684,24 +683,27 @@
 
             </div>
 
-            <div class="sidebar-footer">
-                <button id="load-sample-btn" class="btn btn-secondary">
+            <div class="sidebar-footer" style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+                <button id="load-sample-btn" class="btn btn-secondary" style="width:100%;">
                     <i data-feather="database"></i> サンプル読込
                 </button>
+                <span class="badge" style="font-size: 0.65rem; padding: 4px 10px; opacity: 0.8; pointer-events: none; user-select: none;">
+                    &copy; hirabayashi-omu
+                </span>
             </div>
         </aside>
 
         <!-- Main Content Area -->
         <!-- サイドバー収納時の復帰ボタン（常にmain左端に固定） -->
         <button id="sidebar-reopen-btn" title="サイドバーを開く"
-            style="display:none;position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:200;
-                   width:28px;height:56px;border-radius:0 8px 8px 0;
-                   background:rgba(30,33,48,0.95);border:1px solid rgba(255,255,255,0.12);border-left:none;
-                   color:#9ca3af;cursor:pointer;display:none;align-items:center;justify-content:center;
-                   box-shadow:2px 0 12px rgba(0,0,0,0.4);transition:background 0.2s;"
-            onmouseover="this.style.background='rgba(6,182,212,0.15)';this.style.color='#38bdf8';"
-            onmouseout="this.style.background='rgba(30,33,48,0.95)';this.style.color='#9ca3af';">
-            <i data-feather="chevrons-right" style="width:16px;height:16px;"></i>
+            style="display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2000;
+                   width:32px;height:64px;border-radius:0 12px 12px 0;
+                   background:linear-gradient(135deg, var(--accent-color), #0891b2);border:1px solid var(--accent-color);border-left:none;
+                   color:#ffffff;cursor:pointer;display:none;align-items:center;justify-content:center;
+                   box-shadow:0 0 15px rgba(6,182,212,0.4), 2px 0 8px rgba(0,0,0,0.3);transition:background 0.3s, transform 0.2s, box-shadow 0.3s;"
+            onmouseover="this.style.background='linear-gradient(135deg, #0891b2, #06b6d4)';this.style.transform='translateY(-50%) scaleX(1.15)';this.style.boxShadow='0 0 25px rgba(6, 182, 212, 0.8), 2px 0 10px rgba(0,0,0,0.4)';"
+            onmouseout="this.style.background='linear-gradient(135deg, var(--accent-color), #0891b2)';this.style.transform='translateY(-50%)';this.style.boxShadow='0 0 15px rgba(6,182,212,0.4), 2px 0 8px rgba(0,0,0,0.3)';">
+            <i data-feather="chevrons-right" style="width:18px;height:18px;"></i>
         </button>
         <main class="main-content">
             <header class="top-nav">
@@ -754,28 +756,6 @@
                                 <i data-feather="list" style="width:16px;height:16px;"></i> 設定値一覧
                             </button>
                         </div>
-
-                        <!-- Controls for Rushton Plot (visible only on Rushton tab) -->
-                        <div id="rushton-controls" class="flex-row" style="gap: 8px; align-items: center;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary);">Np表示範囲: </label>
-                            <select id="chart-ymin"
-                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
-                                <option value="auto" selected>自動</option>
-                                <option value="0.001">0.001</option>
-                                <option value="0.01">0.01</option>
-                                <option value="0.1">0.1</option>
-                                <option value="1">1</option>
-                            </select>
-                            <span style="font-size: 0.75rem; color: var(--text-muted);">〜</span>
-                            <select id="chart-ymax"
-                                style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
-                                <option value="auto" selected>自動</option>
-                                <option value="10">10</option>
-                                <option value="100">100</option>
-                                <option value="1000">1000</option>
-                                <option value="10000">10000</option>
-                            </select>
-                        </div>
                     </div>
 
                     <!-- Tab Contents -->
@@ -783,9 +763,54 @@
                     <!-- Tab 1: Rushton Plot -->
                     <div id="tab-content-rushton"
                         style="display: flex; flex: 1; gap: 16px; align-items: stretch; min-height: 0; overflow: hidden;">
-                        <!-- Left: Rushton Chart -->
-                        <div class="chart-container" style="flex: 2; min-width: 0; position:relative; overflow:hidden;">
-                            <canvas id="rushtonChart"></canvas>
+                        <!-- Left: Rushton Chart & Controls -->
+                        <div style="flex: 2; min-width: 0; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+                            <div class="chart-container" style="flex: 1; min-height: 0; position: relative; width: 100%; height: 100%;">
+                                <canvas id="rushtonChart"></canvas>
+                            </div>
+                            
+                            <!-- Controls for Rushton Plot -->
+                            <div id="rushton-controls" class="flex-row" style="gap: 8px; align-items: center; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 4px;">
+                                <label style="font-size: 0.75rem; color: var(--text-secondary);">Np表示範囲: </label>
+                                <select id="chart-ymin"
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
+                                    <option value="auto" selected>自動</option>
+                                    <option value="0.001">0.001</option>
+                                    <option value="0.01">0.01</option>
+                                    <option value="0.1">0.1</option>
+                                    <option value="1">1</option>
+                                </select>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">〜</span>
+                                <select id="chart-ymax"
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
+                                    <option value="auto" selected>自動</option>
+                                    <option value="10">10</option>
+                                    <option value="100">100</option>
+                                    <option value="1000">1000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                            </div>
+
+                            <!-- Simulation speed controls (synchronized with other tabs) -->
+                            <div style="border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                                    <span style="color: var(--text-secondary);">シミュレーション回転数 N:</span>
+                                    <span style="font-weight: 700; color: var(--accent-color);"><span id="rushton-sim-speed-val">300</span> rpm</span>
+                                </div>
+                                <input type="range" id="rushton-sim-speed-slider" min="0" max="1200" step="10" value="300"
+                                    style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
+                                <div style="display: flex; gap: 6px; margin-top: 2px;">
+                                    <button id="btn-rushton-set-njs" class="btn btn-secondary"
+                                        style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
+                                        <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
+                                    </button>
+                                    <div class="checkbox-group"
+                                        style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
+                                        <input type="checkbox" id="rushton-sim-speed-sync" checked>
+                                        <label for="rushton-sim-speed-sync" style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <!-- Right: 亀井・平岡・加藤 推算中間変数 -->
                         <div

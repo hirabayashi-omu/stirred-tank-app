@@ -321,6 +321,10 @@ function syncSpeedUIElements() {
     const val2 = document.getElementById('heat-sim-speed-val');
     const sync2 = document.getElementById('heat-sim-speed-sync');
 
+    const slider3 = document.getElementById('rushton-sim-speed-slider');
+    const val3 = document.getElementById('rushton-sim-speed-val');
+    const sync3 = document.getElementById('rushton-sim-speed-sync');
+
     if (slider1) slider1.value = speed;
     if (val1) val1.textContent = speed;
     if (sync1) sync1.checked = sync;
@@ -328,6 +332,15 @@ function syncSpeedUIElements() {
     if (slider2) slider2.value = speed;
     if (val2) val2.textContent = speed;
     if (sync2) sync2.checked = sync;
+
+    if (slider3) slider3.value = speed;
+    if (val3) val3.textContent = speed;
+    if (sync3) sync3.checked = sync;
+
+    // Redraw the Rushton chart to update the simulation speed line in real-time
+    if (chart) {
+        chart.update('none');
+    }
 }
 
 // Bind UI inputs to State
@@ -777,6 +790,58 @@ function initEventListeners() {
         });
     }
 
+    // --- Rushton Plot Simulation Speed Controls (Linked) ---
+    const rushtonSlider = document.getElementById('rushton-sim-speed-slider');
+    if (rushtonSlider) {
+        rushtonSlider.addEventListener('input', (e) => {
+            config.simSpeed = parseFloat(e.target.value) || 0;
+            if (config.simSpeedSync) {
+                config.simSpeedSync = false;
+            }
+            syncSpeedUIElements();
+            if (simAnimId) {
+                simLastFrameTime = performance.now();
+            }
+            if (heatSimAnimId) {
+                heatSimLastTime = performance.now();
+            }
+            // 疑似キャバーン径・情報をリアルタイム更新
+            if (typeof updateCavernDiameter === 'function') updateCavernDiameter();
+            if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+            if (typeof syncDiagramWindow === 'function') syncDiagramWindow();
+        });
+        rushtonSlider.addEventListener('change', () => {
+            updateSimulatorResultsOnly();
+            saveCurrentState();
+        });
+    }
+    const rushtonSync = document.getElementById('rushton-sim-speed-sync');
+    if (rushtonSync) {
+        rushtonSync.addEventListener('change', (e) => {
+            config.simSpeedSync = e.target.checked;
+            if (config.simSpeedSync) {
+                syncSimulatorSpeedWithBlock();
+            }
+            syncSpeedUIElements();
+            recalculateAll();
+        });
+    }
+    const rushtonSetNjs = document.getElementById('btn-rushton-set-njs');
+    if (rushtonSetNjs) {
+        rushtonSetNjs.addEventListener('click', () => {
+            const njs_rpm_str = document.getElementById('sim-res-Njs-rpm').textContent;
+            const njs_rpm = parseFloat(njs_rpm_str);
+            if (!isNaN(njs_rpm) && njs_rpm > 0) {
+                config.simSpeed = Math.round(njs_rpm);
+                config.simSpeedSync = false;
+                syncSpeedUIElements();
+                updateSimulatorResultsOnly();
+                saveCurrentState();
+                showToast(`シミュレーション回転数を Njs (${config.simSpeed} rpm) に設定しました`, 'success');
+            }
+        });
+    }
+
     // Tab switching event listeners
     const tabRushton = document.getElementById('tab-btn-rushton');
     const tabPartsim = document.getElementById('tab-btn-partsim');
@@ -926,6 +991,9 @@ function initEventListeners() {
         btnSusp.addEventListener('click', () => switchInnerTab('suspension'));
         btnFlow.addEventListener('click', () => switchInnerTab('flow'));
     }
+
+    // Dynamic responsive height adjustment on window resize
+    window.addEventListener('resize', adjustChartCardHeight);
 }
 
 function toggleBaffleInputs() {
@@ -6424,6 +6492,39 @@ function drawParticleSimulation() {
     simCtx.restore();
     simCtx.restore();
 }
+function adjustChartCardHeight() {
+    const chartCard = document.querySelector('.card.chart-card');
+    if (!chartCard) return;
+    const isMobile = window.innerWidth <= 1200;
+    const tab = config.activeTab;
+
+    if (tab === 'rushton') {
+        if (isMobile) {
+            chartCard.style.height = 'auto';
+            chartCard.style.maxHeight = '';
+            chartCard.style.overflowY = 'visible';
+        } else {
+            chartCard.style.height = 'calc(100vh - 120px)';
+            chartCard.style.maxHeight = '900px';
+            chartCard.style.overflowY = '';
+        }
+    } else if (tab === 'expsheet' || tab === 'settings') {
+        chartCard.style.height = 'auto';
+        chartCard.style.maxHeight = '';
+        chartCard.style.overflowY = 'visible';
+    } else { // partsim, heatsim
+        if (isMobile) {
+            chartCard.style.height = 'auto';
+            chartCard.style.maxHeight = '';
+            chartCard.style.overflowY = 'visible';
+        } else {
+            chartCard.style.height = '';
+            chartCard.style.maxHeight = '';
+            chartCard.style.overflowY = '';
+        }
+    }
+}
+
 function switchMainTab(tab) {
     config.activeTab = tab;
     saveCurrentState();
@@ -6460,13 +6561,8 @@ function switchMainTab(tab) {
     if (contentExpsheet) contentExpsheet.style.display = 'none';
     if (contentSettings) contentSettings.style.display = 'none';
 
-    // Reset card sizing
-    const chartCard = document.querySelector('.card.chart-card');
-    if (chartCard) {
-        chartCard.style.height = '';
-        chartCard.style.maxHeight = '';
-        chartCard.style.overflowY = '';
-    }
+    // Adjust card sizing dynamically
+    adjustChartCardHeight();
 
     if (controlsRushton) controlsRushton.style.display = 'none';
     if (controlsPartsim) controlsPartsim.style.display = 'none';
@@ -6488,7 +6584,6 @@ function switchMainTab(tab) {
         btnRushton.style.fontWeight = '600';
         contentRushton.style.display = 'flex';
         if (controlsRushton) controlsRushton.style.display = 'flex';
-        if (chartCard) { chartCard.style.height = 'calc(100vh - 120px)'; chartCard.style.maxHeight = '900px'; }
 
         if (chart) {
             chart.resize();
@@ -6522,11 +6617,6 @@ function switchMainTab(tab) {
             contentExpsheet.style.display = 'flex';
             contentExpsheet.style.flexDirection = 'column';
         }
-        // card expands to content height for expsheet
-        if (chartCard) {
-            chartCard.style.height = 'auto';
-            chartCard.style.overflowY = 'visible';
-        }
         if (typeof feather !== 'undefined') feather.replace();
     } else if (tab === 'settings') {
         if (btnSettings) {
@@ -6537,10 +6627,6 @@ function switchMainTab(tab) {
         }
         if (contentSettings) {
             contentSettings.style.display = 'flex';
-        }
-        if (chartCard) {
-            chartCard.style.height = 'auto';
-            chartCard.style.overflowY = 'visible';
         }
         if (typeof feather !== 'undefined') feather.replace();
     }
@@ -6730,6 +6816,45 @@ function updateSettingsListTab() {
             ]
         }
     ];
+
+    if (config.solidLiquidActive) {
+        const props = getEffectiveProperties();
+        const rhoL = config.rho;
+        const rhoS = config.rho_S ?? 2500;
+        const eps = (rhoS * (1 - props.c_s)) / (rhoS * (1 - props.c_s) + rhoL * props.c_s);
+        
+        const n_rep = (config.simSpeed ?? 300) / 60;
+        const isNewt = rheologyData.activeModel === 'newtonian';
+        let mu_val = '';
+        if (!isNewt && typeof calcEffectiveViscosity === 'function') {
+            const mu_eff = calcEffectiveViscosity(n_rep);
+            mu_val = `${mu_eff.toFixed(4)} (N≈${(n_rep * 60).toFixed(0)}rpm)`;
+        } else {
+            mu_val = config.mu.toFixed(4);
+        }
+
+        const isUpper = props.phi_s >= 0.2;
+
+        groups.push({
+            name: '■ 有効物性値 (攪拌系)',
+            color: 'var(--accent-color)',
+            cols: [
+                [
+                    { label: '質量分率 w_s', val: (props.c_s * 100).toFixed(2), unit: 'wt%' },
+                    { label: '容積分率 φ_s', val: (props.phi_s * 100).toFixed(2), unit: 'vol%' },
+                    { label: '有効密度 ρ_eff', val: `${props.rho.toFixed(1)} (ε = ${eps.toFixed(4)})`, unit: 'kg/m³' },
+                    { label: '有効粘度 μ_eff', val: mu_val, unit: 'Pa·s' },
+                    { label: '有効比熱 Cp_eff', val: props.Cp.toFixed(0), unit: 'J/(kg·K)' }
+                ],
+                [
+                    { label: 'Maxwell下限 (液連続相)', val: `${props.k_maxwell_lower.toFixed(3)}${!isUpper ? ' (適用中)' : ''}`, unit: 'W/(m·K)' },
+                    { label: 'Maxwell上限 (固連続相)', val: `${props.k_maxwell_upper.toFixed(3)}${isUpper ? ' (適用中)' : ''}`, unit: 'W/(m·K)' },
+                    { label: '並列モデル (上限値)', val: props.k_parallel.toFixed(3), unit: 'W/(m·K)' },
+                    { label: '直列モデル (下限値)', val: props.k_series.toFixed(3), unit: 'W/(m·K)' }
+                ]
+            ]
+        });
+    }
 
     function renderCol(items) {
         if (!items || items.length === 0) return '<td style="padding:0;width:50%;vertical-align:top;"></td>';
