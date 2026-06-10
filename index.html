@@ -30,7 +30,15 @@
                     <i data-feather="shuffle" class="logo-icon"></i>
                     <span>AgitatorSim</span>
                 </div>
-                <span class="badge">Kamei-Hiraoka</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="badge">Kamei-Hiraoka</span>
+                    <button id="sidebar-toggle-btn" title="サイドバーを折りたたむ"
+                        style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text-secondary);border-radius:6px;display:flex;align-items:center;transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='none'">
+                        <i data-feather="sidebar" style="width:18px;height:18px;"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="scroll-container">
@@ -39,7 +47,8 @@
                     style="border: 1px solid rgba(6, 182, 212, 0.25); background: rgba(6, 182, 212, 0.03); padding: 16px; border-radius: var(--border-radius-md); margin-bottom: 24px; box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.05);">
                     <!-- Experiment Meta Info -->
                     <section class="config-section" style="margin-bottom: 20px;">
-                        <h3><i data-feather="file-text"></i> 実験情報</h3>
+                        <h3 class="acc-h3 collapsed" data-target="sec-meta" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="file-text"></i> 実験情報<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-meta">
                         <div class="input-grid">
                             <div class="input-group full-width">
                                 <label for="exp-number">実験番号</label>
@@ -58,11 +67,13 @@
                                 <input type="number" id="ambient-temp" value="25" step="0.1">
                             </div>
                         </div>
-                    </section>
+                                        </div>
+                </section>
 
                     <!-- Presets Management -->
                     <section class="config-section" style="margin-bottom: 0;">
-                        <h3><i data-feather="save"></i> 実験プリセット</h3>
+                        <h3 class="acc-h3 collapsed" data-target="sec-preset" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="save"></i> 実験プリセット<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-preset">
                         <div class="input-grid" style="grid-template-columns: 1fr; gap: 8px;">
                             <div class="input-group">
                                 <label for="preset-select">保存済みプリセット</label>
@@ -86,25 +97,29 @@
                                 </button>
                             </div>
                         </div>
-                    </section>
+                                        </div>
+                </section>
                 </div>
 
                 <!-- Physical quantities -->
                 <section class="config-section">
-                    <h3><i data-feather="settings"></i> 物理量データ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-physics" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="settings"></i> 物理量データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-physics">
                     <div class="input-grid">
                         <div class="input-group">
                             <label for="g">重力加速度 g (m/s²)</label>
                             <input type="number" id="g" value="9.806" step="0.001">
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Liquid Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="droplet"></i> 攪拌液データ・物性</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-liquid" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="droplet"></i> 攪拌液データ・物性<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-liquid">
                     <div class="input-grid">
                         <div class="input-group">
                             <label for="rho">液密度 ρ (kg/m³)</label>
@@ -140,45 +155,148 @@
                         </div>
 
                     </div>
+                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Rheology Model (Non-Newtonian) -->
                 <section class="config-section" id="rheology-section">
-                    <h3><i data-feather="activity"></i> レオロジーモデル</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-rheology" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="activity"></i> レオロジーモデル<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-rheology">
                     <div class="input-grid">
-                        <div class="input-group full-width" style="display:flex; gap:8px; align-items:flex-end;">
-                            <div style="flex:1;">
-                                <label>モデルCSV読込 <span style="font-size:0.75rem;opacity:0.6;">（粘度計アプリから出力）</span></label>
-                                <div style="display:flex; gap:8px;">
-                                    <label for="rheology-csv-input" class="btn-csv-load"
-                                        style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
-                                        <i data-feather="upload"
-                                            style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
-                                    </label>
-                                    <button type="button" id="btn-clear-rheology"
-                                        style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;"
-                                        title="クリア">
-                                        <i data-feather="trash-2"
-                                            style="width:14px;height:14px;vertical-align:middle;"></i>
-                                    </button>
-                                </div>
-                                <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
+
+                        <!-- ===== 入力モード切替タブ ===== -->
+                        <div class="input-group full-width" style="margin-bottom:4px;">
+                            <div style="display:flex;gap:0;border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden;">
+                                <button id="rheo-tab-csv" onclick="switchRheoTab('csv')"
+                                    style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(6,182,212,0.25);color:#38bdf8;font-weight:600;transition:all 0.2s;">
+                                    <i data-feather="upload" style="width:12px;height:12px;vertical-align:middle;"></i> CSV読込
+                                </button>
+                                <button id="rheo-tab-manual" onclick="switchRheoTab('manual')"
+                                    style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(255,255,255,0.04);color:var(--text-secondary);transition:all 0.2s;">
+                                    <i data-feather="edit-3" style="width:12px;height:12px;vertical-align:middle;"></i> 手動入力
+                                </button>
                             </div>
                         </div>
-                        <div class="input-group full-width">
-                            <label for="rheology-sample-select">サンプル選択</label>
-                            <select id="rheology-sample-select" style="opacity:0.5;" disabled>
-                                <option value="">-- CSV未読込 --</option>
-                            </select>
+
+                        <!-- ===== CSVモード ===== -->
+                        <div id="rheo-csv-panel" class="input-group full-width" style="padding:0;">
+                            <div style="display:flex; gap:8px;">
+                                <label for="rheology-csv-input" class="btn-csv-load"
+                                    style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
+                                    <i data-feather="upload" style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
+                                    <span style="font-size:0.72rem;opacity:0.6;display:block;">粘度計アプリCSV</span>
+                                </label>
+                                <button type="button" id="btn-clear-rheology"
+                                    style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;" title="クリア">
+                                    <i data-feather="trash-2" style="width:14px;height:14px;vertical-align:middle;"></i>
+                                </button>
+                            </div>
+                            <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
+                            <div class="input-group full-width" style="margin-top:8px;padding:0;">
+                                <label for="rheology-sample-select">サンプル選択</label>
+                                <select id="rheology-sample-select" style="opacity:0.5;" disabled>
+                                    <option value="">-- CSV未読込 --</option>
+                                </select>
+                            </div>
                         </div>
+
+                        <!-- ===== 手動入力モード ===== -->
+                        <div id="rheo-manual-panel" class="input-group full-width" style="display:none;padding:0;">
+                            <div style="padding:10px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;">
+                                <label style="font-size:0.8rem;color:#f59e0b;font-weight:600;display:block;margin-bottom:8px;">
+                                    <i data-feather="edit-3" style="width:13px;height:13px;vertical-align:middle;"></i>
+                                    流動モデルとパラメータを直接入力
+                                </label>
+                                <div class="input-group" style="margin-bottom:8px;">
+                                    <label for="manual-model-select" style="font-size:0.78rem;">流動モデル選択</label>
+                                    <select id="manual-model-select" onchange="onManualModelChange()">
+                                        <option value="newtonian">Newtonian（ニュートン流体）</option>
+                                        <option value="powerlaw" selected>Power-Law（べき乗則）</option>
+                                        <option value="bingham">Bingham（ビンガム）</option>
+                                        <option value="casson">Casson（キャッソン）</option>
+                                        <option value="hb">Herschel-Bulkley（HB）</option>
+                                        <option value="cross">Cross（クロス）</option>
+                                        <option value="carreau">Carreau（カロー）</option>
+                                    </select>
+                                </div>
+                                <!-- パラメータ入力グループ（モデルごとに表示切替） -->
+                                <div id="manual-params-newtonian" class="manual-params" style="display:none;">
+                                    <div class="input-group"><label>粘度 η₀ (Pa·s)</label>
+                                        <input type="number" id="mp-newtonian-eta0" value="0.001" step="0.0001" min="1e-6" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-powerlaw" class="manual-params" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
+                                        <input type="number" id="mp-pl-K" value="1.0" step="0.01" min="1e-6" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>n [-]</label>
+                                        <input type="number" id="mp-pl-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-bingham" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>τ_y (Pa)</label>
+                                        <input type="number" id="mp-bi-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>η_p (Pa·s)</label>
+                                        <input type="number" id="mp-bi-etap" value="0.01" step="0.001" min="1e-6" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-casson" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>τ_y (Pa)</label>
+                                        <input type="number" id="mp-ca-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>η_p (Pa·s)</label>
+                                        <input type="number" id="mp-ca-etap" value="0.01" step="0.001" min="1e-6" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-hb" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>τ_y (Pa)</label>
+                                        <input type="number" id="mp-hb-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
+                                        <input type="number" id="mp-hb-K" value="0.5" step="0.01" min="1e-6" onchange="applyManualModel()"></div>
+                                    <div class="input-group" style="grid-column:span 2;"><label>n [-]</label>
+                                        <input type="number" id="mp-hb-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-cross" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>η₀ (Pa·s)</label>
+                                        <input type="number" id="mp-cr-eta0" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>η∞ (Pa·s)</label>
+                                        <input type="number" id="mp-cr-etainf" value="0.001" step="0.0001" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>K (s)</label>
+                                        <input type="number" id="mp-cr-K" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>m [-]</label>
+                                        <input type="number" id="mp-cr-m" value="0.5" step="0.01" min="0.01" onchange="applyManualModel()"></div>
+                                </div>
+                                <div id="manual-params-carreau" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div class="input-group"><label>η₀ (Pa·s)</label>
+                                        <input type="number" id="mp-cu-eta0" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>η∞ (Pa·s)</label>
+                                        <input type="number" id="mp-cu-etainf" value="0.001" step="0.0001" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>λ (s)</label>
+                                        <input type="number" id="mp-cu-lambda" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
+                                    <div class="input-group"><label>n [-]</label>
+                                        <input type="number" id="mp-cu-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
+                                </div>
+                                <button onclick="applyManualModel()" style="width:100%;margin-top:8px;padding:8px;background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;">
+                                    <i data-feather="check" style="width:13px;height:13px;vertical-align:middle;"></i> 適用
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ===== 共通: 流動モデル選択（CSS/CSVどちらのモードでも表示） ===== -->
                         <div class="input-group full-width">
                             <label for="rheology-model-select">流動モデル</label>
                             <select id="rheology-model-select">
                                 <option value="newtonian" selected>Newtonian（μ = 一定）</option>
                             </select>
                         </div>
+
+                        <!-- モデル曲線ボタン -->
+                        <div class="input-group full-width" style="padding:0;">
+                            <button id="btn-show-flow-curve" onclick="openFlowCurveModal()"
+                                style="width:100%;padding:8px 12px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:background 0.2s;"
+                                onmouseover="this.style.background='rgba(99,102,241,0.25)'"
+                                onmouseout="this.style.background='rgba(99,102,241,0.15)'">
+                                <i data-feather="trending-up" style="width:14px;height:14px;"></i>
+                                モデル曲線を表示
+                            </button>
+                        </div>
+
                         <div class="input-group" id="ks-group">
                             <label for="ks-input">Metzner–Otto定数 k<sub>s</sub> <span
                                     style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
@@ -204,7 +322,6 @@
                             </label>
                             <input type="number" id="cavern-alpha" value="0.7" step="0.05" min="0.1" max="2.0">
                         </div>
-                        <!-- Power-law 擬似キャバーンパラメータ (power-law 選択時のみ表示) -->
                         <div class="input-group full-width" id="pseudo-cavern-group" style="display: none; padding-top: 8px; border-top: 1px dashed rgba(245,158,11,0.3); margin-top: 4px;">
                             <label style="color: #f59e0b; font-weight: 600; font-size: 0.82rem;">
                                 <i data-feather="zap" style="width:13px;height:13px;vertical-align:middle;"></i>
@@ -212,15 +329,13 @@
                             </label>
                             <div class="input-grid" style="margin-top: 6px;">
                                 <div class="input-group">
-                                    <label for="decay-alpha-input">
-                                        ずり速度減衰係数 α
+                                    <label for="decay-alpha-input">ずり速度減衰係数 α
                                         <span style="font-size:0.75rem;opacity:0.6;">（通常 1.5〜3.0）</span>
                                     </label>
                                     <input type="number" id="decay-alpha-input" value="2.0" step="0.1" min="0.5" max="5.0">
                                 </div>
                                 <div class="input-group">
-                                    <label for="mu-limit-factor-input">
-                                        流動限界係数（大きいほどキャバーン大）
+                                    <label for="mu-limit-factor-input">流動限界係数（大きいほどキャバーン大）
                                         <span style="font-size:0.75rem;opacity:0.6;">（2〜100）</span>
                                     </label>
                                     <input type="number" id="mu-limit-factor-input" value="20" step="5" min="2" max="500">
@@ -229,13 +344,15 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Solid-Liquid / Particle Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="box"></i> 固液攪拌・粒子データ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-solid" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="box"></i> 固液攪拌・粒子データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-solid">
                     <div class="input-grid">
                         <div class="input-group full-width checkbox-group">
                             <input type="checkbox" id="solid-liquid-active" checked>
@@ -280,13 +397,15 @@
                             <input type="number" id="s-factor-custom" value="5.0" step="0.1" min="0.1">
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <hr class="sidebar-divider" id="sl-eff-divider">
 
                 <!-- Solid-Liquid / Agitator System Effective Properties -->
                 <section class="config-section" id="sl-effective-properties-section">
-                    <h3><i data-feather="trending-up"></i> 有効物性値 (攪拌系)</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-effprop" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="trending-up"></i> 有効物性値 (攪拌系)<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-effprop">
                     <div class="input-grid">
                         <!-- 質量分率 (固液系ONのみ表示) -->
                         <div class="input-group" id="sl-eff-ws-container">
@@ -359,13 +478,15 @@
                             </div>
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Vessel Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="database"></i> 攪拌槽データ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-vessel" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="database"></i> 攪拌槽データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-vessel">
                     <div class="input-grid">
                         <div class="input-group">
                             <label for="DT">槽径 D<sub>T</sub> (m)</label>
@@ -393,11 +514,13 @@
                             </select>
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <!-- Impeller Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="wind"></i> インペラデータ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-impeller" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="wind"></i> インペラデータ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-impeller">
                     <div class="input-grid">
                         <div class="input-group full-width">
                             <label for="impeller-type">種類</label>
@@ -441,11 +564,13 @@
                                 style="font-weight:bold;"></span> 段として推算・描画しています。
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <!-- Baffle Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="columns"></i> 邪魔板データ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-baffle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="columns"></i> 邪魔板データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-baffle">
                     <div class="input-grid">
                         <div class="input-group full-width checkbox-group">
                             <input type="checkbox" id="baffle-active" checked>
@@ -460,11 +585,13 @@
                             <input type="number" id="Bw" value="0.014" step="0.001">
                         </div>
                     </div>
+                                    </div>
                 </section>
 
                 <!-- Jacket & Coil Properties -->
                 <section class="config-section">
-                    <h3><i data-feather="layers"></i> ジャケット・コイルデータ</h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-jacket" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="layers"></i> ジャケット・コイルデータ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <div class="acc-body collapsed" id="sec-jacket">
                     <div class="input-grid">
                         <div class="input-group full-width">
                             <label for="jacket-type">ジャケット形式</label>
@@ -552,6 +679,7 @@
                             <input type="number" id="fouling-factor" value="0.0001" step="0.00005">
                         </div>
                     </div>
+                                    </div>
                 </section>
 
             </div>
@@ -564,6 +692,17 @@
         </aside>
 
         <!-- Main Content Area -->
+        <!-- サイドバー収納時の復帰ボタン（常にmain左端に固定） -->
+        <button id="sidebar-reopen-btn" title="サイドバーを開く"
+            style="display:none;position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:200;
+                   width:28px;height:56px;border-radius:0 8px 8px 0;
+                   background:rgba(30,33,48,0.95);border:1px solid rgba(255,255,255,0.12);border-left:none;
+                   color:#9ca3af;cursor:pointer;display:none;align-items:center;justify-content:center;
+                   box-shadow:2px 0 12px rgba(0,0,0,0.4);transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(6,182,212,0.15)';this.style.color='#38bdf8';"
+            onmouseout="this.style.background='rgba(30,33,48,0.95)';this.style.color='#9ca3af';">
+            <i data-feather="chevrons-right" style="width:16px;height:16px;"></i>
+        </button>
         <main class="main-content">
             <header class="top-nav">
                 <h1>攪拌槽 動力特性解析システム</h1>
@@ -590,10 +729,14 @@
 
             <div class="content-grid">
                 <!-- Main Tab Card (Rushton Plot & Particle Sim) -->
-                <div class="card chart-card" style="min-height: 520px;">
+                <div class="card chart-card" style="min-height: 520px; display:flex; flex-direction:column;">
                     <div class="card-header"
                         style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
                         <div class="tab-headers" style="display: flex; gap: 20px;">
+                            <button class="tab-btn" id="tab-btn-expsheet"
+                                style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 8px; font-weight: 500; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                                <i data-feather="clipboard" style="width:16px;height:16px;"></i> 実験値算出シート
+                            </button>
                             <button class="tab-btn active" id="tab-btn-rushton"
                                 style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px; font-weight: 600; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
                                 <i data-feather="trending-up" style="width:16px;height:16px;"></i> ラシュトン線図
@@ -656,9 +799,9 @@
                     <!-- Tab 1: Rushton Plot -->
                     <!-- Tab 1: Rushton Plot -->
                     <div id="tab-content-rushton"
-                        style="display: flex; flex-grow: 1; gap: 16px; align-items: stretch; min-height: 0;">
+                        style="display: flex; flex: 1; gap: 16px; align-items: stretch; min-height: 0; overflow: hidden;">
                         <!-- Left: Rushton Chart -->
-                        <div class="chart-container" style="flex: 2; min-width: 0;">
+                        <div class="chart-container" style="flex: 2; min-width: 0; position:relative; overflow:hidden;">
                             <canvas id="rushtonChart"></canvas>
                         </div>
                         <!-- Right: 亀井・平岡・加藤 推算中間変数 -->
@@ -1079,16 +1222,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Summary Cards / Calculated Parameters (ラシュトン線図タブに移動済み) -->
-
-
-                <!-- Experimental Data Sheet -->
-                <div class="card data-card full-width">
-                    <div class="card-header">
-                        <h2><i data-feather="clipboard"></i> 実験値算出シート</h2>
-                        <div class="data-actions">
+                    <!-- Tab 4: Experimental Data Sheet -->
+                    <div id="tab-content-expsheet" style="display:none; flex-direction:column; gap:12px;">
+                        <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:4px 0 8px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
                             <button id="clear-all-blocks-btn" class="btn btn-danger" title="全ブロックを削除">
                                 <i data-feather="trash-2"></i> 全ブロック削除
                             </button>
@@ -1096,10 +1233,9 @@
                                 <i data-feather="plus"></i> 測定ブロック追加
                             </button>
                         </div>
-                    </div>
-
-                    <div class="blocks-container" id="blocks-container">
-                        <!-- Dynamic blocks are added here -->
+                        <div class="blocks-container" id="blocks-container">
+                            <!-- Dynamic blocks are added here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1349,6 +1485,327 @@
             setTimeout(() => { if (typeof syncDiagramWindow === 'function') syncDiagramWindow(); }, 1000);
         }
     </script>
+
+    <!-- ===== Flow Curve Modal ===== -->
+    <div id="flow-curve-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+        <div style="background:#1e2130;border:1px solid rgba(255,255,255,0.12);border-radius:16px;width:min(820px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:1.05rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px;">
+                    <i data-feather="trending-up" style="width:18px;height:18px;color:#818cf8;"></i>
+                    レオロジーモデル曲線
+                </div>
+                <button onclick="closeFlowCurveModal()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;padding:6px 10px;font-size:0.85rem;">✕ 閉じる</button>
+            </div>
+            <!-- γ range controls -->
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 24px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;color:#9ca3af;">
+                <span>せん断速度範囲:</span>
+                <label>最小 <input type="number" id="fc-gamma-min" value="0.01" step="0.01" min="0.001" style="width:70px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;"> s⁻¹</label>
+                <label>最大 <input type="number" id="fc-gamma-max" value="1000" step="10" min="1" style="width:80px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;"> s⁻¹</label>
+                <button onclick="renderFlowCurves()" style="padding:4px 12px;background:rgba(129,140,248,0.15);color:#818cf8;border:1px solid rgba(129,140,248,0.25);border-radius:6px;cursor:pointer;font-size:0.8rem;">更新</button>
+            </div>
+            <!-- Charts -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:16px 24px 8px;">
+                <div style="padding:8px;">
+                    <div style="font-size:0.78rem;font-weight:600;color:#818cf8;margin-bottom:6px;text-align:center;">流動曲線（τ vs γ̇）</div>
+                    <div style="height:200px;position:relative;"><canvas id="fc-chart-flow"></canvas></div>
+                </div>
+                <div style="padding:8px;">
+                    <div style="font-size:0.78rem;font-weight:600;color:#34d399;margin-bottom:6px;text-align:center;">粘度曲線（μ_a vs γ̇）</div>
+                    <div style="height:200px;position:relative;"><canvas id="fc-chart-visc"></canvas></div>
+                </div>
+            </div>
+            <div style="padding:0 24px 16px;">
+                <div id="fc-casson-row" style="display:none;">
+                    <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;margin-bottom:6px;text-align:center;">キャッソンプロット（√τ vs √γ̇）</div>
+                    <div style="height:180px;position:relative;"><canvas id="fc-chart-casson"></canvas></div>
+                </div>
+            </div>
+            <!-- Model info -->
+            <div id="fc-model-info" style="margin:0 24px 20px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;font-size:0.8rem;color:#9ca3af;line-height:1.7;"></div>
+        </div>
+    </div>
+
+    <!-- ===== Sidebar & Accordion CSS ===== -->
+    <style>
+        /* Sidebar collapse */
+        .sidebar.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; padding: 0; }
+        .sidebar.collapsed .scroll-container,
+        .sidebar.collapsed .sidebar-footer { display: none; }
+        .sidebar.collapsed .sidebar-header { display: none; }
+
+        /* Accordion body */
+        .acc-body { overflow: hidden; transition: max-height 0.35s ease, opacity 0.3s ease, padding 0.3s ease; max-height: 2000px; opacity: 1; padding-top: 4px; }
+        .acc-body.collapsed { max-height: 0 !important; opacity: 0; padding-top: 0; }
+
+        /* Section header */
+        .config-section { margin-bottom: 0 !important; }
+        .acc-h3 {
+            user-select: none;
+            font-size: 0.97rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.01em;
+            color: var(--text-primary) !important;
+            padding: 10px 4px !important;
+            margin: 0 !important;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        /* 開いているセクション全体をハイライト */
+        .config-section:has(.acc-body:not(.collapsed)) {
+            background: rgba(6, 182, 212, 0.05);
+            border: 1px solid rgba(6, 182, 212, 0.18);
+            border-radius: 10px;
+            padding: 4px 10px 10px !important;
+            margin-bottom: 4px !important;
+        }
+        .config-section:has(.acc-body.collapsed) {
+            padding: 0 4px !important;
+        }
+        /* 開いているセクションのh3はシアンをほのかに */
+        .config-section:has(.acc-body:not(.collapsed)) .acc-h3 {
+            color: #38bdf8 !important;
+        }
+        .acc-h3 i[data-feather]:first-child { color: var(--accent-color); width: 15px; height: 15px; margin-right: 7px; flex-shrink: 0; }
+        .acc-h3:hover { opacity: 0.85; }
+        .acc-chevron { transition: transform 0.25s ease; opacity: 0.5; }
+        .acc-h3.collapsed .acc-chevron { transform: rotate(-90deg); }
+
+        /* Dividers — tight when neighbour is collapsed */
+        .sidebar-divider { margin: 2px 0 !important; opacity: 0.25; }
+
+        /* Outer grouped box tighter */
+        .scroll-container > div[style*="border: 1px solid rgba(6, 182, 212"] { padding: 8px 12px !important; margin-bottom: 8px !important; }
+
+        /* Rheo tab active */
+        .rheo-tab-active { background: rgba(6,182,212,0.25) !important; color: #38bdf8 !important; font-weight: 600 !important; }
+        .rheo-tab-inactive { background: rgba(255,255,255,0.04) !important; color: var(--text-secondary) !important; }
+
+        /* Modal flex */
+        #flow-curve-modal.open { display: flex !important; }
+
+        /* Manual params grid */
+        .manual-params { display: none; }
+        .manual-params.active { display: grid; }
+    </style>
+
+    <!-- ===== Sidebar, Accordion, Rheology Manual Mode, Flow Curve Modal JS ===== -->
+    <script>
+    // ── Sidebar collapse ──────────────────────────────────────────────
+    function _syncSidebarUI() {
+        const sb = document.querySelector('.sidebar');
+        const reopenBtn = document.getElementById('sidebar-reopen-btn');
+        const isCollapsed = sb.classList.contains('collapsed');
+        if (reopenBtn) {
+            reopenBtn.style.display = isCollapsed ? 'flex' : 'none';
+        }
+        feather.replace();
+    }
+    document.getElementById('sidebar-toggle-btn').addEventListener('click', function () {
+        document.querySelector('.sidebar').classList.toggle('collapsed');
+        _syncSidebarUI();
+    });
+    document.getElementById('sidebar-reopen-btn').addEventListener('click', function () {
+        document.querySelector('.sidebar').classList.remove('collapsed');
+        _syncSidebarUI();
+    });
+
+    // ── Accordion ────────────────────────────────────────────────────
+    document.querySelectorAll('.acc-h3').forEach(function (h3) {
+        h3.addEventListener('click', function () {
+            const targetId = h3.dataset.target;
+            const body = document.getElementById(targetId);
+            if (!body) return;
+            const isOpen = !body.classList.contains('collapsed');
+            body.classList.toggle('collapsed', isOpen);
+            h3.classList.toggle('collapsed', isOpen);
+            feather.replace();
+        });
+    });
+
+    // ── Rheology tab switch ──────────────────────────────────────────
+    function switchRheoTab(mode) {
+        const csvPanel    = document.getElementById('rheo-csv-panel');
+        const manualPanel = document.getElementById('rheo-manual-panel');
+        const btnCsv      = document.getElementById('rheo-tab-csv');
+        const btnManual   = document.getElementById('rheo-tab-manual');
+        if (mode === 'csv') {
+            csvPanel.style.display    = '';
+            manualPanel.style.display = 'none';
+            btnCsv.classList.add('rheo-tab-active');    btnCsv.classList.remove('rheo-tab-inactive');
+            btnManual.classList.add('rheo-tab-inactive'); btnManual.classList.remove('rheo-tab-active');
+        } else {
+            csvPanel.style.display    = 'none';
+            manualPanel.style.display = '';
+            btnManual.classList.add('rheo-tab-active');  btnManual.classList.remove('rheo-tab-inactive');
+            btnCsv.classList.add('rheo-tab-inactive');   btnCsv.classList.remove('rheo-tab-active');
+            onManualModelChange();
+        }
+        feather.replace();
+    }
+
+    // ── Manual model param panels ────────────────────────────────────
+    function onManualModelChange() {
+        const model = document.getElementById('manual-model-select').value;
+        document.querySelectorAll('.manual-params').forEach(el => {
+            el.style.display = 'none';
+            el.classList.remove('active');
+        });
+        const panel = document.getElementById('manual-params-' + model);
+        if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+    }
+
+    // ── Apply manual model to rheologyData ──────────────────────────
+    function applyManualModel() {
+        if (typeof rheologyData === 'undefined') return;
+        const model = document.getElementById('manual-model-select').value;
+        const v = id => parseFloat(document.getElementById(id).value) || 0;
+
+        let params = {};
+        switch (model) {
+            case 'newtonian': params = { eta_0: v('mp-newtonian-eta0') }; break;
+            case 'powerlaw':  params = { K: v('mp-pl-K'), n: v('mp-pl-n') }; break;
+            case 'bingham':   params = { tau_y: v('mp-bi-tauy'), eta_p: v('mp-bi-etap') }; break;
+            case 'casson':    params = { tau_y: v('mp-ca-tauy'), eta_p: v('mp-ca-etap') }; break;
+            case 'hb':        params = { tau_y: v('mp-hb-tauy'), K: v('mp-hb-K'), n: v('mp-hb-n') }; break;
+            case 'cross':     params = { eta_0: v('mp-cr-eta0'), eta_inf: v('mp-cr-etainf'), K: v('mp-cr-K'), m: v('mp-cr-m') }; break;
+            case 'carreau':   params = { eta_0: v('mp-cu-eta0'), eta_inf: v('mp-cu-etainf'), lambda: v('mp-cu-lambda'), n: v('mp-cu-n') }; break;
+        }
+
+        const MODEL_NAMES = {
+            newtonian: 'Newtonian', powerlaw: 'Power-Law', bingham: 'Bingham',
+            casson: 'Casson', hb: 'Herschel-Bulkley', cross: 'Cross', carreau: 'Carreau'
+        };
+        const sampleName = '手動入力';
+        const entry = { modelId: model, name: MODEL_NAMES[model], rating: 'good', r2: 1.0, rmse: 0, mae: 0, params };
+        if (model === 'newtonian') entry.params.eta_0 = params.eta_0;
+
+        rheologyData.samples = { [sampleName]: [entry] };
+        rheologyData.activeSample = sampleName;
+        rheologyData.activeModel  = model;
+
+        // Sync the shared model select
+        const sel = document.getElementById('rheology-model-select');
+        if (sel) {
+            const ICONS = { newtonian:'◎',powerlaw:'◎',bingham:'◎',casson:'◎',hb:'◎',cross:'◎',carreau:'◎' };
+            sel.innerHTML = `<option value="${model}" selected>${ICONS[model]} ${MODEL_NAMES[model]}</option>`;
+        }
+
+        if (typeof updateRheologyUI === 'function') updateRheologyUI();
+        if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+        if (typeof recalculateAll === 'function') recalculateAll();
+        if (typeof showToast === 'function') showToast(`手動入力: ${MODEL_NAMES[model]} モデルを適用しました`, 'success');
+    }
+
+    // ── Flow Curve Modal ─────────────────────────────────────────────
+    let fcChartFlow = null, fcChartVisc = null, fcChartCasson = null;
+
+    function openFlowCurveModal() {
+        document.getElementById('flow-curve-modal').classList.add('open');
+        feather.replace();
+        renderFlowCurves();
+    }
+    function closeFlowCurveModal() {
+        document.getElementById('flow-curve-modal').classList.remove('open');
+    }
+    document.getElementById('flow-curve-modal').addEventListener('click', function (e) {
+        if (e.target === this) closeFlowCurveModal();
+    });
+
+    function _fcCalcMu(model, params, gd) {
+        if (gd <= 0) return null;
+        switch (model) {
+            case 'newtonian': return params.eta_0 ?? params.eta0 ?? 0.001;
+            case 'powerlaw':  return params.K * Math.pow(gd, params.n - 1);
+            case 'bingham':   return params.tau_y / gd + params.eta_p;
+            case 'casson':    { const s = Math.sqrt(params.eta_p) + Math.sqrt(params.tau_y / gd); return s * s; }
+            case 'hb':        return params.tau_y / gd + params.K * Math.pow(gd, params.n - 1);
+            case 'cross':     return params.eta_inf + (params.eta_0 - params.eta_inf) / (1 + Math.pow(params.K * gd, params.m));
+            case 'carreau':   return params.eta_inf + (params.eta_0 - params.eta_inf) * Math.pow(1 + Math.pow(params.lambda * gd, 2), (params.n - 1) / 2);
+            default: return null;
+        }
+    }
+
+    function renderFlowCurves() {
+        if (typeof rheologyData === 'undefined') return;
+        const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+        const activeModelId = rheologyData.activeModel;
+        const modelInfo = modelList.find(r => r.modelId === activeModelId);
+        if (!modelInfo && activeModelId !== 'newtonian') {
+            document.getElementById('fc-model-info').textContent = 'モデルが未設定です。CSVを読み込むか手動入力でモデルを設定してください。';
+            return;
+        }
+        const params = modelInfo ? modelInfo.params : { eta_0: (typeof config !== 'undefined' ? config.mu : 0.001) };
+        const model  = activeModelId;
+
+        const gMin = parseFloat(document.getElementById('fc-gamma-min').value) || 0.01;
+        const gMax = parseFloat(document.getElementById('fc-gamma-max').value) || 1000;
+        const N_PTS = 80;
+        const gammas = Array.from({length: N_PTS}, (_, i) => {
+            const t = i / (N_PTS - 1);
+            return gMin * Math.pow(gMax / gMin, t);
+        });
+
+        const taus = gammas.map(gd => { const mu = _fcCalcMu(model, params, gd); return mu != null ? mu * gd : null; });
+        const mus  = gammas.map(gd => _fcCalcMu(model, params, gd));
+
+        const chartDefaults = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y != null ? ctx.parsed.y.toExponential(3) : '' } } },
+            scales: {
+                x: { type: 'logarithmic', title: { display: true, text: 'せん断速度 γ̇ (s⁻¹)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } },
+                y: { type: 'logarithmic', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } }
+            }
+        };
+
+        // Flow curve
+        if (fcChartFlow) fcChartFlow.destroy();
+        fcChartFlow = new Chart(document.getElementById('fc-chart-flow'), {
+            type: 'line',
+            data: { labels: gammas, datasets: [{ data: taus, borderColor: '#818cf8', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: 'せん断応力 τ (Pa)', color: '#6b7280', font: { size: 9 } } } } }
+        });
+
+        // Viscosity curve
+        if (fcChartVisc) fcChartVisc.destroy();
+        fcChartVisc = new Chart(document.getElementById('fc-chart-visc'), {
+            type: 'line',
+            data: { labels: gammas, datasets: [{ data: mus, borderColor: '#34d399', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: '見かけ粘度 μ_a (Pa·s)', color: '#6b7280', font: { size: 9 } } } } }
+        });
+
+        // Casson plot (√τ vs √γ̇) — shown for Bingham, Casson, HB
+        const cassonRow = document.getElementById('fc-casson-row');
+        const showCasson = ['bingham', 'casson', 'hb'].includes(model);
+        cassonRow.style.display = showCasson ? 'block' : 'none';
+        if (showCasson) {
+            const sqrtGammas = gammas.map(g => Math.sqrt(g));
+            const sqrtTaus   = taus.map(t => t != null ? Math.sqrt(Math.max(0, t)) : null);
+            if (fcChartCasson) fcChartCasson.destroy();
+            fcChartCasson = new Chart(document.getElementById('fc-chart-casson'), {
+                type: 'line',
+                data: { labels: sqrtGammas, datasets: [{ data: sqrtTaus, borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: '√γ̇ (s⁻¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } },
+                        y: { type: 'linear', title: { display: true, text: '√τ (Pa¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } }
+                    }
+                }
+            });
+        }
+
+        // Model info text
+        const MODEL_LABELS = { newtonian:'Newtonian', powerlaw:'Power-Law', bingham:'Bingham', casson:'Casson', hb:'Herschel-Bulkley', cross:'Cross', carreau:'Carreau' };
+        let infoStr = `モデル: ${MODEL_LABELS[model] || model} | `;
+        infoStr += Object.entries(params).map(([k, v]) => `${k} = ${Number(v).toPrecision(4)}`).join(' | ');
+        document.getElementById('fc-model-info').textContent = infoStr;
+    }
+
+    // init manual params display
+    onManualModelChange();
+    </script>
+
 </body>
 
 </html>

@@ -240,18 +240,24 @@ function seedDefaultPresets() {
         presets = [];
     }
 
-    const existingNames = new Set(presets.map(p => p.name));
-    // Collect only new entries (preserving definition order)
-    const toAdd = DEFAULT_SCALE_PRESETS.filter(dp => !existingNames.has(dp.name));
+    // 旧名称パターン（E0.1 L / E1 L 等）を除去して重複を解消
+    const defaultNames = new Set(DEFAULT_SCALE_PRESETS.map(p => p.name));
+    const OLD_PATTERNS = [/^【.*?】\s*(Lab|Bench|Pilot|Plant)\s+Scale\s+E[\d.]+\s*L/];
+    presets = presets.filter(p => {
+        // デフォルト名と一致するものは後で上書きするので除去
+        if (defaultNames.has(p.name)) return false;
+        // 旧命名規則にマッチするものも除去
+        if (OLD_PATTERNS.some(re => re.test(p.name))) return false;
+        return true;  // ユーザー保存プリセットは保持
+    });
 
-    if (toAdd.length > 0) {
-        // Prepend in reverse so the first entry ends up at index 0
-        toAdd.slice().reverse().forEach(dp => presets.unshift(dp));
-        try {
-            localStorage.setItem('agitator_presets', JSON.stringify(presets));
-        } catch (e) {
-            console.warn('Could not seed default presets:', e);
-        }
+    // デフォルトを先頭に追加（順序を維持）
+    DEFAULT_SCALE_PRESETS.slice().reverse().forEach(dp => presets.unshift(dp));
+
+    try {
+        localStorage.setItem('agitator_presets', JSON.stringify(presets));
+    } catch (e) {
+        console.warn('Could not seed default presets:', e);
     }
 }
 
@@ -781,6 +787,10 @@ function initEventListeners() {
     }
     if (tabHeatsim) {
         tabHeatsim.addEventListener('click', () => switchMainTab('heatsim'));
+    }
+    const tabExpsheet = document.getElementById('tab-btn-expsheet');
+    if (tabExpsheet) {
+        tabExpsheet.addEventListener('click', () => switchMainTab('expsheet'));
     }
 
     // Heat transfer / thermal properties input watchers
@@ -2439,12 +2449,25 @@ function updateRheologyUI() {
     const muEffContainer = document.getElementById('mu-eff-container');
     const clearBtn = document.getElementById('btn-clear-rheology');
 
+    const ALL_MODELS = [
+        { id:'newtonian', label:'Newtonian（μ = 一定）' },
+        { id:'powerlaw',  label:'Power-Law（べき乗則）' },
+        { id:'bingham',   label:'Bingham（ビンガム）' },
+        { id:'casson',    label:'Casson（キャッソン）' },
+        { id:'hb',        label:'Herschel-Bulkley（HB）' },
+        { id:'cross',     label:'Cross（クロス）' },
+        { id:'carreau',   label:'Carreau（カロー）' },
+    ];
+
     const samples = Object.keys(rheologyData.samples);
     if (samples.length === 0) {
         if (clearBtn) clearBtn.style.display = 'none';
         sampleSel.innerHTML = '<option value="">-- CSV未読込 --</option>';
         sampleSel.disabled = true; sampleSel.style.opacity = '0.5';
-        modelSel.innerHTML = '<option value="newtonian">Newtonian（μ = 一定）</option>';
+        // CSV未読込でも全モデル一覧を表示（手動入力に備えて）
+        modelSel.innerHTML = ALL_MODELS.map(m =>
+            `<option value="${m.id}"${m.id === rheologyData.activeModel ? ' selected' : ''}>${m.label}</option>`
+        ).join('');
         if (muEffContainer) muEffContainer.style.display = 'none';
         ksGroup.style.opacity = '0.4';
         return;
@@ -2556,6 +2579,12 @@ function initRheologyListeners() {
     });
     document.getElementById('rheology-model-select').addEventListener('change', e => {
         rheologyData.activeModel = e.target.value;
+        const manualSel = document.getElementById('manual-model-select');
+        const manualPanel = document.getElementById('rheo-manual-panel');
+        if (manualSel && manualPanel && manualPanel.style.display !== 'none') {
+            manualSel.value = e.target.value;
+            if (typeof onManualModelChange === 'function') onManualModelChange();
+        }
         updateRheologyUI();
         recalculateAll();
     });
@@ -6363,13 +6392,15 @@ function switchMainTab(tab) {
     config.activeTab = tab;
     saveCurrentState();
 
-    const btnRushton = document.getElementById('tab-btn-rushton');
-    const btnPartsim = document.getElementById('tab-btn-partsim');
-    const btnHeatsim = document.getElementById('tab-btn-heatsim');
+    const btnRushton   = document.getElementById('tab-btn-rushton');
+    const btnPartsim   = document.getElementById('tab-btn-partsim');
+    const btnHeatsim   = document.getElementById('tab-btn-heatsim');
+    const btnExpsheet  = document.getElementById('tab-btn-expsheet');
 
-    const contentRushton = document.getElementById('tab-content-rushton');
-    const contentPartsim = document.getElementById('tab-content-partsim');
-    const contentHeatsim = document.getElementById('tab-content-heatsim');
+    const contentRushton  = document.getElementById('tab-content-rushton');
+    const contentPartsim  = document.getElementById('tab-content-partsim');
+    const contentHeatsim  = document.getElementById('tab-content-heatsim');
+    const contentExpsheet = document.getElementById('tab-content-expsheet');
 
     const controlsRushton = document.getElementById('rushton-controls');
     const controlsPartsim = document.getElementById('partsim-controls');
@@ -6377,7 +6408,7 @@ function switchMainTab(tab) {
     if (!btnRushton || !btnPartsim || !btnHeatsim || !contentRushton || !contentPartsim || !contentHeatsim) return;
 
     // Reset all tab button styles
-    [btnRushton, btnPartsim, btnHeatsim].forEach(btn => {
+    [btnRushton, btnPartsim, btnHeatsim, btnExpsheet].filter(Boolean).forEach(btn => {
         btn.classList.remove('active');
         btn.style.color = 'var(--text-secondary)';
         btn.style.borderBottom = '2px solid transparent';
@@ -6388,6 +6419,15 @@ function switchMainTab(tab) {
     contentRushton.style.display = 'none';
     contentPartsim.style.display = 'none';
     contentHeatsim.style.display = 'none';
+    if (contentExpsheet) contentExpsheet.style.display = 'none';
+
+    // Reset card sizing
+    const chartCard = document.querySelector('.card.chart-card');
+    if (chartCard) {
+        chartCard.style.height = '';
+        chartCard.style.maxHeight = '';
+        chartCard.style.overflowY = '';
+    }
 
     if (controlsRushton) controlsRushton.style.display = 'none';
     if (controlsPartsim) controlsPartsim.style.display = 'none';
@@ -6409,6 +6449,7 @@ function switchMainTab(tab) {
         btnRushton.style.fontWeight = '600';
         contentRushton.style.display = 'flex';
         if (controlsRushton) controlsRushton.style.display = 'flex';
+        if (chartCard) { chartCard.style.height = 'calc(100vh - 120px)'; chartCard.style.maxHeight = '900px'; }
 
         if (chart) {
             chart.resize();
@@ -6431,6 +6472,23 @@ function switchMainTab(tab) {
         contentHeatsim.style.display = 'flex';
 
         initHeatSimulation();
+    } else if (tab === 'expsheet') {
+        if (btnExpsheet) {
+            btnExpsheet.classList.add('active');
+            btnExpsheet.style.color = 'var(--accent-color)';
+            btnExpsheet.style.borderBottom = '2px solid var(--accent-color)';
+            btnExpsheet.style.fontWeight = '600';
+        }
+        if (contentExpsheet) {
+            contentExpsheet.style.display = 'flex';
+            contentExpsheet.style.flexDirection = 'column';
+        }
+        // card expands to content height for expsheet
+        if (chartCard) {
+            chartCard.style.height = 'auto';
+            chartCard.style.overflowY = 'visible';
+        }
+        if (typeof feather !== 'undefined') feather.replace();
     }
 }
 
