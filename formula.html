@@ -509,9 +509,24 @@
                     $$\left( \frac{D_c}{D} \right)^3 = \frac{1.36 \, N_p}{\pi^2} \left( \frac{\rho \, n^2 D^2}{\tau_y} \right)$$
                 </div>
 
-                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">Amanullah のトーラス形モデル (Torus Model)</h3>
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">Elson らのトーラス形モデル (Torus Model)</h3>
                 <p>
-                    傾斜パドル翼やプロペラなどの軸流翼（下向き推力を持つインペラ）では、キャバーンが「ドーナツ状（トーラス形）」になることが知られています（<a href="https://doi.org/10.1016/S0009-2509(97)00335-5" target="_blank" style="color: var(--pink-accent); text-decoration: underline;">Amanullah et al., 1998</a>）。インペラの接線力と軸方向推力の合力を考慮するため計算が複雑になりますが、高精度な推算が可能です。本シミュレーターでは、簡易評価としてElsonモデルを汎用的に用いています。
+                    傾斜パドル翼やプロペラなどの軸流翼（下向き推力を持つインペラ）では、キャバーンが「ドーナツ状（トーラス形）」になることが知られています。Elson らは、球形・円筒形モデルと同一の運動量バランスに基づき、トーラス形キャバーンの断面半径 $r_c$ を以下のように定式化しました。
+                </p>
+                <p style="margin-top: 8px;">
+                    トーラスの大半径（リング半径）をインペラ翼径の半分 $R = D/2$ とおくとき、断面小半径 $r_c$（流動領域の厚さの半分）は次式で推算されます。
+                </p>
+                <div class="formula-block">
+                    $$\frac{\pi^2}{2} \left(\frac{r_c}{D/2}\right)^2 \left[ 1 + \frac{1}{3}\left(\frac{r_c}{D/2}\right)^2 \right] = \frac{N_p}{\pi} \left(\frac{\rho \, n^2 D^2}{\tau_y}\right)$$
+                </div>
+                <p style="margin-top: 8px;">
+                    ここで $r_c$ が求まると、トーラス断面直径（本シミュレーターの表示値 $D_c$）は
+                </p>
+                <div class="formula-block">
+                    $$D_c = 2 r_c$$
+                </div>
+                <p style="margin-top: 8px; font-size: 0.9rem;">
+                    上式は $r_c / (D/2)$ に関する4次方程式であり、本シミュレーターではニュートン法による数値反復で解いています。球形モデルが得る「中心から広がる球状領域の直径」に対して、トーラスモデルは「インペラ回転平面上のドーナツ断面の直径」を意味する点に注意してください。
                 </p>
 
                 <div style="margin-top: 32px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--card-border);">
@@ -521,11 +536,13 @@
                             Elson, T. P., Cheesman, D. J., & Nienow, A. W. (1986). 
                             <br>X-ray studies of cavern sizes and mixing performance with fluids possessing a yield stress. <i>Chemical Engineering Science</i>, 41(10), 2555-2562. 
                             <a href="https://doi.org/10.1016/0009-2509(86)80039-0" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">球形・円筒形・トーラス形の3モデルを統一的な運動量バランスで定式化。</span>
                         </li>
                         <li>
                             Amanullah, A., Hjorth, S. A., & Nienow, A. W. (1998). 
                             <br>A new mathematical model to predict cavern diameters in highly shear thinning, power law liquids using axial flow impellers. <i>Chemical Engineering Science</i>, 53(3), 455-469. 
                             <a href="https://doi.org/10.1016/S0009-2509(97)00335-5" target="_blank" style="color: var(--pink-accent);">[DOIリンク]</a>
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">軸流翼によるトーラス形キャバーンの形成を実験的・理論的に検証した論文。</span>
                         </li>
                     </ul>
                 </div>
@@ -533,26 +550,233 @@
                 <div class="parameter-list" style="margin-top: 32px;">
                     <div class="parameter-item">
                         <span class="parameter-symbol">$D_c$</span>
-                        <span>キャバーン径 [m]</span>
+                        <span>キャバーン径 [m]（球形・円筒形：流動球/円筒の直径、トーラス形：断面円の直径 $= 2r_c$）</span>
                     </div>
                     <div class="parameter-item">
                         <span class="parameter-symbol">$D$</span>
-                        <span>インペラ翼径 [m]</span>
+                        <span>インペラ翼径 [m]（トーラスモデルではリング大半径 $R = D/2$）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$r_c$</span>
+                        <span>トーラス断面小半径 [m]（トーラスモデルのみ）</span>
                     </div>
                     <div class="parameter-item">
                         <span class="parameter-symbol">$\tau_y$</span>
                         <span>降伏応力 [Pa]</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$N_p$</span>
+                        <span>インペラ動力数 [-]（亀井・平岡の式で算出）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$n$</span>
+                        <span>インペラ回転速度 [1/s]</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$\rho$</span>
+                        <span>流体密度 [kg/m³]</span>
                     </div>
                 </div>
             </div>
 
 
 
-            <!-- Card 8: Zwietering Solid-Liquid Correlation -->
+
+            <!-- Card 8: Pseudo-Cavern for Power-Law Fluids -->
+            <div class="formula-card">
+                <div class="formula-title">
+                    <i data-feather="zap"></i>
+                    <span>8. 擬塑性流体（べき乗則流体）におけるキャバーン（疑似流動領域）径の推算</span>
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 0 0 12px 0;">考え方</h3>
+                <p>
+                    降伏応力を持たない擬塑性流体（Power-Law 流体）では、原理的に流体全域でせん断応力がゼロにはなりません。
+                    しかし高粘度のせん断減粘性流体では、インペラから遠ざかるにつれてせん断速度が急激に低下し、見かけ粘度が非常に大きくなります。
+                    その結果、インペラ周辺の活発な流動領域（<strong>疑似キャバーン</strong>）とその外側のほぼ停滞した高粘度領域が事実上分離した状態となります。<br>
+                    Amanullah ら (1998) は、べき乗則流体（Power-Law: $\tau = K\dot{\gamma}^n$）を対象に、<em>流動領域の外縁における見かけ粘度が「十分大きい基準値」を超えた点をキャバーン境界</em>と定義する数学モデルを提案しました。
+                </p>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">せん断速度の半径方向分布モデル</h3>
+                <p>
+                    インペラ翼端（半径 $r = D/2$）でのせん断速度 $\dot{\gamma}_{blade}$ を Metzner–Otto 定数 $k_s$ と回転速度 $n$ [1/s] で表し、半径方向に指数的に減衰すると仮定します。
+                </p>
+                <div class="formula-block">
+                    $$\dot{\gamma}_{blade} = k_s \, n$$
+                </div>
+                <div class="formula-block">
+                    $$\dot{\gamma}(r) = \dot{\gamma}_{blade} \left(\frac{D/2}{r}\right)^{\alpha}$$
+                </div>
+                <p>
+                    ここで $\alpha$（ずり速度減衰係数）は翼形状・流れパターンにより決まる経験定数です（通常 $\alpha = 1.5 \sim 3.0$、典型値 $2.0$）。
+                    $r$ はインペラ中心からの半径方向距離です。
+                </p>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">キャバーン境界の定義と推算式</h3>
+                <p>
+                    半径 $r$ における見かけ粘度は Power-Law モデルより
+                </p>
+                <div class="formula-block">
+                    $$\mu_a(r) = K \, \dot{\gamma}(r)^{n-1} = K \left[ k_s n \left(\frac{D/2}{r}\right)^{\alpha} \right]^{n-1}$$
+                </div>
+                <p>
+                    「流動限界」をインペラ翼端での見かけ粘度 $\mu_{a,blade} = K(k_s n)^{n-1}$ の $\lambda$ 倍（流動限界係数、通常 $\lambda = 5 \sim 50$）と定義します。
+                    すなわち $\mu_a(r_c) = \lambda \cdot \mu_{a,blade}$ となる $r_c$ がキャバーン半径です。
+                </p>
+                <div class="formula-block">
+                    $$\lambda \cdot \mu_{a,blade} = K \left[ k_s n \left(\frac{D/2}{r_c}\right)^{\alpha} \right]^{n-1}$$
+                </div>
+                <p>
+                    両辺を $\mu_{a,blade}$ で割り、$\lambda^{1/(n-1)}$ を分離して整理すると（$n < 1$ なので $n-1 < 0$）、
+                </p>
+                <div class="formula-block">
+                    $$\frac{r_c}{D/2} = \lambda^{1/[\alpha(1-n)]}$$
+                </div>
+                <p>
+                    したがってキャバーン径（疑似流動領域の直径）は
+                </p>
+                <div class="formula-block">
+                    $$\boxed{D_c = D \cdot \lambda^{1/[\alpha(1-n)]}}$$
+                </div>
+                <p>
+                    本シミュレーターでは、上式を用いて $D_c$ を計算し、$D_c \geq D_T$（タンク径）となった場合は「タンク全体が流動領域」と判定します。
+                </p>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 24px 0 12px 0;">パラメータの意味と推奨値</h3>
+                <div class="parameter-list">
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$K$</span>
+                        <span>稠度係数 [Pa·s<sup>n</sup>]（Power-Law モデルのパラメータ）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$n$</span>
+                        <span>流動挙動指数 [-]（$n < 1$：擬塑性、$n = 1$：ニュートン、$n > 1$：ダイラタント）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$k_s$</span>
+                        <span>Metzner–Otto 定数 [-]（翼形状依存、傾斜パドルで 11〜13 程度）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$\alpha$</span>
+                        <span>ずり速度減衰係数 [-]（通常 1.5〜3.0、デフォルト 2.0）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$\lambda$</span>
+                        <span>流動限界係数 [-]（大きいほどキャバーンが大きく推算される、通常 5〜50）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$D_c$</span>
+                        <span>疑似キャバーン径 [m]（流動が支配的な領域の推定直径）</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$D$</span>
+                        <span>インペラ翼径 [m]</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-symbol">$n$</span>
+                        <span>インペラ回転速度 [1/s]</span>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin: 32px 0 12px 0;">減衰係数 α の翼種別実験値（CFD・PIV による推奨デフォルト値）</h3>
+                <p>
+                    減衰係数 $\alpha$ は、翼から放出される流れがどの方向にどの速度で広がるかを反映します。
+                    流体解析（CFD）やレーザー流速計（PIV）を用いた実験から、翼形状ごとに以下の値が報告されています。
+                    本シミュレーターでは翼種を変更すると自動的にデフォルト値がセットされます。
+                </p>
+                <div style="overflow-x:auto; margin-top: 12px;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.88rem; color:var(--text-secondary);">
+                    <thead>
+                        <tr style="background:rgba(255,255,255,0.07); color:var(--text-primary);">
+                            <th style="padding:8px 12px; text-align:left; border:1px solid var(--card-border);">翼種</th>
+                            <th style="padding:8px 12px; text-align:center; border:1px solid var(--card-border);">流れパターン</th>
+                            <th style="padding:8px 12px; text-align:center; border:1px solid var(--card-border);">推奨 α</th>
+                            <th style="padding:8px 12px; text-align:left; border:1px solid var(--card-border);">物理的根拠</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">ラシュトンタービン・フラットタービン</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center;">放射流（Radial）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center; font-weight:700; color:#38bdf8;">2.0</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">翼横方向へ液を2次元的に吹き出すため、距離の2乗に反比例してせん断速度が減衰</td>
+                        </tr>
+                        <tr style="background:rgba(255,255,255,0.03);">
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">フラットパドル</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center;">放射流（Radial）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center; font-weight:700; color:#38bdf8;">2.0</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">ラシュトン同様の放射流。翼面積が大きいため循環は強いが減衰様式は同等</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">傾斜パドル翼（PBT）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center;">軸流（Axial）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center; font-weight:700; color:#f59e0b;">3.0</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">上下方向へ押し出すため3次元的に急拡散し、距離の3乗に反比例して減衰（Amanullah et al., 1998）</td>
+                        </tr>
+                        <tr style="background:rgba(255,255,255,0.03);">
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">プロペラ翼・大型格子翼</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center;">軸流（Axial）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center; font-weight:700; color:#f59e0b;">3.0</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">傾斜パドルと同様に強い軸流成分を持ち、3次元的な急減衰が報告されている</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">ファウドラー翼</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center;">放射流＋軸流（混合）</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border); text-align:center; font-weight:700; color:#38bdf8;">2.0</td>
+                            <td style="padding:7px 12px; border:1px solid var(--card-border);">半楕円形状で放射流が支配的。軸流成分もあるが減衰はラジアル翼に近い挙動</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+                <p style="margin-top:10px; font-size:0.82rem; color:var(--text-muted);">
+                    ※ 上記は CFD シミュレーション（Solomon et al., 1981; Amanullah et al., 1998）および PIV 計測結果に基づく推奨値です。
+                    実際の系では流体のレオロジー特性・邪魔板の有無・スケールにより $\alpha$ が変化しうるため、精密設計時には実測値の使用を推奨します。
+                </p>
+
+                <div style="margin-top: 16px; padding: 12px 16px; background: rgba(245,158,11,0.08); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.88rem; color: var(--text-secondary);">
+                    <strong style="color:#f59e0b;">注意：</strong>
+                    本モデルは <em>相対的な見かけ粘度の増大</em> を流動停止の指標としており、降伏応力モデル（Elson モデル）とは物理的根拠が異なります。
+                    $\lambda$ は実験的に決定する経験定数であり、系によって大きく異なります。スケールアップ設計には実機での検証を推奨します。
+                </div>
+
+                <div style="margin-top: 32px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--card-border);">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;"><i data-feather="book-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 原著論文（参考文献）</div>
+                    <ul style="color: var(--text-secondary); margin-left: 20px; line-height: 1.8;">
+                        <li style="margin-bottom: 12px;">
+                            Amanullah, A., Hjorth, S. A., &amp; Nienow, A. W. (1998).
+                            <br>A new mathematical model to predict cavern diameters in highly shear thinning, power law liquids using axial flow impellers.
+                            <i>Chemical Engineering Science</i>, <strong>53</strong>(3), 455–469.
+                            <a href="https://doi.org/10.1016/S0009-2509(97)00335-5" target="_blank" style="color: var(--pink-accent);">[DOI: 10.1016/S0009-2509(97)00335-5]</a>
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">軸流翼（傾斜パドル・プロペラ）を用いたべき乗則流体の疑似キャバーン形成を実験・理論の両面から検証。せん断速度の半径方向減衰モデルと流動限界係数の概念を提案した中心的論文。</span>
+                        </li>
+                        <li style="margin-bottom: 12px;">
+                            Metzner, A. B., &amp; Otto, R. E. (1957).
+                            <br>Agitation of non-Newtonian fluids.
+                            <i>AIChE Journal</i>, <strong>3</strong>(1), 3–10.
+                            <a href="https://doi.org/10.1002/aic.690030103" target="_blank" style="color: var(--pink-accent);">[DOI: 10.1002/aic.690030103]</a>
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">非ニュートン流体の攪拌における代表せん断速度 $\dot{\gamma}_{avg} = k_s n$ の概念を提案した基礎論文。Power-Law キャバーンモデルの出発点となる。</span>
+                        </li>
+                        <li style="margin-bottom: 12px;">
+                            Wichterle, K., &amp; Wein, O. (1981).
+                            <br>Threshold of mixing of non-Newtonian liquids.
+                            <i>International Chemical Engineering</i>, <strong>21</strong>(1), 116–120.
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">攪拌槽内の混合限界（Mixing threshold）を実験的に検討し、擬塑性流体の混合停滞領域の存在を示した先駆的研究。</span>
+                        </li>
+                        <li>
+                            Solomon, J., Nienow, A. W., &amp; Pace, G. W. (1981).
+                            <br>Flow patterns in agitated plastic and pseudoplastic viscoelastic fluids.
+                            <i>Fluid Mixing</i>, IChemE Symposium Series No. 64, pp. 1–13.
+                            <br><span style="font-size: 0.8em; color: var(--text-muted);">擬塑性・粘弾性流体の流動パターンとキャバーン形成を可視化実験により詳細に報告。Amanullah モデルの実験的背景となる流動構造を記述。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card 9: Zwietering Solid-Liquid Correlation -->
             <div class="formula-card">
                 <div class="formula-title">
                     <i data-feather="box"></i>
-                    <span>8. 固液攪拌における完全浮遊撹拌速度の推算（Zwietering の式）</span>
+                    <span>9. 固液攪拌における完全浮遊撹拌速度の推算（Zwietering の式）</span>
                 </div>
                 <p>
                     固液攪拌システムにおいて、槽底に沈降している固体粒子が完全に底から離れて浮遊する状態（完全離底懸浮状態、Just Suspended State）となる臨界撹拌速度 $N_{js}$ は、Zwietering (1958) によって提案された以下の半経験式を用いて評価されます。
@@ -667,11 +891,11 @@
                 </div>
             </div>
 
-            <!-- Card 9: Heat Transfer -->
+            <!-- Card 10: Heat Transfer -->
             <div class="formula-card">
                 <div class="formula-title">
                     <i data-feather="thermometer"></i>
-                    <span>9. 冷却・加熱（伝熱）シミュレーションの推算式</span>
+                    <span>10. 冷却・加熱（伝熱）シミュレーションの推算式</span>
                 </div>
                 <p>
                     伝熱シミュレーションでは、槽壁（ジャケット）および伝熱コイルにおける伝熱面積、液側および熱媒体側の境膜伝熱係数から総括伝熱係数を求め、熱収支式を解くことで液温の経時変化を予測します。
@@ -735,11 +959,11 @@
 
             </div>
 
-            <!-- Card 10: Particle Simulation Physics -->
+            <!-- Card 11: Particle Simulation Physics -->
             <div class="formula-card">
                 <div class="formula-title">
                     <i data-feather="loader"></i>
-                    <span>10. 粒子法ベースの2D挙動シミュレーション</span>
+                    <span>11. 粒子法ベースの2D挙動シミュレーション</span>
                 </div>
                 <p>
                     メイン画面の「浮遊・流動状態アニメーション」では、計算された流動領域（キャバーン）やマクロな循環流速場を背景とし、オイラー・ラグランジュ法に似た簡易的な運動方程式（疑似物理演算）を解くことで粒子の軌跡をリアルタイムに描画しています。
@@ -809,11 +1033,11 @@
 
             </div>
 
-            <!-- Card 11: Coil Baffle Effect -->
+            <!-- Card 12: Coil Baffle Effect -->
             <div class="formula-card">
                 <div class="formula-title">
                     <i data-feather="activity"></i>
-                    <span>11. コイルによる動力特性への影響（Kato et al., 2013）</span>
+                    <span>12. コイルによる動力特性への影響（Kato et al., 2013）</span>
                 </div>
                 <p>
                     槽内に冷却・加熱用コイルを設置した場合、コイル自体が一種の邪魔板として作用し、撹拌所要動力が増加します。本シミュレーターでは、Kato et al. (2013) の知見に基づき、コイルを「等価的な邪魔板」として亀井・平岡の動力推算式に組み込んでいます。

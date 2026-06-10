@@ -184,6 +184,10 @@
                                     style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
                             <input type="number" id="ks-input" value="11.5" step="0.1" min="0.1">
                         </div>
+                        <div class="input-group full-width" id="mu-eff-container" style="display:none;">
+                            <label>有効粘度 &mu;<sub>eff</sub> (Pa&middot;s)</label>
+                            <div id="mu-eff-display" style="font-size:1.1rem; font-weight:600; color:#38bdf8; padding:6px 10px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.2); border-radius:8px;"></div>
+                        </div>
                         <div class="input-group full-width" id="cavern-model-group"
                             style="display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
                             <label for="cavern-model">キャバーン形状モデル (降伏応力流体)</label>
@@ -199,6 +203,30 @@
                                 <span style="font-size:0.75rem;opacity:0.6;">（通常 0.4〜1.0）</span>
                             </label>
                             <input type="number" id="cavern-alpha" value="0.7" step="0.05" min="0.1" max="2.0">
+                        </div>
+                        <!-- Power-law 擬似キャバーンパラメータ (power-law 選択時のみ表示) -->
+                        <div class="input-group full-width" id="pseudo-cavern-group" style="display: none; padding-top: 8px; border-top: 1px dashed rgba(245,158,11,0.3); margin-top: 4px;">
+                            <label style="color: #f59e0b; font-weight: 600; font-size: 0.82rem;">
+                                <i data-feather="zap" style="width:13px;height:13px;vertical-align:middle;"></i>
+                                擬塑性流体 疑似キャバーン設定
+                            </label>
+                            <div class="input-grid" style="margin-top: 6px;">
+                                <div class="input-group">
+                                    <label for="decay-alpha-input">
+                                        ずり速度減衰係数 α
+                                        <span style="font-size:0.75rem;opacity:0.6;">（通常 1.5〜3.0）</span>
+                                    </label>
+                                    <input type="number" id="decay-alpha-input" value="2.0" step="0.1" min="0.5" max="5.0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="mu-limit-factor-input">
+                                        流動限界係数（大きいほどキャバーン大）
+                                        <span style="font-size:0.75rem;opacity:0.6;">（2〜100）</span>
+                                    </label>
+                                    <input type="number" id="mu-limit-factor-input" value="20" step="5" min="2" max="500">
+                                </div>
+                                <div id="pseudo-cavern-info" style="font-size:0.75rem;font-weight:600;color:#f59e0b;min-height:1em;padding:2px 0;"></div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1308,7 +1336,9 @@
                 V_act: config.V_act,
                 simSpeed: config.simSpeed,
                 cavern_Dc: config.cavern_Dc || 0,
-                cavernModel: config.cavernModel || 'cylindrical'
+                cavernModel: config.cavernModel || 'cylindrical',
+                cavernAlpha: config.cavernAlpha ?? 0.7,
+                isPseudoCavern: (typeof rheologyData !== 'undefined' && rheologyData.activeModel === 'powerlaw')
             };
             Object.entries(fields).forEach(([key, value]) => {
                 params.set(key, String(value));

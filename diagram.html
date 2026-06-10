@@ -748,22 +748,17 @@
 
                         //==========================
                         // トーラスキャバーン
-                        // Dc = d + 2r
+                        // R = d/2    : リング大半径（翼径/2）
+                        // r = Dc/2   : 断面小半径（計算キャバーン径/2）
                         //==========================
 
-                        const alphaT = config.cavernAlpha ?? 1.0;
+                        // 大半径 R = 翼径/2（リング半径）[px]
+                        const R_tor = (config.d / 2) * scl;
 
-                        // 大半径（翼端）
-                        const R = (config.d / 2) * scl;
+                        // 小半径 r = Dc/2（断面直径の半分）[px]
+                        const r_tor = Math.max((config.cavern_Dc / 2) * scl, 2);
 
-                        // 小半径
-                        let r =
-                            ((config.cavern_Dc - config.d) / 2) * scl;
-
-                        // 最低値
-                        r = Math.max(r, 2);
-
-                        const nPhi = 72;
+                        const nPhi   = 72;
                         const nTheta = 36;
 
                         ctx2.save();
@@ -771,73 +766,86 @@
                         ctx2.strokeStyle = "rgba(245,158,11,0.9)";
                         ctx2.lineWidth = 1.2;
 
-                        // θ一定
+                        // θ一定ライン (緯線)
                         for (let j = 0; j < nTheta; j++) {
-
                             const theta = 2 * Math.PI * j / nTheta;
-
                             ctx2.beginPath();
-
                             for (let i = 0; i <= nPhi; i++) {
-
                                 const phi = 2 * Math.PI * i / nPhi;
-
-                                const x =
-                                    (R + r * Math.cos(theta))
-                                    * Math.cos(phi);
-
-                                const y =
-                                    (R + r * Math.cos(theta))
-                                    * Math.sin(phi);
-
-                                const z =
-                                    zI +
-                                    alphaT * r * Math.sin(theta);
-
-                                const p = iso(x, y, z, ox, oy);
-
-                                if (i === 0)
-                                    ctx2.moveTo(p.x, p.y);
-                                else
-                                    ctx2.lineTo(p.x, p.y);
+                                const px3d = (R_tor + r_tor * Math.cos(theta)) * Math.cos(phi);
+                                const py3d = (R_tor + r_tor * Math.cos(theta)) * Math.sin(phi);
+                                const pz3d = zI + r_tor * Math.sin(theta);
+                                const p = iso(px3d, py3d, pz3d, ox, oy);
+                                if (i === 0) ctx2.moveTo(p.x, p.y);
+                                else ctx2.lineTo(p.x, p.y);
                             }
-
                             ctx2.stroke();
                         }
 
-                        // φ一定
+                        // φ一定ライン (経線)
                         for (let i = 0; i < nPhi; i++) {
-
                             const phi = 2 * Math.PI * i / nPhi;
-
                             ctx2.beginPath();
-
                             for (let j = 0; j <= nTheta; j++) {
-
                                 const theta = 2 * Math.PI * j / nTheta;
-
-                                const x =
-                                    (R + r * Math.cos(theta))
-                                    * Math.cos(phi);
-
-                                const y =
-                                    (R + r * Math.cos(theta))
-                                    * Math.sin(phi);
-
-                                const z =
-                                    zI +
-                                    alphaT * r * Math.sin(theta);
-
-                                const p = iso(x, y, z, ox, oy);
-
-                                if (j === 0)
-                                    ctx2.moveTo(p.x, p.y);
-                                else
-                                    ctx2.lineTo(p.x, p.y);
+                                const px3d = (R_tor + r_tor * Math.cos(theta)) * Math.cos(phi);
+                                const py3d = (R_tor + r_tor * Math.cos(theta)) * Math.sin(phi);
+                                const pz3d = zI + r_tor * Math.sin(theta);
+                                const p = iso(px3d, py3d, pz3d, ox, oy);
+                                if (j === 0) ctx2.moveTo(p.x, p.y);
+                                else ctx2.lineTo(p.x, p.y);
                             }
-
                             ctx2.stroke();
                         }
+
+                        // 寸法線: 断面直径 Dc（断面円の直径）と リング直径 d
+                        // 断面直径をトーラス外側に表示
+                        const p_outer = iso(R_tor + r_tor, 0, zI, ox, oy);
+                        const p_inner = iso(R_tor - r_tor, 0, zI, ox, oy);
+                        ctx2.setLineDash([]); ctx2.lineWidth = 1;
+                        ctx2.strokeStyle = 'rgba(245,158,11,0.8)';
+                        ctx2.beginPath();
+                        ctx2.moveTo(p_inner.x, p_inner.y);
+                        ctx2.lineTo(p_outer.x, p_outer.y);
+                        ctx2.moveTo(p_inner.x - 3, p_inner.y); ctx2.lineTo(p_inner.x + 3, p_inner.y);
+                        ctx2.moveTo(p_outer.x - 3, p_outer.y); ctx2.lineTo(p_outer.x + 3, p_outer.y);
+                        ctx2.stroke();
+                        const dc_label = `Dc = ${config.cavern_Dc.toFixed(3)} m`;
+                        ctx2.font = 'bold 11px Outfit,Inter,sans-serif';
+                        ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+                        const wDcT = ctx2.measureText(dc_label).width + 10;
+                        const midX_sec = (p_inner.x + p_outer.x) / 2;
+                        const midY_sec = (p_inner.y + p_outer.y) / 2 - 12;
+                        ctx2.fillStyle = 'rgba(11,15,25,0.82)';
+                        ctx2.fillRect(midX_sec - wDcT / 2, midY_sec - 9, wDcT, 18);
+                        ctx2.fillStyle = '#f59e0b';
+                        ctx2.fillText(dc_label, midX_sec, midY_sec);
+
+                        // 寸法線: リング直径 d（インペラ径 = トーラス大径×2）
+                        // 中心からトーラス外側端（R_tor+r_tor）と内側端（R_tor-r_tor）を結ぶ水平線で表示
+                        // → d = 2*R_tor はインペラ翼径そのもの（大径）を示す
+                        const p_dR = iso(R_tor + r_tor, 0, zI - r_tor - 12, ox, oy);
+                        const p_dL = iso(-(R_tor + r_tor), 0, zI - r_tor - 12, ox, oy);
+                        const p_dM = iso(0, 0, zI - r_tor - 12, ox, oy);
+                        ctx2.save();
+                        ctx2.setLineDash([4, 4]);
+                        ctx2.strokeStyle = 'rgba(245,158,11,0.75)';
+                        ctx2.lineWidth = 1.0;
+                        ctx2.beginPath();
+                        ctx2.moveTo(p_dR.x, p_dR.y); ctx2.lineTo(p_dL.x, p_dL.y);
+                        ctx2.moveTo(p_dR.x - 0, p_dR.y - 4); ctx2.lineTo(p_dR.x - 0, p_dR.y + 4);
+                        ctx2.moveTo(p_dL.x - 0, p_dL.y - 4); ctx2.lineTo(p_dL.x - 0, p_dL.y + 4);
+                        ctx2.stroke();
+                        ctx2.setLineDash([]);
+                        const d_label = `d = ${config.d.toFixed(3)} m`;
+                        ctx2.font = 'bold 11px Outfit,Inter,sans-serif';
+                        ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+                        const wDL = ctx2.measureText(d_label).width + 10;
+                        ctx2.fillStyle = 'rgba(11,15,25,0.82)';
+                        ctx2.fillRect(p_dM.x - wDL / 2, p_dM.y - 9, wDL, 18);
+                        ctx2.fillStyle = '#f59e0b';
+                        ctx2.fillText(d_label, p_dM.x, p_dM.y);
+                        ctx2.restore();
 
                         ctx2.restore();
                     } else {
@@ -846,17 +854,22 @@
                         ctx2.beginPath(); ctx2.arc(cc.x, cc.y, rCav, 0, 2 * Math.PI); ctx2.stroke();
                     }
 
-                    // Dc 寸法線（共通）
-                    const cc = iso(0, 0, zI, ox, oy);
-                    ctx2.setLineDash([]); ctx2.lineWidth = 1;
-                    ctx2.beginPath(); ctx2.moveTo(cc.x - rCav, cc.y); ctx2.lineTo(cc.x + rCav, cc.y);
-                    ctx2.moveTo(cc.x - rCav, cc.y - 3); ctx2.lineTo(cc.x - rCav, cc.y + 3);
-                    ctx2.moveTo(cc.x + rCav, cc.y - 3); ctx2.lineTo(cc.x + rCav, cc.y + 3); ctx2.stroke();
-                    const Dc_text = `Dc = ${config.cavern_Dc.toFixed(3)} m`;
-                    ctx2.font = 'bold 11px Outfit,Inter,sans-serif'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
-                    const wDc = ctx2.measureText(Dc_text).width + 10;
-                    ctx2.fillStyle = 'rgba(11,15,25,0.82)'; ctx2.fillRect(cc.x - wDc / 2, cc.y - 12 - 9, wDc, 18);
-                    ctx2.fillStyle = '#f59e0b'; ctx2.fillText(Dc_text, cc.x, cc.y - 12);
+                    // Dc 寸法線（トーラス以外: 共通）
+                    if (config.cavernModel !== 'torus') {
+                        const cc = iso(0, 0, zI, ox, oy);
+                        ctx2.setLineDash([]); ctx2.lineWidth = 1;
+                        ctx2.beginPath(); ctx2.moveTo(cc.x - rCav, cc.y); ctx2.lineTo(cc.x + rCav, cc.y);
+                        ctx2.moveTo(cc.x - rCav, cc.y - 3); ctx2.lineTo(cc.x - rCav, cc.y + 3);
+                        ctx2.moveTo(cc.x + rCav, cc.y - 3); ctx2.lineTo(cc.x + rCav, cc.y + 3); ctx2.stroke();
+                        const Dc_text = config.isPseudoCavern
+                            ? `Dc ≈ ${config.cavern_Dc.toFixed(3)} m (疑似)`
+                            : `Dc = ${config.cavern_Dc.toFixed(3)} m`;
+                        ctx2.font = 'bold 11px Outfit,Inter,sans-serif'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+                        const wDc = ctx2.measureText(Dc_text).width + 10;
+                        ctx2.fillStyle = 'rgba(11,15,25,0.82)'; ctx2.fillRect(cc.x - wDc / 2, cc.y - 12 - 9, wDc, 18);
+                        ctx2.fillStyle = config.isPseudoCavern ? '#fb923c' : '#f59e0b';
+                        ctx2.fillText(Dc_text, cc.x, cc.y - 12);
+                    }
                     ctx2.restore();
                 }
 
@@ -1018,11 +1031,13 @@
         function loadState() {
             const params = new URLSearchParams(window.location.search);
             let loadedFromQuery = false;
-            const numericKeys = ['DT', 'H', 'd', 'clearance', 'b', 'n_stage', 'nB', 'Bw', 'np', 'theta', 'V_act', 'simSpeed', 'cavern_Dc', 'coilOuterDia', 'coilPitch', 'coilCenterDia'];
+            const numericKeys = ['DT', 'H', 'd', 'clearance', 'b', 'n_stage', 'nB', 'Bw', 'np', 'theta', 'V_act', 'simSpeed', 'cavern_Dc', 'cavernAlpha', 'coilOuterDia', 'coilPitch', 'coilCenterDia'];
             const boolKeys = ['baffleActive', 'coilActive'];
             const stringKeys = ['headType', 'impellerType', 'cavernModel'];
+            const boolKeysDiagram = ['isPseudoCavern'];
             numericKeys.forEach(key => { if (params.has(key)) { const v = parseFloat(params.get(key)); if (!Number.isNaN(v)) { config[key] = v; loadedFromQuery = true; } } });
             boolKeys.forEach(key => { if (params.has(key)) { config[key] = params.get(key) === 'true'; loadedFromQuery = true; } });
+            boolKeysDiagram.forEach(key => { if (params.has(key)) { config[key] = params.get(key) === 'true'; loadedFromQuery = true; } });
             stringKeys.forEach(key => { if (params.has(key)) { config[key] = params.get(key); loadedFromQuery = true; } });
             if (loadedFromQuery) { updateUI(); return; }
             const saved = localStorage.getItem('agitator_current_state');
@@ -1052,10 +1067,29 @@
             if (!event.data || event.data.type !== 'AgitatorSimRealtimeSync') return;
             const incoming = event.data.config;
             if (!incoming || typeof incoming !== 'object') return;
-            const keys = ['DT', 'H', 'd', 'clearance', 'b', 'n_stage', 'headType', 'impellerType', 'baffleActive', 'nB', 'Bw', 'np', 'theta', 'V_act', 'simSpeed', 'cavern_Dc', 'cavernModel', 'coilActive', 'coilOuterDia', 'coilPitch', 'coilCenterDia'];
+            const keys = ['DT', 'H', 'd', 'clearance', 'b', 'n_stage', 'headType', 'impellerType', 'baffleActive', 'nB', 'Bw', 'np', 'theta', 'V_act', 'simSpeed', 'cavern_Dc', 'cavernAlpha', 'cavernModel', 'isPseudoCavern', 'coilActive', 'coilOuterDia', 'coilPitch', 'coilCenterDia'];
             let updated = false;
-            keys.forEach(key => { if (incoming.hasOwnProperty(key) && config[key] !== incoming[key]) { config[key] = incoming[key]; updated = true; } });
-            if (updated) updateUI();
+            keys.forEach(key => {
+                if (incoming.hasOwnProperty(key)) {
+                    // null/undefined との比較も正しく扱う
+                    if (config[key] !== incoming[key]) {
+                        config[key] = incoming[key];
+                        updated = true;
+                    }
+                }
+            });
+            if (updated) {
+                updateUI();
+                // draw() は requestAnimationFrame ループで動いているが、
+                // キャバーン径変化を確実に反映するため即座に一回描画する
+                if (animId) {
+                    cancelAnimationFrame(animId);
+                    animId = null;
+                }
+                impAngle = impAngle || 0;
+                lastFrameT = null;
+                draw();
+            }
         });
         window.addEventListener('storage', e => { if (e.key === 'agitator_current_state') loadState(); });
         window.addEventListener('load', () => {

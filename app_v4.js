@@ -83,11 +83,14 @@ let heatChartData = {
 };
 
 // Rheology model state (loaded from viscometer CSV)
+// Rheology model state (loaded from viscometer CSV)
 let rheologyData = {
     samples: {},         // { sampleName: [ { modelId, name, rating, r2, rmse, mae, params:{} } ] }
     activeSample: null,
     activeModel: 'newtonian',
-    ks: 11.5
+    ks: 11.5,
+    decayAlpha: 2.0,     // 擬塑性流体ずり速度減衰係数 α (power-law 専用)
+    muLimitFactor: 20.0  // 流動限界粘度倍率 μ_limit = μ_a,av × muLimitFactor
 };
 
 let expBlocks = [];
@@ -481,12 +484,28 @@ function initEventListeners() {
                     'propeller': 10.0,
                     'faudler': 11.5
                 };
+                // 翼種ごとの減衰係数 α プリセット
+                // 放射流翼（ラシュトン・フラットタービン・フラットパドル）: α≈2.0
+                // 軸流翼（傾斜パドル・プロペラ）: α≈3.0
+                // ファウドラー（中間的な放射流）: α≈2.0
+                const alphaPresetMap = {
+                    'pitched-paddle': 3.0,
+                    'flat-paddle':    2.0,
+                    'flat-turbine':   2.0,
+                    'propeller':      3.0,
+                    'faudler':        2.0
+                };
                 if (presetMap[val]) {
                     rheologyData.ks = presetMap[val];
                     const ksInput = document.getElementById('ks-input');
                     if (ksInput) ksInput.value = presetMap[val].toFixed(1);
+                    const alphaVal = alphaPresetMap[val] ?? 2.0;
+                    rheologyData.decayAlpha = alphaVal;
+                    const dAlphaEl = document.getElementById('decay-alpha-input');
+                    if (dAlphaEl) dAlphaEl.value = alphaVal.toFixed(1);
                     if (typeof updateRheologyUI === 'function') updateRheologyUI();
-                    showToast(`インペラ種類に合わせて kₛ を ${presetMap[val].toFixed(1)} に設定しました`, 'info');
+                    if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+                    showToast(`インペラ種類に合わせて kₛ = ${presetMap[val].toFixed(1)}, α = ${alphaVal.toFixed(1)} に設定しました`, 'info');
                 }
 
                 // 羽根角度 θ の自動ロック（フラット翼の場合は90度に固定して無効化）
@@ -672,6 +691,11 @@ function initEventListeners() {
         if (simAnimId) {
             simLastFrameTime = performance.now();
         }
+
+        // 疑似キャバーン情報・キャバーン径をリアルタイム更新
+        if (typeof updateCavernDiameter === 'function') updateCavernDiameter();
+        if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+        if (typeof syncDiagramWindow === 'function') syncDiagramWindow();
     });
     document.getElementById('sim-speed-slider').addEventListener('change', () => {
         updateSimulatorResultsOnly();
@@ -710,6 +734,10 @@ function initEventListeners() {
             if (heatSimAnimId) {
                 heatSimLastTime = performance.now();
             }
+            // 疑似キャバーン径・情報をリアルタイム更新
+            if (typeof updateCavernDiameter === 'function') updateCavernDiameter();
+            if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+            if (typeof syncDiagramWindow === 'function') syncDiagramWindow();
         });
         heatSlider.addEventListener('change', () => {
             updateSimulatorResultsOnly();
@@ -2366,6 +2394,43 @@ function loadRheologyCSV(file) {
     reader.readAsText(file);
 }
 
+// μ_eff と疑似キャバーン情報だけをスライダー回転数で即時更新（早期returnを回避）
+function updateMuEffDisplay() {
+    const isNewt = rheologyData.activeModel === 'newtonian';
+    const muEffContainer = document.getElementById('mu-eff-container');
+    const muEffDiv = document.getElementById('mu-eff-display');
+    if (!muEffContainer || !muEffDiv) return;
+
+    if (isNewt || Object.keys(rheologyData.samples).length === 0) {
+        muEffContainer.style.display = 'none';
+    } else {
+        const n_rep = (config.simSpeed ?? 300) / 60;
+        const mu_eff = calcEffectiveViscosity(n_rep);
+        muEffContainer.style.display = 'flex';
+        muEffContainer.style.flexDirection = 'column';
+        muEffDiv.style.display = 'block';
+        muEffDiv.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
+    }
+
+    // 有効物性値パネルの μ_eff も更新
+    if (typeof updateEffectivePropertiesUI === 'function') updateEffectivePropertiesUI();
+
+    // 疑似キャバーン情報も更新
+    const infoEl = document.getElementById('pseudo-cavern-info');
+    if (infoEl && rheologyData.activeModel === 'powerlaw') {
+        const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+        const pr = modelList.find(r => r.modelId === 'powerlaw')?.params;
+        if (pr?.K != null) {
+            const ks_v = rheologyData.ks || 11.5;
+            const n_rps_rep = (config.simSpeed ?? 300) / 60;
+            const limitFactor_v = rheologyData.muLimitFactor ?? 20.0;
+            const gamma_blade = ks_v * n_rps_rep;
+            const gamma_c = ks_v * n_rps_rep / limitFactor_v;
+            infoEl.textContent = `γ_blade ≈ ${gamma_blade.toFixed(1)} s⁻¹, γ_c ≈ ${gamma_c.toFixed(1)} s⁻¹ (N≈${(n_rps_rep * 60).toFixed(0)} rpm)`;
+        }
+    }
+}
+
 function updateRheologyUI() {
     const sampleSel = document.getElementById('rheology-sample-select');
     const modelSel = document.getElementById('rheology-model-select');
@@ -2417,12 +2482,20 @@ function updateRheologyUI() {
     const cavernModelGroup = document.getElementById('cavern-model-group');
     if (cavernModelGroup) {
         const isYieldFluid = rheologyData.activeModel === 'bingham' || rheologyData.activeModel === 'casson' || rheologyData.activeModel === 'hb';
+        const isPowerLaw   = rheologyData.activeModel === 'powerlaw';
+        // 降伏値モデル: キャバーン形状モデル選択を表示
         cavernModelGroup.style.display = isYieldFluid ? 'block' : 'none';
+        // αグループは「降伏値あり かつ 円筒モデル選択時」のみ表示
+        const cavernAlphaGroup = document.getElementById('cavern-alpha-group');
+        if (cavernAlphaGroup) {
+            cavernAlphaGroup.style.display = (isYieldFluid && config.cavernModel === 'cylindrical') ? 'block' : 'none';
+        }
+        // 擬塑性モデル専用パラメータの表示制御
+        const plGroup = document.getElementById('pseudo-cavern-group');
+        if (plGroup) plGroup.style.display = isPowerLaw ? 'block' : 'none';
     }
 
-    let allN = [];
-    expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
-    const n_rep = allN.length > 0 ? allN.reduce((a, b) => a + b, 0) / allN.length : 100 / 60;
+    const n_rep = (config.simSpeed ?? 300) / 60;
     const mu_eff = calcEffectiveViscosity(n_rep);
 
     if (isNewt) {
@@ -2438,6 +2511,26 @@ function updateRheologyUI() {
                 muEffDiv.innerHTML = `${mu_eff.toFixed(4)} <span style="font-size:0.75rem;">(N≈${(n_rep * 60).toFixed(0)}rpm)</span>`;
             }
         }
+    }
+
+    // 擬塑性流体 疑似キャバーン入力の同期
+    const dAlphaEl = document.getElementById('decay-alpha-input');
+    if (dAlphaEl) dAlphaEl.value = rheologyData.decayAlpha ?? 2.0;
+    const muLimEl = document.getElementById('mu-limit-factor-input');
+    if (muLimEl) muLimEl.value = rheologyData.muLimitFactor ?? 20.0;
+
+    // 疑似キャバーン情報表示（power-law 選択時）
+    const pr_rheo = selectedModelInfo?.params;
+    const infoEl = document.getElementById('pseudo-cavern-info');
+    if (infoEl && rheologyData.activeModel === 'powerlaw' && pr_rheo?.K != null) {
+        const ks_v  = rheologyData.ks || 11.5;
+        const n_rps_rep = (config.simSpeed ?? 300) / 60;
+        const limitFactor_v = rheologyData.muLimitFactor ?? 20.0;
+        const gamma_blade = ks_v * n_rps_rep;
+        const gamma_c = ks_v * n_rps_rep / limitFactor_v;  // スライダー回転数基準の流動限界ずり速度
+        infoEl.textContent = `γ_blade ≈ ${gamma_blade.toFixed(1)} s⁻¹, γ_c ≈ ${gamma_c.toFixed(1)} s⁻¹ (N≈${(n_rps_rep*60).toFixed(0)} rpm)`;
+    } else if (infoEl) {
+        infoEl.textContent = '';
     }
 }
 
@@ -2482,6 +2575,40 @@ function initRheologyListeners() {
             }
             saveCurrentState();
             recalculateAll();
+        });
+    }
+    // キャバーン高さ比αのinputリスナー
+    const cavernAlphaInputEl = document.getElementById('cavern-alpha');
+    if (cavernAlphaInputEl) {
+        cavernAlphaInputEl.addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v) && v > 0) {
+                config.cavernAlpha = v;
+                saveCurrentState();
+                recalculateAll();
+            }
+        });
+    }
+    // 擬塑性流体: ずり速度減衰係数 α
+    const decayAlphaEl = document.getElementById('decay-alpha-input');
+    if (decayAlphaEl) {
+        decayAlphaEl.addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v) && v > 0) {
+                rheologyData.decayAlpha = v;
+                recalculateAll();
+            }
+        });
+    }
+    // 擬塑性流体: 流動限界粘度倍率
+    const muLimitEl = document.getElementById('mu-limit-factor-input');
+    if (muLimitEl) {
+        muLimitEl.addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v) && v > 1) {
+                rheologyData.muLimitFactor = v;
+                recalculateAll();
+            }
         });
     }
 }
@@ -4330,9 +4457,10 @@ function syncDiagramWindow() {
         return;
     }
     try {
+        const isPseudo = (rheologyData.activeModel === 'powerlaw');
         window.diagramWindow.postMessage({
             type: 'AgitatorSimRealtimeSync',
-            config: { ...config }
+            config: { ...config, isPseudoCavern: isPseudo }
         }, '*');
     } catch (e) {
         console.warn('Failed to postMessage to diagram window', e);
@@ -4494,9 +4622,7 @@ function updateEffectivePropertiesUI() {
 
     // 3. 有効粘度 μ_eff (代表粘度)
     if (elMu) {
-        let allN = [];
-        expBlocks.forEach(b => b.rows.forEach(r => { if (r.N > 0) allN.push(r.N / 60); }));
-        const n_rep = allN.length > 0 ? allN.reduce((a, b) => a + b, 0) / allN.length : 100 / 60;
+        const n_rep = (config.simSpeed ?? 300) / 60;
         const isNewt = rheologyData.activeModel === 'newtonian';
 
         if (!isNewt && typeof calcEffectiveViscosity === 'function') {
@@ -4817,10 +4943,57 @@ function updateCavernDiameter() {
 
     const mod = rheologyData?.activeModel;
     const isYieldFluid = mod === 'bingham' || mod === 'casson' || mod === 'hb';
+    const isPowerLaw  = mod === 'powerlaw';
 
     const models = rheologyData?.samples?.[rheologyData?.activeSample] || [];
     const modelInfo = models.find(m => m.modelId === mod);
     const pr = modelInfo?.params;
+
+    // ── Power-law 疑似キャバーン計算 ───────────────────────────────
+    if (isPowerLaw && pr && pr.K != null && pr.n != null) {
+        const n_rps   = config.simSpeed / 60;
+        const d       = config.d;
+        const ks      = rheologyData.ks || 11.5;
+        const alpha_d = rheologyData.decayAlpha ?? 2.0;   // ずり速度減衰係数
+        const limitFactor = rheologyData.muLimitFactor ?? 20.0;
+
+        if (n_rps <= 0) {
+            dcLabel.textContent = '--- (停止中)';
+            config.cavern_Dc = null;
+            cavernRow.style.display = 'table-row';
+            return;
+        }
+        if (pr.n >= 1.0) {
+            dcLabel.textContent = '--- (ニュートン的)';
+            config.cavern_Dc = null;
+            cavernRow.style.display = 'table-row';
+            return;
+        }
+
+        // ずり速度閾値モデル（Wilkens et al. 2005 ベース）:
+        //   γ(r) = ks * N * (d/(2r))^alpha  (翼から離れるほどずり速度低下)
+        //   流動限界ずり速度: γ_c = ks * N_max / limitFactor  (固定値)
+        //   境界条件 γ(r_c) = γ_c を解く:
+        //     r_c = (d/2) * (ks*N / γ_c)^(1/alpha)
+        //         = (d/2) * (N/N_max * limitFactor)^(1/alpha)
+        //   limitFactor が大きい → γ_c が小さい → キャバーン大
+        //   N が大きい → キャバーン大 ✓
+        const N_max = 1200 / 60;  // スライダー最大回転数 [rps]
+        const arg = (n_rps / N_max) * limitFactor;
+        let Dc_pseudo;
+        if (arg <= 0) {
+            Dc_pseudo = 0;
+        } else {
+            const r_c = (d / 2) * Math.pow(arg, 1.0 / alpha_d);
+            Dc_pseudo = Math.min(r_c * 2, config.DT);
+        }
+
+        config.cavern_Dc = Dc_pseudo;
+        config.cavernModel = 'spherical'; // 擬似キャバーンは球形で近似
+        dcLabel.textContent = Dc_pseudo.toFixed(3) + ' m (疑似)';
+        cavernRow.style.display = 'table-row';
+        return;
+    }
 
     if (!isYieldFluid || !pr || !pr.tau_y || pr.tau_y <= 0) {
         cavernRow.style.display = 'none';
@@ -5286,8 +5459,18 @@ function getCavernDecay(x, y, coords) {
     for (const y_imp_s of stages_y) {
         let distOut = 0;
         if (config.cavernModel === 'cylindrical') {
-            const hc = cavernRadius * 1.5;
+            const alpha = config.cavernAlpha ?? 0.7;
+            const hc = cavernRadius * 2 * alpha;
             distOut = Math.max(0, Math.max(Math.abs(x - cx) - cavernRadius, Math.abs(y - y_imp_s) - hc / 2));
+        } else if (config.cavernModel === 'torus') {
+            // トーラス: 断面中心は cx±R_ring, y_imp_s
+            // r_sec = cavern_Dc/2 (断面半径)
+            const R_ring = (config.d / 2) * scale;
+            const r_sec  = (config.cavern_Dc / 2) * scale;
+            // 左右の断面円との距離の最小値
+            let dL = Math.sqrt(Math.pow(x - (cx - R_ring), 2) + Math.pow(y - y_imp_s, 2));
+            let dR = Math.sqrt(Math.pow(x - (cx + R_ring), 2) + Math.pow(y - y_imp_s, 2));
+            distOut = Math.max(0, Math.min(dL, dR) - r_sec);
         } else {
             const dist3d = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - y_imp_s, 2));
             distOut = Math.max(0, dist3d - cavernRadius);
@@ -5732,9 +5915,10 @@ function drawParticleSimulation() {
         simCtx.globalCompositeOperation = 'destination-out';
         simCtx.filter = 'blur(32px)';
         if (config.cavernModel === 'cylindrical') {
+            const alpha_ps = config.cavernAlpha ?? 0.7;
             simCtx.save();
             simCtx.translate(cx, y_imp2);
-            simCtx.scale(1, 1.4);
+            simCtx.scale(1, alpha_ps * 2);
             const grad = simCtx.createRadialGradient(0, 0, cavernRadius * 0.2, 0, 0, cavernRadius * 1.2);
             grad.addColorStop(0, 'rgba(255,255,255,1.0)');
             grad.addColorStop(0.4, 'rgba(255,255,255,0.7)');
@@ -5744,6 +5928,22 @@ function drawParticleSimulation() {
             simCtx.arc(0, 0, cavernRadius * 1.2, 0, 2 * Math.PI);
             simCtx.fill();
             simCtx.restore();
+        } else if (config.cavernModel === 'torus') {
+            // トーラス: 翼径中心(±R_ring)に断面半径r_sec の円を2つ描画
+            const R_ring_px = (config.d / 2) * scale;   // リング半径[px]
+            const r_sec_px  = (config.cavern_Dc / 2) * scale; // 断面半径[px]
+            // 断面円左右（2D断面投影）
+            for (const sign of [-1, 1]) {
+                const gx = cx + sign * R_ring_px;
+                const gr = simCtx.createRadialGradient(gx, y_imp2, r_sec_px * 0.15, gx, y_imp2, r_sec_px * 1.3);
+                gr.addColorStop(0, 'rgba(255,255,255,1.0)');
+                gr.addColorStop(0.4, 'rgba(255,255,255,0.7)');
+                gr.addColorStop(1, 'rgba(255,255,255,0.0)');
+                simCtx.fillStyle = gr;
+                simCtx.beginPath();
+                simCtx.arc(gx, y_imp2, r_sec_px * 1.3, 0, 2 * Math.PI);
+                simCtx.fill();
+            }
         } else {
             const grad = simCtx.createRadialGradient(cx, y_imp2, cavernRadius * 0.2, cx, y_imp2, cavernRadius * 1.2);
             grad.addColorStop(0, 'rgba(255,255,255,1.0)');
@@ -5757,9 +5957,17 @@ function drawParticleSimulation() {
         simCtx.filter = 'none';
         simCtx.globalCompositeOperation = 'source-over';
 
-        simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
-        simCtx.font = '10px sans-serif';
-        simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp2 - 5);
+        if (config.cavernModel === 'torus') {
+            const R_ring_px = (config.d / 2) * scale;
+            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+            simCtx.font = '10px sans-serif';
+            simCtx.fillText('流動領域(トーラス)', cx + R_ring_px + r_sec_px + 6, y_imp2 - 5);
+        } else {
+            simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+            simCtx.font = '10px sans-serif';
+            simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp2 - 5);
+        }
         simCtx.fillStyle = 'rgba(148, 163, 184, 0.9)';
         simCtx.fillText('死水域 (Dead Zone)', lx + 10, y_liquid + 20);
         simCtx.restore();
@@ -6574,10 +6782,11 @@ function drawParticleSimulation() {
         simCtx.filter = 'blur(32px)';
 
         if (config.cavernModel === 'cylindrical') {
-            // 円筒モデル: 縦横比を調整した楕円グラデーションでくり抜く
+            // 円筒モデル: cavernAlphaに基づく楕円でくり抜く
+            const alpha_hs = config.cavernAlpha ?? 0.7;
             simCtx.save();
             simCtx.translate(cx, y_imp);
-            simCtx.scale(1, 1.4); // 縦に少し伸ばして円筒形状に近似
+            simCtx.scale(1, alpha_hs * 2);
             const grad = simCtx.createRadialGradient(0, 0, cavernRadius * 0.2, 0, 0, cavernRadius * 1.2);
             grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
             grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.7)');
@@ -6587,6 +6796,21 @@ function drawParticleSimulation() {
             simCtx.arc(0, 0, cavernRadius * 1.2, 0, 2 * Math.PI);
             simCtx.fill();
             simCtx.restore();
+        } else if (config.cavernModel === 'torus') {
+            // トーラスモデル: 翼径中心(±R_ring)に断面半径r_sec の円を2つくり抜く
+            const R_ring_px = (config.d / 2) * scale;
+            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            for (const sign of [-1, 1]) {
+                const gx = cx + sign * R_ring_px;
+                const gr = simCtx.createRadialGradient(gx, y_imp, r_sec_px * 0.15, gx, y_imp, r_sec_px * 1.3);
+                gr.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+                gr.addColorStop(0.4, 'rgba(255, 255, 255, 0.7)');
+                gr.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+                simCtx.fillStyle = gr;
+                simCtx.beginPath();
+                simCtx.arc(gx, y_imp, r_sec_px * 1.3, 0, 2 * Math.PI);
+                simCtx.fill();
+            }
         } else {
             // 球形モデル: 円形グラデーションでくり抜く
             const grad = simCtx.createRadialGradient(cx, y_imp, cavernRadius * 0.2, cx, y_imp, cavernRadius * 1.2);
@@ -6605,9 +6829,17 @@ function drawParticleSimulation() {
         simCtx.globalCompositeOperation = 'source-over';
 
         // ラベル描画
-        simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
-        simCtx.font = '10px sans-serif';
-        simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp - 5);
+        if (config.cavernModel === 'torus') {
+            const R_ring_px = (config.d / 2) * scale;
+            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+            simCtx.font = '10px sans-serif';
+            simCtx.fillText('流動領域(トーラス)', cx + R_ring_px + r_sec_px + 6, y_imp - 5);
+        } else {
+            simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+            simCtx.font = '10px sans-serif';
+            simCtx.fillText('流動領域', cx + cavernRadius + 10, y_imp - 5);
+        }
 
         simCtx.fillStyle = 'rgba(148, 163, 184, 0.9)';
         simCtx.fillText('死水域 (Dead Zone)', lx + 10, y_liquid + 20);
