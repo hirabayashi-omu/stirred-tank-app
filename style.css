@@ -52,11 +52,18 @@ body {
 .sidebar {
     width: 320px;
     background-color: var(--bg-secondary);
-    border-right: 1px solid var(--card-border);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.6);
+    background-color: rgba(27, 36, 51, 0.98);
+    backdrop-filter: blur(16px);
 }
 
 .sidebar-header {
@@ -340,6 +347,16 @@ body {
     grid-column: span 4;
 }
 
+/* Fix tab grid layouts for PartSim and HeatSim on large screens */
+#tab-content-partsim > div[style*="grid-template-columns"],
+#tab-content-heatsim > div[style*="grid-template-columns"] {
+    grid-template-columns: 480px 1fr !important;
+}
+#tab-content-partsim > div > div,
+#tab-content-heatsim > div > div {
+    min-width: 0 !important;
+}
+
 .full-width {
     grid-column: span 12;
 }
@@ -600,10 +617,37 @@ body {
 @media (max-width: 1200px) {
     .chart-card {
         grid-column: span 12;
+        /* Ensure the chart doesn't stretch excessively when stacked */
+        max-height: 500px;
     }
+    
+    .chart-container {
+        min-height: 350px;
+    }
+
     .results-card {
         grid-column: span 12;
     }
+
+    /* Stack tab contents vertically */
+    #tab-content-rushton {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+    #tab-content-rushton .chart-container {
+        min-height: 350px !important;
+        flex: none !important; /* Prevent it from shrinking too much */
+    }
+    #tab-content-rushton > div:nth-child(2) {
+        min-height: 300px !important;
+        flex: none !important;
+    }
+    #tab-content-partsim > div[style*="grid-template-columns"],
+    #tab-content-heatsim > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        overflow-y: auto !important;
+    }
+
     .top-nav .actions .btn span {
         display: none;
     }

@@ -792,6 +792,13 @@ function initEventListeners() {
     if (tabExpsheet) {
         tabExpsheet.addEventListener('click', () => switchMainTab('expsheet'));
     }
+    const tabSettings = document.getElementById('tab-btn-settings');
+    if (tabSettings) {
+        tabSettings.addEventListener('click', () => {
+            switchMainTab('settings');
+            updateSettingsListTab();
+        });
+    }
 
     // Heat transfer / thermal properties input watchers
     const heatInputs = [
@@ -1488,6 +1495,7 @@ function recalculateAll() {
         { name: 'updateHeatCalcUI', fn: updateHeatCalcUI },
         { name: 'updateEffectivePropertiesUI', fn: updateEffectivePropertiesUI },
         { name: 'updateVEstDisplay', fn: updateVEstDisplay },
+        { name: 'updateSettingsListTab', fn: updateSettingsListTab },
         { name: 'saveCurrentState', fn: saveCurrentState }
     ];
 
@@ -5089,20 +5097,35 @@ function updateCavernDiameter() {
 
 function updateSimStatusBadge(currentN, njsN) {
     const badge = document.getElementById('sim-status-badge');
+
+    const rhoS = config.rho_S ?? 2500;
+    const rhoL = config.rho ?? 998;
+    const isFloating = rhoS < rhoL;
+
+    // Dynamically update the start mode dropdown labels
+    const startModeSelect = document.getElementById('particle-start-mode');
+    if (startModeSelect) {
+        const settledOpt = startModeSelect.querySelector('option[value="settled"]');
+        if (settledOpt) settledOpt.textContent = isFloating ? '静置(液面浮上)' : '沈殿';
+        
+        const suspendedOpt = startModeSelect.querySelector('option[value="suspended"]');
+        if (suspendedOpt) suspendedOpt.textContent = isFloating ? '底面配置(浮上検証)' : '液面付近';
+    }
+
     if (!badge) return;
 
     if (currentN === 0) {
-        badge.textContent = '完全沈降';
+        badge.textContent = isFloating ? '完全浮上' : '完全沈降';
         badge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
         badge.style.color = '#ef4444';
         badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
     } else if (currentN < 0.9 * njsN) {
-        badge.textContent = '不完全浮遊';
+        badge.textContent = isFloating ? '不完全分散' : '不完全浮遊';
         badge.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
         badge.style.color = '#f59e0b';
         badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
     } else if (currentN < 1.2 * njsN) {
-        badge.textContent = '完全浮遊';
+        badge.textContent = isFloating ? '完全分散' : '完全浮遊';
         badge.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
         badge.style.color = '#10b981';
         badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
@@ -5792,13 +5815,26 @@ function initParticleSimulation() {
             px = Math.max(lx + 2, Math.min(rx - 2, px));
             py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 1, py));
         } else if (mode === 'suspended') {
+            const isFloating = (config.rho_S ?? 2500) < (config.rho ?? 998);
             px = lx + Math.random() * D_px;
             const availableDepth = Math.max(4, getVesselBottomY(px, coords) - y_liquid - 4);
             const surfaceBand = Math.min(30, Math.max(8, Math.min(Math.floor(b_px || 8), availableDepth)));
-            py = y_liquid + 2 + Math.random() * surfaceBand;
+            if (isFloating) {
+                // start at bottom to see them float up
+                py = getVesselBottomY(px, coords) - 2 - Math.random() * surfaceBand;
+            } else {
+                // start at surface to see them settle
+                py = y_liquid + 2 + Math.random() * surfaceBand;
+            }
         } else if (mode === 'settled') {
+            const isFloating = (config.rho_S ?? 2500) < (config.rho ?? 998);
             px = lx + Math.random() * D_px;
-            py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+            if (isFloating) {
+                // naturally settled state for light particles is at the surface
+                py = y_liquid + 2 + Math.random() * 8;
+            } else {
+                py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
+            }
         } else {
             px = lx + Math.random() * D_px;
             const top = y_liquid + 2;
@@ -6396,11 +6432,13 @@ function switchMainTab(tab) {
     const btnPartsim   = document.getElementById('tab-btn-partsim');
     const btnHeatsim   = document.getElementById('tab-btn-heatsim');
     const btnExpsheet  = document.getElementById('tab-btn-expsheet');
+    const btnSettings  = document.getElementById('tab-btn-settings');
 
     const contentRushton  = document.getElementById('tab-content-rushton');
     const contentPartsim  = document.getElementById('tab-content-partsim');
     const contentHeatsim  = document.getElementById('tab-content-heatsim');
     const contentExpsheet = document.getElementById('tab-content-expsheet');
+    const contentSettings = document.getElementById('tab-content-settings');
 
     const controlsRushton = document.getElementById('rushton-controls');
     const controlsPartsim = document.getElementById('partsim-controls');
@@ -6408,7 +6446,7 @@ function switchMainTab(tab) {
     if (!btnRushton || !btnPartsim || !btnHeatsim || !contentRushton || !contentPartsim || !contentHeatsim) return;
 
     // Reset all tab button styles
-    [btnRushton, btnPartsim, btnHeatsim, btnExpsheet].filter(Boolean).forEach(btn => {
+    [btnRushton, btnPartsim, btnHeatsim, btnExpsheet, btnSettings].filter(Boolean).forEach(btn => {
         btn.classList.remove('active');
         btn.style.color = 'var(--text-secondary)';
         btn.style.borderBottom = '2px solid transparent';
@@ -6420,6 +6458,7 @@ function switchMainTab(tab) {
     contentPartsim.style.display = 'none';
     contentHeatsim.style.display = 'none';
     if (contentExpsheet) contentExpsheet.style.display = 'none';
+    if (contentSettings) contentSettings.style.display = 'none';
 
     // Reset card sizing
     const chartCard = document.querySelector('.card.chart-card');
@@ -6489,7 +6528,92 @@ function switchMainTab(tab) {
             chartCard.style.overflowY = 'visible';
         }
         if (typeof feather !== 'undefined') feather.replace();
+    } else if (tab === 'settings') {
+        if (btnSettings) {
+            btnSettings.classList.add('active');
+            btnSettings.style.color = 'var(--accent-color)';
+            btnSettings.style.borderBottom = '2px solid var(--accent-color)';
+            btnSettings.style.fontWeight = '600';
+        }
+        if (contentSettings) {
+            contentSettings.style.display = 'flex';
+        }
+        if (chartCard) {
+            chartCard.style.height = 'auto';
+            chartCard.style.overflowY = 'visible';
+        }
+        if (typeof feather !== 'undefined') feather.replace();
     }
+}
+
+function updateSettingsListTab() {
+    const container = document.getElementById('settings-list-container');
+    if (!container) return;
+
+    // Grouping configuration based on sections
+    const groups = {
+        '槽 (Tank)': [
+            { label: '槽径 T', val: config.DT, unit: 'm' },
+            { label: '液深 H', val: config.H, unit: 'm' },
+            { label: '邪魔板 あり/なし', val: config.baffleActive ? 'あり' : 'なし', unit: '' },
+            { label: '邪魔板枚数 n_b', val: config.nB, unit: '枚' },
+            { label: '邪魔板幅 Bw', val: config.Bw, unit: 'm' },
+            { label: '底面形状', val: config.headType, unit: '' }
+        ],
+        '翼 (Impeller)': [
+            { label: '翼径 d', val: config.d, unit: 'm' },
+            { label: '翼枚数 n_p', val: config.np, unit: '枚' },
+            { label: '翼幅 b', val: config.b, unit: 'm' },
+            { label: '取付高さ C', val: config.clearance, unit: 'm' },
+            { label: '翼種', val: config.impellerType, unit: '' },
+            { label: '回転数 N', val: config.simSpeed, unit: 'rpm' }
+        ],
+        '液・物性 (Fluid)': [
+            { label: '密度 ρ', val: config.rho, unit: 'kg/m³' },
+            { label: 'Newtonian 粘度 μ', val: config.mu, unit: 'Pa·s' },
+            { label: 'レオロジーモデル', val: typeof rheologyData !== 'undefined' ? rheologyData.activeModel : 'newtonian', unit: '' },
+            ...(typeof rheologyData !== 'undefined' && rheologyData.activeModel !== 'newtonian' ? [
+                { label: 'サンプル名', val: rheologyData.activeSample || '手動入力', unit: '' },
+                { label: 'Metzner-Otto定数 ks', val: document.getElementById('ks-input') ? document.getElementById('ks-input').value : rheologyData.ks, unit: '-' },
+                { label: '減衰係数 α', val: document.getElementById('decay-alpha-input') ? document.getElementById('decay-alpha-input').value : (rheologyData.decayAlpha || 2.0), unit: '-' },
+                { label: '流動限界係数', val: document.getElementById('mu-limit-factor-input') ? document.getElementById('mu-limit-factor-input').value : (rheologyData.muLimitFactor || 20), unit: '-' }
+            ] : [])
+        ],
+        '固体粒子 (Solid)': [
+            { label: '粒子密度 ρ_S', val: config.rho_S, unit: 'kg/m³' },
+            { label: '粒子径 d_p', val: config.dp_um, unit: 'μm' },
+            { label: '固体濃度設定値', val: config.solidConcVal, unit: config.solidConcMode === 'wt-ratio' ? 'wt%' : 'vol%' }
+        ],
+        '冷却・加熱 (Heat)': [
+            { label: '液初期温度', val: config.liquidTempInit, unit: '°C' },
+            { label: '液比熱 Cp', val: config.liquidCp, unit: 'J/(kg·K)' },
+            { label: '液熱伝導度 k', val: config.liquidK, unit: 'W/(m·K)' },
+            { label: 'ジャケット種類', val: config.jacketType, unit: '' },
+            { label: '熱媒温度', val: config.mediaTempIn, unit: '°C' },
+            { label: '熱媒流量', val: config.mediaFlow, unit: 'm³/s' },
+            { label: '汚れ係数', val: config.foulingFactor, unit: 'm²·K/W' }
+        ]
+    };
+
+    let html = '';
+    for (const [groupName, items] of Object.entries(groups)) {
+        html += `
+            <div style="background:var(--bg-tertiary); border:1px solid var(--card-border); border-radius:var(--border-radius-md); padding:12px;">
+                <h4 style="font-size:0.85rem; color:var(--accent-color); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">${groupName}</h4>
+                <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+                    <tbody>
+                        ${items.map(item => `
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                                <td style="padding:6px 0; color:var(--text-secondary); width:60%;">${item.label}</td>
+                                <td style="padding:6px 0; text-align:right; font-family:monospace; font-weight:600; color:var(--text-primary);">${item.val !== undefined && item.val !== null ? item.val : '--'} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${item.unit}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
 }
 
 function switchInnerTab(tab) {
