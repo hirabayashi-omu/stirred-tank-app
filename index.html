@@ -1249,7 +1249,95 @@
                         <h3 style="font-size:1.1rem; color:var(--text-primary); border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
                             <i data-feather="list" style="width:18px;height:18px;color:var(--accent-color);"></i> 現在の設定値一覧
                         </h3>
-                        <div id="settings-list-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start;">
+                        <!-- 攪拌槽の寸法比 表（動的） -->
+                        <div style="overflow-x: auto; margin-bottom: 4px;">
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; margin-bottom: 6px; margin-top: 0;">
+                                表　攪拌槽の寸法
+                            </p>
+                            <table id="dim-ratio-table" style="width: 100%; border-collapse: collapse; font-size: 0.72rem; color: var(--text-primary); text-align: center;">
+                                <thead>
+                                    <tr style="background: rgba(6,182,212,0.12); border-bottom: 1px solid rgba(6,182,212,0.3);">
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>d</i>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>C</i>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>b</i>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>B</i><sub>w</sub>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>d</i><sub>co</sub>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>D</i><sub>c</sub>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>p</i><sub>c</sub>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>H</i>/<i>D</i><sub>T</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>n</i><sub>p</sub></th>
+                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>n</i><sub>B</sub></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dim-ratio-tbody">
+                                    <tr style="background: rgba(6,182,212,0.04);">
+                                        <td id="dr-d-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-C-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-b-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-Bw-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-dco-DT"  style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-Dc-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-pc-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-H-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-np"      style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-nB"      style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <script>
+                        (function() {
+                            // Format a ratio as a decimal rounded to 4 sig figs
+                            function fmtRatio(val) {
+                                if (!isFinite(val) || isNaN(val)) return '--';
+                                return parseFloat(val.toPrecision(4)).toString();
+                            }
+                            function updateDimRatioTable() {
+                                const DT  = parseFloat(document.getElementById('DT')?.value) || 0;
+                                if (DT <= 0) return;
+                                const d   = parseFloat(document.getElementById('d')?.value) || 0;
+                                const C   = parseFloat(document.getElementById('clearance')?.value) || 0;
+                                const b   = parseFloat(document.getElementById('b')?.value) || 0;
+                                const Bw  = parseFloat(document.getElementById('Bw')?.value) || 0;
+                                const dco = parseFloat(document.getElementById('coil-outer-dia')?.value) || 0;
+                                const H   = parseFloat(document.getElementById('H')?.value) || 0;
+                                const npv = parseFloat(document.getElementById('np')?.value) || 0;
+                                const nBv = parseFloat(document.getElementById('nB')?.value) || 0;
+                                const pc  = parseFloat(document.getElementById('coil-pitch')?.value) || 0;
+                                // D_c: use input if set, else default DT×0.7
+                                const DcRaw = document.getElementById('coil-center-dia')?.value;
+                                const Dc = (DcRaw && parseFloat(DcRaw) > 0) ? parseFloat(DcRaw) : DT * 0.7;
+
+                                document.getElementById('dr-d-DT').textContent   = fmtRatio(d / DT);
+                                document.getElementById('dr-C-DT').textContent   = fmtRatio(C / DT);
+                                document.getElementById('dr-b-DT').textContent   = fmtRatio(b / DT);
+                                document.getElementById('dr-Bw-DT').textContent  = fmtRatio(Bw / DT);
+                                document.getElementById('dr-dco-DT').textContent = dco > 0 ? fmtRatio(dco / DT) : '--';
+                                document.getElementById('dr-Dc-DT').textContent  = fmtRatio(Dc / DT);
+                                document.getElementById('dr-pc-DT').textContent  = pc > 0 ? fmtRatio(pc / DT) : '--';
+                                document.getElementById('dr-H-DT').textContent   = fmtRatio(H / DT);
+                                document.getElementById('dr-np').textContent     = npv > 0 ? npv : '--';
+                                document.getElementById('dr-nB').textContent     = nBv >= 0 ? nBv : '--';
+                            }
+
+                            // Watch all relevant inputs
+                            const watchIds = ['DT','d','clearance','b','Bw','coil-outer-dia','coil-center-dia','coil-pitch','H','np','nB'];
+                            function attachListeners() {
+                                watchIds.forEach(function(id) {
+                                    const el = document.getElementById(id);
+                                    if (el) el.addEventListener('input', updateDimRatioTable);
+                                });
+                                updateDimRatioTable();
+                            }
+                            // Run after DOM ready
+                            if (document.readyState === 'loading') {
+                                document.addEventListener('DOMContentLoaded', attachListeners);
+                            } else {
+                                attachListeners();
+                            }
+                        })();
+                        </script>
+                        <div id="settings-list-container" style="display:grid; grid-template-columns: 1fr; gap: 16px; align-items: start;">
                             <!-- populated by JS -->
                         </div>
                     </div>

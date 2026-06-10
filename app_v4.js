@@ -6550,64 +6550,218 @@ function updateSettingsListTab() {
     const container = document.getElementById('settings-list-container');
     if (!container) return;
 
-    // Grouping configuration based on sections
-    const groups = {
-        '槽 (Tank)': [
-            { label: '槽径 T', val: config.DT, unit: 'm' },
-            { label: '液深 H', val: config.H, unit: 'm' },
-            { label: '邪魔板 あり/なし', val: config.baffleActive ? 'あり' : 'なし', unit: '' },
-            { label: '邪魔板枚数 n_b', val: config.nB, unit: '枚' },
-            { label: '邪魔板幅 Bw', val: config.Bw, unit: 'm' },
-            { label: '底面形状', val: config.headType, unit: '' }
-        ],
-        '翼 (Impeller)': [
-            { label: '翼径 d', val: config.d, unit: 'm' },
-            { label: '翼枚数 n_p', val: config.np, unit: '枚' },
-            { label: '翼幅 b', val: config.b, unit: 'm' },
-            { label: '取付高さ C', val: config.clearance, unit: 'm' },
-            { label: '翼種', val: config.impellerType, unit: '' },
-            { label: '回転数 N', val: config.simSpeed, unit: 'rpm' }
-        ],
-        '液・物性 (Fluid)': [
-            { label: '密度 ρ', val: config.rho, unit: 'kg/m³' },
-            { label: 'Newtonian 粘度 μ', val: config.mu, unit: 'Pa·s' },
-            { label: 'レオロジーモデル', val: typeof rheologyData !== 'undefined' ? rheologyData.activeModel : 'newtonian', unit: '' },
-            ...(typeof rheologyData !== 'undefined' && rheologyData.activeModel !== 'newtonian' ? [
-                { label: 'サンプル名', val: rheologyData.activeSample || '手動入力', unit: '' },
-                { label: 'Metzner-Otto定数 ks', val: document.getElementById('ks-input') ? document.getElementById('ks-input').value : rheologyData.ks, unit: '-' },
-                { label: '減衰係数 α', val: document.getElementById('decay-alpha-input') ? document.getElementById('decay-alpha-input').value : (rheologyData.decayAlpha || 2.0), unit: '-' },
-                { label: '流動限界係数', val: document.getElementById('mu-limit-factor-input') ? document.getElementById('mu-limit-factor-input').value : (rheologyData.muLimitFactor || 20), unit: '-' }
-            ] : [])
-        ],
-        '固体粒子 (Solid)': [
-            { label: '粒子密度 ρ_S', val: config.rho_S, unit: 'kg/m³' },
-            { label: '粒子径 d_p', val: config.dp_um, unit: 'μm' },
-            { label: '固体濃度設定値', val: config.solidConcVal, unit: config.solidConcMode === 'wt-ratio' ? 'wt%' : 'vol%' }
-        ],
-        '冷却・加熱 (Heat)': [
-            { label: '液初期温度', val: config.liquidTempInit, unit: '°C' },
-            { label: '液比熱 Cp', val: config.liquidCp, unit: 'J/(kg·K)' },
-            { label: '液熱伝導度 k', val: config.liquidK, unit: 'W/(m·K)' },
-            { label: 'ジャケット種類', val: config.jacketType, unit: '' },
-            { label: '熱媒温度', val: config.mediaTempIn, unit: '°C' },
-            { label: '熱媒流量', val: config.mediaFlow, unit: 'm³/s' },
-            { label: '汚れ係数', val: config.foulingFactor, unit: 'm²·K/W' }
-        ]
-    };
+    // --- レオロジーパラメータの取得 ---
+    const rheoModel = (typeof rheologyData !== 'undefined') ? rheologyData.activeModel : 'newtonian';
+    const MODEL_LABELS = { newtonian:'Newtonian（ニュートン）', powerlaw:'Power-Law（べき乗則）', bingham:'Bingham（ビンガム）', casson:'Casson（キャッソン）', hb:'Herschel-Bulkley（HB）', cross:'Cross（クロス）', carreau:'Carreau（カロー）' };
+    const rheoModelLabel = MODEL_LABELS[rheoModel] || rheoModel;
+    const rheoSample = (typeof rheologyData !== 'undefined') ? (rheologyData.activeSample || '手動入力') : '--';
+    const rheoKs = document.getElementById('ks-input') ? document.getElementById('ks-input').value : ((typeof rheologyData !== 'undefined') ? rheologyData.ks : 11.5);
+    const rheoAlpha = document.getElementById('decay-alpha-input') ? document.getElementById('decay-alpha-input').value : ((typeof rheologyData !== 'undefined') ? (rheologyData.decayAlpha || 2.0) : 2.0);
+    const rheoMuLimit = document.getElementById('mu-limit-factor-input') ? document.getElementById('mu-limit-factor-input').value : ((typeof rheologyData !== 'undefined') ? (rheologyData.muLimitFactor || 20) : 20);
+
+    // レオロジーパラメータ値を取得（モデルごとに）
+    let rheoParamItems = [];
+    if (typeof rheologyData !== 'undefined') {
+        const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+        const modelInfo = modelList.find(r => r.modelId === rheoModel);
+        const params = modelInfo ? modelInfo.params : null;
+        if (rheoModel === 'powerlaw' && params) {
+            rheoParamItems = [
+                { label: '稠度係数 K', val: params.K != null ? Number(params.K).toPrecision(4) : '--', unit: 'Pa·sⁿ' },
+                { label: '流動指数 n', val: params.n != null ? Number(params.n).toPrecision(4) : '--', unit: '-' }
+            ];
+        } else if (rheoModel === 'bingham' && params) {
+            rheoParamItems = [
+                { label: '降伏応力 τ_y', val: params.tau_y != null ? Number(params.tau_y).toPrecision(4) : '--', unit: 'Pa' },
+                { label: '塑性粘度 η_p', val: params.eta_p != null ? Number(params.eta_p).toPrecision(4) : '--', unit: 'Pa·s' }
+            ];
+        } else if (rheoModel === 'casson' && params) {
+            rheoParamItems = [
+                { label: '降伏応力 τ_y', val: params.tau_y != null ? Number(params.tau_y).toPrecision(4) : '--', unit: 'Pa' },
+                { label: 'Casson粘度 η_p', val: params.eta_p != null ? Number(params.eta_p).toPrecision(4) : '--', unit: 'Pa·s' }
+            ];
+        } else if (rheoModel === 'hb' && params) {
+            rheoParamItems = [
+                { label: '降伏応力 τ_y', val: params.tau_y != null ? Number(params.tau_y).toPrecision(4) : '--', unit: 'Pa' },
+                { label: '稠度係数 K', val: params.K != null ? Number(params.K).toPrecision(4) : '--', unit: 'Pa·sⁿ' },
+                { label: '流動指数 n', val: params.n != null ? Number(params.n).toPrecision(4) : '--', unit: '-' }
+            ];
+        } else if (rheoModel === 'cross' && params) {
+            rheoParamItems = [
+                { label: '無限粘度 η_∞', val: params.eta_inf != null ? Number(params.eta_inf).toPrecision(4) : '--', unit: 'Pa·s' },
+                { label: 'ゼロ粘度 η_0', val: params.eta_0 != null ? Number(params.eta_0).toPrecision(4) : '--', unit: 'Pa·s' },
+                { label: '時定数 K', val: params.K != null ? Number(params.K).toPrecision(4) : '--', unit: 's' },
+                { label: '指数 m', val: params.m != null ? Number(params.m).toPrecision(4) : '--', unit: '-' }
+            ];
+        } else if (rheoModel === 'carreau' && params) {
+            rheoParamItems = [
+                { label: '無限粘度 η_∞', val: params.eta_inf != null ? Number(params.eta_inf).toPrecision(4) : '--', unit: 'Pa·s' },
+                { label: 'ゼロ粘度 η_0', val: params.eta_0 != null ? Number(params.eta_0).toPrecision(4) : '--', unit: 'Pa·s' },
+                { label: '時定数 λ', val: params.lambda != null ? Number(params.lambda).toPrecision(4) : '--', unit: 's' },
+                { label: '指数 n', val: params.n != null ? Number(params.n).toPrecision(4) : '--', unit: '-' }
+            ];
+        } else if (rheoModel === 'newtonian') {
+            rheoParamItems = [
+                { label: '粘度 μ (Newtonian)', val: config.mu, unit: 'Pa·s' }
+            ];
+        }
+    }
+
+    // Grouping configuration based on the image table structure
+    const groups = [
+        {
+            name: '■ 装置条件',
+            color: 'var(--accent-color)',
+            cols: [
+                [
+                    { label: '槽径 D_T', val: config.DT, unit: 'm' },
+                    { label: '槽高 H', val: config.H, unit: 'm' },
+                    { label: '槽壁厚み t_w', val: config.wallThickness, unit: 'm' },
+                    { label: '槽壁熱伝導度 k_w', val: config.wallK, unit: 'W/(m·K)' },
+                    { label: '底面形状', val: config.headType, unit: '' }
+                ],
+                [
+                    { label: 'ジャケット伝熱面積 A_j', val: '液面積に準ずる', unit: '' },
+                    { label: 'コイルあり/なし', val: config.coilActive ? 'あり' : 'なし', unit: '' },
+                    { label: 'コイル管の肉厚 t_c', val: config.coilActive ? (((config.coilOuterDia - config.coilInnerDia) / 2 * 1000).toFixed(1)) : '--', unit: 'mm' }
+                ]
+            ]
+        },
+        {
+            name: '■ 攪拌条件',
+            color: '#a78bfa',
+            cols: [
+                [
+                    { label: '攪拌翼', val: config.impellerType, unit: '' },
+                    { label: '攪拌速度 n', val: config.simSpeed, unit: 'rpm' },
+                    { label: '形態板', val: config.baffleActive ? 'あり' : 'なし', unit: '' },
+                    { label: '攪拌液', val: '水', unit: '' }
+                ],
+                [
+                    { label: '攪拌液の密度 ρ', val: config.rho, unit: 'kg/m³' },
+                    { label: '攪拌液の粘度 μ', val: config.mu, unit: 'Pa·s' },
+                    { label: '攪拌液の比熱容量 Cp', val: config.liquidCp, unit: 'J/(kg·K)' },
+                    { label: '攪拌液の熱伝導度 k', val: config.liquidK, unit: 'W/(m·K)' }
+                ]
+            ]
+        },
+        {
+            name: '■ ジャケット',
+            color: '#f87171',
+            cols: [
+                [
+                    { label: '攪拌液の初期温度 T_0', val: config.liquidTempInit, unit: '°C' },
+                    { label: '攪拌液の最終温度 T_f', val: '--', unit: '°C' },
+                    { label: '伝熱媒体', val: config.mediaType === 'steam' ? '飽和スチーム' : '水（温水/冷水）', unit: '' },
+                    { label: '熱媒体密度 ρ_s', val: config.mediaRho, unit: 'kg/m³' },
+                    { label: '熱媒体の凝縮温度 T*', val: config.mediaTempIn, unit: '°C' },
+                    { label: 'スチーム凝縮水の流量 W_a', val: config.mediaFlow, unit: 'kg/s' },
+                    { label: 'スチーム凝縮水の密度 ρ_a', val: config.mediaRho, unit: 'kg/m³' },
+                    { label: 'スチーム凝縮水の粘度 μ_a', val: config.mediaMu, unit: 'Pa·s' }
+                ],
+                [
+                    { label: 'スチーム凝縮水の比熱容量 Cp_s', val: config.mediaCp, unit: 'J/(kg·K)' },
+                    { label: 'スチーム凝縮水の熱伝導度 k_s', val: config.mediaK, unit: 'W/(m·K)' },
+                    { label: '壁の熱伝導度 h_w', val: config.wallK, unit: 'W/(m·K)' },
+                    { label: '伝熱媒体側の汚れ係数 h_di', val: '10000', unit: 'W/(m²·K)' },
+                    { label: '攪拌液側の汚れ係数 h_do', val: '5000', unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w', val: config.mediaViscCorr, unit: '' },
+                    { label: '重力加速度 g', val: config.g ?? 9.806, unit: 'm/s²' }
+                ]
+            ]
+        },
+        {
+            name: '■ コイル',
+            color: '#34d399',
+            cols: [
+                [
+                    { label: 'コイルあり/なし', val: config.coilActive ? 'あり' : 'なし', unit: '' },
+                    { label: '攪拌液の初期温度 T_0', val: config.liquidTempInit, unit: '°C' },
+                    { label: '攪拌液の最終温度 T_f', val: '--', unit: '°C' },
+                    { label: '伝熱媒体', val: '冷却水', unit: '' },
+                    { label: '伝熱媒体の入口温度 T_in', val: config.mediaTempIn, unit: '°C' },
+                    { label: '伝熱媒体の平均温度上昇 ΔT_c', val: '--', unit: 'K' },
+                    { label: '伝熱媒体の密度 ρ_c', val: config.mediaRho, unit: 'kg/m³' },
+                    { label: '伝熱媒体の粘度 μ_c', val: config.mediaMu, unit: 'Pa·s' },
+                    { label: '伝熱媒体の比熱容量 Cp_c', val: config.mediaCp, unit: 'J/(kg·K)' }
+                ],
+                [
+                    { label: 'コイル外径 d_co', val: config.coilActive ? config.coilOuterDia : '--', unit: 'm' },
+                    { label: 'コイル内径 d_ci', val: config.coilActive ? config.coilInnerDia : '--', unit: 'm' },
+                    { label: 'コイルピッチ p_c', val: config.coilActive ? config.coilPitch : '--', unit: 'm' },
+                    { label: 'コイル中心径 D_c', val: config.coilActive ? (config.coilCenterDia ? config.coilCenterDia : '槽径×0.7') : '--', unit: config.coilActive && config.coilCenterDia ? 'm' : '' },
+                    { label: 'コイル熱伝導度 k_c', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
+                    { label: '伝熱媒体の熱伝導度 k_c', val: config.mediaK, unit: 'W/(m·K)' },
+                    { label: '伝熱媒体の流速 u_c', val: '1.0', unit: 'm/s' },
+                    { label: 'コイル管壁の熱伝導度 k_cw', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
+                    { label: '攪拌液側の汚れ係数 h_di', val: '5000', unit: 'W/(m²·K)' },
+                    { label: '伝熱媒体側の汚れ係数 h_do', val: '5000', unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: '0.8', unit: '' },
+                    { label: '粘度補正項 μ/μ_w（伝熱媒体側）', val: config.mediaViscCorr, unit: '' }
+                ]
+            ]
+        },
+        {
+            name: '■ レオロジー物性',
+            color: '#f59e0b',
+            cols: [
+                [
+                    { label: '流動モデル', val: rheoModelLabel, unit: '' },
+                    { label: 'サンプル名', val: rheoSample, unit: '' },
+                    { label: 'Metzner-Otto定数 ks', val: rheoKs, unit: '-' },
+                    { label: '減衰係数 α', val: rheoAlpha, unit: '-' },
+                    { label: '流動限界粘度倍率', val: rheoMuLimit, unit: '-' }
+                ],
+                rheoParamItems.length > 0 ? rheoParamItems : [
+                    { label: '（モデルパラメータ）', val: '-- Newtonian --', unit: '' }
+                ]
+            ]
+        },
+        {
+            name: '■ 固体粒子 (Solid)',
+            color: '#94a3b8',
+            cols: [
+                [
+                    { label: '粒子密度 ρ_S', val: config.rho_S, unit: 'kg/m³' },
+                    { label: '粒子径 d_p', val: config.dp_um, unit: 'μm' },
+                    { label: '固体濃度', val: config.solidConcVal, unit: config.solidConcMode === 'wt-ratio' ? 'wt%' : 'vol%' }
+                ],
+                []
+            ]
+        }
+    ];
+
+    function renderCol(items) {
+        if (!items || items.length === 0) return '<td style="padding:0;width:50%;vertical-align:top;"></td>';
+        return `<td style="padding:0;width:50%;vertical-align:top;">
+            <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
+                <tbody>
+                    ${items.map(item => `
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:5px 6px 5px 0;color:var(--text-secondary);width:62%;">${item.label}</td>
+                            <td style="padding:5px 0;text-align:right;font-family:monospace;font-weight:600;color:var(--text-primary);">
+                                ${item.val !== undefined && item.val !== null ? item.val : '--'}&nbsp;<span style="color:var(--text-muted);font-size:0.68rem;font-weight:normal;">${item.unit}</span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </td>`;
+    }
 
     let html = '';
-    for (const [groupName, items] of Object.entries(groups)) {
+    for (const group of groups) {
+        const [col1, col2] = group.cols;
         html += `
-            <div style="background:var(--bg-tertiary); border:1px solid var(--card-border); border-radius:var(--border-radius-md); padding:12px;">
-                <h4 style="font-size:0.85rem; color:var(--accent-color); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">${groupName}</h4>
-                <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+            <div style="background:var(--bg-tertiary);border:1px solid var(--card-border);border-radius:var(--border-radius-md);padding:14px;grid-column:span 2;">
+                <h4 style="font-size:0.88rem;color:${group.color};margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:6px;font-weight:700;">${group.name}</h4>
+                <table style="width:100%;border-collapse:collapse;">
                     <tbody>
-                        ${items.map(item => `
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
-                                <td style="padding:6px 0; color:var(--text-secondary); width:60%;">${item.label}</td>
-                                <td style="padding:6px 0; text-align:right; font-family:monospace; font-weight:600; color:var(--text-primary);">${item.val !== undefined && item.val !== null ? item.val : '--'} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${item.unit}</span></td>
-                            </tr>
-                        `).join('')}
+                        <tr style="vertical-align:top;">
+                            ${renderCol(col1)}
+                            <td style="width:20px;"></td>
+                            ${renderCol(col2)}
+                        </tr>
                     </tbody>
                 </table>
             </div>
