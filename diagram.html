@@ -1130,18 +1130,10 @@
             if (animId) cancelAnimationFrame(animId);
             impAngle = 0; lastFrameT = null;
             draw();
-            try {
-                let openerClosed = true;
-                try {
-                    openerClosed = window.opener && window.opener.closed;
-                } catch (e) {
-                    openerClosed = false; // SecurityError means it's likely open but cross-origin
-                }
-                if (window.opener && !openerClosed) {
-                    window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
-                }
-            } catch (e) {
-                // Ignore
+            // opener.closed へのアクセスは file:// 環境で SecurityError を起こすため削除。
+            // postMessage は opener が存在すれば常に安全に送信できる。
+            if (window.opener) {
+                window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
             }
             setInterval(() => { const cur = localStorage.getItem('agitator_current_state'); if (cur !== lastSavedStateJSON) loadState(); }, 1000);
         });

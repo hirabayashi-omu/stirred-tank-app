@@ -124,8 +124,6 @@
 
                 <hr class="sidebar-divider">
 
-
-
                 <!-- Liquid Properties -->
                 <section class="config-section">
                     <h3 class="acc-h3 collapsed" data-target="sec-liquid"
@@ -1793,8 +1791,9 @@
         window.diagramWindow = null;
 
         function openDiagramWindow() {
+            const windowName = 'agitator-diagram-' + window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
             if (typeof config !== 'object') {
-                window.diagramWindow = window.open('diagram.html?t=' + Date.now(), 'agitator-diagram');
+                window.diagramWindow = window.open('diagram.html?t=' + Date.now(), windowName);
                 return;
             }
             const params = new URLSearchParams();
@@ -1823,7 +1822,7 @@
                 params.set(key, String(value));
             });
             const url = 'diagram.html?' + params.toString() + '&t=' + Date.now();
-            window.diagramWindow = window.open(url, 'agitator-diagram');
+            window.diagramWindow = window.open(url, windowName);
             setTimeout(() => { if (typeof syncDiagramWindow === 'function') syncDiagramWindow(); }, 250);
             setTimeout(() => { if (typeof syncDiagramWindow === 'function') syncDiagramWindow(); }, 1000);
         }
