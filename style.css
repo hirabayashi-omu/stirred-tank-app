@@ -733,3 +733,12 @@ body {
 .sl-hidden {
     display: none !important;
 }
+
+/* Results table middle column divider and spacing */
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding-left: 16px;
+    padding-right: 16px;
+}

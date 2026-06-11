@@ -5079,22 +5079,31 @@ function updateCavernDiameter() {
     const cavernTabBtn = document.getElementById('inner-tab-btn-cavern');
     const cavernTbody = document.getElementById('cavern-results-tbody');
     
-    function setCavernUI(display, text) {
+    // Bottom head type mapping
+    const headMap = {
+        'flat': '平底',
+        'semi-elliptical': '半楕円形',
+        'dish': '皿型',
+        'hemispherical': '全半球形'
+    };
+    // Impeller type mapping
+    const impellerMap = {
+        'pitched-paddle': '傾斜パドル',
+        'flat-paddle': '平板パドル',
+        'flat-turbine': '平板タービン',
+        'propeller': 'プロペラ',
+        'faudler': 'ファウドラー'
+    };
+
+    function setCavernUI(display, detailHtml) {
         if (cavernTabBtn) {
             cavernTabBtn.style.display = display ? 'inline-block' : 'none';
-            // もし非表示にされていて現在アクティブなら他のタブに切り替える
             if (!display && cavernTabBtn.classList.contains('active')) {
                 switchInnerTab('suspension');
             }
         }
         if (cavernTbody) {
-            cavernTbody.innerHTML = `
-                <tr>
-                    <td><strong>キャバーン径 Dc</strong></td>
-                    <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径</td>
-                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);">${text}</td>
-                </tr>
-            `;
+            cavernTbody.innerHTML = display ? detailHtml : '';
         }
     }
 
@@ -5106,22 +5115,212 @@ function updateCavernDiameter() {
     const modelInfo = models.find(m => m.modelId === mod);
     const pr = modelInfo?.params;
 
+    if ((!isYieldFluid && !isPowerLaw) || !pr) {
+        config.cavern_Dc = null;
+        setCavernUI(false, '');
+        return;
+    }
+
+    const n_rps = config.simSpeed / 60;
+
+    // Build equipment and impeller parameters HTML segment
+    const headLabel = headMap[config.headType] || config.headType;
+    const impellerLabel = impellerMap[config.impellerType] || config.impellerType;
+    const baffleText = config.baffleActive ? `あり (枚数: ${config.nB}, 幅: ${config.Bw.toFixed(3)} m)` : 'なし';
+
+    const structRows = `
+        <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+            <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">装置構造・インペラー構造パラメータ</td>
+        </tr>
+        <tr>
+            <td><strong>槽径 D<sub>T</sub></strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">攪拌槽の内径</td>
+            <td style="text-align: right; font-family: monospace;">${config.DT.toFixed(3)} m</td>
+        </tr>
+        <tr>
+            <td><strong>液高 H</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">液面の高さ</td>
+            <td style="text-align: right; font-family: monospace;">${config.H.toFixed(3)} m</td>
+        </tr>
+        <tr>
+            <td><strong>槽底形状</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">底面ヘッドの形状</td>
+            <td style="text-align: right;">${headLabel}</td>
+        </tr>
+        <tr>
+            <td><strong>邪魔板 (バッフル)</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">邪魔板の有無・構造</td>
+            <td style="text-align: right;">${baffleText}</td>
+        </tr>
+        <tr>
+            <td><strong>攪拌翼形式</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">インペラーのタイプ</td>
+            <td style="text-align: right;">${impellerLabel}</td>
+        </tr>
+        <tr>
+            <td><strong>翼径 d</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">インペラーの直径</td>
+            <td style="text-align: right; font-family: monospace;">${config.d.toFixed(3)} m</td>
+        </tr>
+        <tr>
+            <td><strong>クリアランス C</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">底面から翼中心までの距離</td>
+            <td style="text-align: right; font-family: monospace;">${config.clearance.toFixed(3)} m</td>
+        </tr>
+        <tr>
+            <td><strong>翼幅 b</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">インペラーの高さ(幅)</td>
+            <td style="text-align: right; font-family: monospace;">${config.b.toFixed(3)} m</td>
+        </tr>
+        <tr>
+            <td><strong>羽根枚数 n<sub>p</sub> / 傾斜角 θ</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">ブレード数と取付角度</td>
+            <td style="text-align: right; font-family: monospace;">${config.np} 枚 / ${config.theta}°</td>
+        </tr>
+        <tr>
+            <td><strong>段数</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">インペラーの設置段数</td>
+            <td style="text-align: right; font-family: monospace;">${config.n_stage} 段</td>
+        </tr>
+    `;
+
+    // Build rheology model HTML segment
+    let modelName = '';
+    let eqText = '';
+    let paramRows = '';
+
+    if (mod === 'bingham') {
+        modelName = 'Bingham (ビンガム) 流体';
+        eqText = 'τ = τ<sub>y</sub> + η<sub>p</sub>・γ̇';
+        paramRows = `
+            <tr>
+                <td><strong>降伏応力 τ<sub>y</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動開始に必要な閾値応力</td>
+                <td style="text-align: right; font-family: monospace;">${pr.tau_y.toFixed(3)} Pa</td>
+            </tr>
+            <tr>
+                <td><strong>塑性粘度 η<sub>p</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">閾値を超えた後の粘度係数</td>
+                <td style="text-align: right; font-family: monospace;">${pr.eta_p.toFixed(3)} Pa・s</td>
+            </tr>
+        `;
+    } else if (mod === 'casson') {
+        modelName = 'Casson (カソン) 流体';
+        eqText = 'τ<sup>0.5</sup> = τ<sub>y</sub><sup>0.5</sup> + η<sub>c</sub><sup>0.5</sup>・γ̇<sup>0.5</sup>';
+        paramRows = `
+            <tr>
+                <td><strong>降伏応力 τ<sub>y</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">カソンモデルによる降伏閾値</td>
+                <td style="text-align: right; font-family: monospace;">${pr.tau_y.toFixed(3)} Pa</td>
+            </tr>
+            <tr>
+                <td><strong>カソン粘度 η<sub>c</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">極限ずり速度での極限粘度</td>
+                <td style="text-align: right; font-family: monospace;">${pr.eta_p.toFixed(3)} Pa・s</td>
+            </tr>
+        `;
+    } else if (mod === 'hb') {
+        modelName = 'Herschel-Bulkley (H-B) 流体';
+        eqText = 'τ = τ<sub>y</sub> + K・γ̇<sup>n</sup>';
+        paramRows = `
+            <tr>
+                <td><strong>降伏応力 τ<sub>y</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動開始に必要な閾値応力</td>
+                <td style="text-align: right; font-family: monospace;">${pr.tau_y.toFixed(3)} Pa</td>
+            </tr>
+            <tr>
+                <td><strong>粘性係数 K</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動度合いを表す稠度指数</td>
+                <td style="text-align: right; font-family: monospace;">${pr.K.toFixed(3)} Pa・s<sup>n</sup></td>
+            </tr>
+            <tr>
+                <td><strong>流動指数 n</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">擬塑性非ニュートン挙動指数 (n &lt; 1)</td>
+                <td style="text-align: right; font-family: monospace;">${pr.n.toFixed(3)}</td>
+            </tr>
+        `;
+    } else if (mod === 'powerlaw') {
+        modelName = 'Power-law (べき乗則) 流体';
+        eqText = 'τ = K・γ̇<sup>n</sup>';
+        paramRows = `
+            <tr>
+                <td><strong>粘性係数 K</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動度合いを表す稠度指数</td>
+                <td style="text-align: right; font-family: monospace;">${pr.K.toFixed(3)} Pa・s<sup>n</sup></td>
+            </tr>
+            <tr>
+                <td><strong>流動指数 n</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">擬塑性非ニュートン挙動指数 (n &lt; 1)</td>
+                <td style="text-align: right; font-family: monospace;">${pr.n.toFixed(3)}</td>
+            </tr>
+        `;
+    }
+
+    const rheologyRows = `
+        <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+            <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">レオロジーモデル・流動方程式</td>
+        </tr>
+        <tr>
+            <td><strong>レオロジーモデル</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">適用中の非ニュートン流体挙動</td>
+            <td style="text-align: right;">${modelName}</td>
+        </tr>
+        <tr>
+            <td><strong>流動方程式 / 粘性方程式</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">ずり応力 τ とずり速度 γ̇ の関係式</td>
+            <td style="text-align: right; font-family: monospace; font-size: 0.72rem;">${eqText}</td>
+        </tr>
+        ${paramRows}
+    `;
+
     // ── Power-law 疑似キャバーン計算 ───────────────────────────────
-    if (isPowerLaw && pr && pr.K != null && pr.n != null) {
-        const n_rps = config.simSpeed / 60;
+    if (isPowerLaw) {
         const d = config.d;
-        const ks = rheologyData.ks || 11.5;
-        const alpha_d = rheologyData.decayAlpha ?? 2.0;   // ずり速度減衰係数
+        const decayAlpha = rheologyData.decayAlpha ?? 2.0;
         const limitFactor = rheologyData.muLimitFactor ?? 20.0;
 
         if (n_rps <= 0) {
             config.cavern_Dc = null;
-            setCavernUI(true, '--- (停止中)');
+            const stoppedHtml = `
+                ${structRows}
+                ${rheologyRows}
+                <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+                    <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">キャバーンモデルと推算根拠パラメータ</td>
+                </tr>
+                <tr>
+                    <td><strong>キャバーンモデル名称</strong></td>
+                    <td style="color: var(--text-muted); font-size: 0.65rem;">推算に使用する数理モデル</td>
+                    <td style="text-align: right;">疑似キャバーンモデル</td>
+                </tr>
+                <tr>
+                    <td><strong>推算結果</strong></td>
+                    <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径 / 半径</td>
+                    <td style="text-align: right; color: var(--accent-color); font-weight: bold;">--- (停止中)</td>
+                </tr>
+            `;
+            setCavernUI(true, stoppedHtml);
             return;
         }
         if (pr.n >= 1.0) {
             config.cavern_Dc = null;
-            setCavernUI(true, '--- (ニュートン的)');
+            const newtonianHtml = `
+                ${structRows}
+                ${rheologyRows}
+                <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+                    <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">キャバーンモデルと推算根拠パラメータ</td>
+                </tr>
+                <tr>
+                    <td><strong>キャバーンモデル名称</strong></td>
+                    <td style="color: var(--text-muted); font-size: 0.65rem;">推算に使用する数理モデル</td>
+                    <td style="text-align: right;">疑似キャバーンモデル</td>
+                </tr>
+                <tr>
+                    <td><strong>推算結果</strong></td>
+                    <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域 of diameter / radius</td>
+                    <td style="text-align: right; color: var(--accent-color); font-weight: bold;">--- (ニュートン的)</td>
+                </tr>
+            `;
+            setCavernUI(true, newtonianHtml);
             return;
         }
 
@@ -5131,30 +5330,90 @@ function updateCavernDiameter() {
         if (arg <= 0) {
             Dc_pseudo = 0;
         } else {
-            const r_c = (d / 2) * Math.pow(arg, 1.0 / alpha_d);
+            const r_c = (d / 2) * Math.pow(arg, 1.0 / decayAlpha);
             Dc_pseudo = Math.min(r_c * 2, config.DT);
         }
 
         config.cavern_Dc = Dc_pseudo;
         config.cavernModel = 'spherical'; // 擬似キャバーンは球形で近似
-        setCavernUI(true, Dc_pseudo.toFixed(3) + ' m (疑似)');
+
+        const basisRows = `
+            <tr>
+                <td><strong>攪拌回転数 N</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">現在の運転回転数</td>
+                <td style="text-align: right; font-family: monospace;">${config.simSpeed.toFixed(0)} rpm (${n_rps.toFixed(2)} rps)</td>
+            </tr>
+            <tr>
+                <td><strong>ずり速度減衰係数 α<sub>d</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">中心からの距離に応じた速度減衰指数</td>
+                <td style="text-align: right; font-family: monospace;">${decayAlpha.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td><strong>限界粘度倍率 F<sub>limit</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">最大流動領域を規定する倍率係数</td>
+                <td style="text-align: right; font-family: monospace;">${limitFactor.toFixed(1)}</td>
+            </tr>
+        `;
+
+        const detailHtml = `
+            ${structRows}
+            ${rheologyRows}
+            <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+                <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">キャバーンモデルと推算根拠パラメータ</td>
+            </tr>
+            <tr>
+                <td><strong>キャバーンモデル名称</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">推算に使用する数理モデル</td>
+                <td style="text-align: right;">疑似キャバーンモデル（ずり速度減衰）</td>
+            </tr>
+            <tr>
+                <td><strong>推算方程式</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">境界応力釣合い式</td>
+                <td style="text-align: right; font-family: monospace; font-size: 0.72rem;">D<sub>c</sub> = d・((N / N<sub>max</sub>)・F<sub>limit</sub>)<sup>1/α<sub>d</sub></sup></td>
+            </tr>
+            ${basisRows}
+            <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+                <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">推算結果</td>
+            </tr>
+            <tr>
+                <td><strong>キャバーン径 D<sub>c</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径（疑似/最大DT制限）</td>
+                <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 0.9rem; color: var(--accent-color);">${Dc_pseudo.toFixed(3)} m (疑似)</td>
+            </tr>
+            <tr>
+                <td><strong>キャバーン半径 R<sub>c</sub></strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の半径 (R<sub>c</sub> = D<sub>c</sub> / 2)</td>
+                <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #38bdf8;">${(Dc_pseudo / 2).toFixed(3)} m (疑似)</td>
+            </tr>
+        `;
+        setCavernUI(true, detailHtml);
         return;
     }
 
-    if (!isYieldFluid || !pr || !pr.tau_y || pr.tau_y <= 0) {
-        config.cavern_Dc = null;
-        setCavernUI(false, '');
-        return;
-    }
-
-    const n_rps = config.simSpeed / 60;
+    // ── 降伏応力流体のキャバーン計算 ───────────────────────────────
     if (n_rps <= 0) {
         config.cavern_Dc = 0;
-        setCavernUI(true, '0.000 m');
+        const stoppedHtml = `
+            ${structRows}
+            ${rheologyRows}
+            <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+                <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">キャバーンモデルと推算根拠パラメータ</td>
+            </tr>
+            <tr>
+                <td><strong>キャバーンモデル名称</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">推算に使用する数理モデル</td>
+                <td style="text-align: right;">降伏応力キャバーンモデル</td>
+            </tr>
+            <tr>
+                <td><strong>推算結果</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径 / 半径</td>
+                <td style="text-align: right; color: var(--accent-color); font-weight: bold;">0.000 m</td>
+            </tr>
+        `;
+        setCavernUI(true, stoppedHtml);
         return;
     }
 
-    // 現在の回転数でのトルク T を計算
     const mu_eff = calcEffectiveViscosity(n_rps);
     const effRho = getEffectiveDensity();
     const Re = (effRho * n_rps * Math.pow(config.d, 2)) / mu_eff;
@@ -5163,13 +5422,28 @@ function updateCavernDiameter() {
     const T = P / (2 * Math.PI * n_rps);  // トルク T [N·m]
 
     let Dc;
+    let cavernModelName = '';
+    let cavernFormula = '';
+    let basisRows = '';
+
     if (config.cavernModel === 'cylindrical') {
+        cavernModelName = '円筒形モデル (Elson et al.)';
+        cavernFormula = 'D<sub>c</sub> = [ T / (π・τ<sub>y</sub>・(α/2 + 1/6)) ]<sup>1/3</sup>';
         const alpha = config.cavernAlpha ?? 0.7;
         Dc = Math.pow(
             T / (Math.PI * pr.tau_y * (alpha / 2 + 1 / 6)),
             1 / 3
         );
+        basisRows = `
+            <tr>
+                <td><strong>アスペクト比 α (H<sub>c</sub>/D<sub>c</sub>)</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.65rem;">円筒形キャバーンの高さ/直径比</td>
+                <td style="text-align: right; font-family: monospace;">${alpha.toFixed(2)}</td>
+            </tr>
+        `;
     } else if (config.cavernModel === 'torus') {
+        cavernModelName = 'トーラス（ドーナツ）形モデル (Wichterle et al.)';
+        cavernFormula = 'D<sub>c</sub> = [ (3 / (π<sup>3</sup>・(1 - β<sup>2</sup>)))・(T / τ<sub>y</sub>) ]<sup>1/3</sup> (β=d/D<sub>c</sub>)';
         const d = config.d;
         let Dc_iter = d * 2.0; // 初期推定値
         for (let i = 0; i < 50; i++) {
@@ -5184,6 +5458,8 @@ function updateCavernDiameter() {
         }
         Dc = Dc_iter;
     } else {
+        cavernModelName = '球形モデル (Solomon et al.)';
+        cavernFormula = 'D<sub>c</sub> = [ 6T / (π・τ<sub>y</sub>) ]<sup>1/3</sup>';
         // 球形モデル: Dc = (6T / (π·τy))^(1/3)
         Dc = Math.pow(
             (6 * T) / (Math.PI * pr.tau_y),
@@ -5191,13 +5467,73 @@ function updateCavernDiameter() {
         );
     }
 
+    basisRows += `
+        <tr>
+            <td><strong>代表粘度 μ<sub>eff</sub></strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">Metzner-Otto法による有効粘度</td>
+            <td style="text-align: right; font-family: monospace;">${mu_eff.toExponential(3)} Pa・s</td>
+        </tr>
+        <tr>
+            <td><strong>インペラー動力 P</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">動力消費の計算値</td>
+            <td style="text-align: right; font-family: monospace;">${P.toFixed(3)} W</td>
+        </tr>
+        <tr>
+            <td><strong>翼トルク T</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">現在の運転トルク (P / (2πN))</td>
+            <td style="text-align: right; font-family: monospace;">${T.toExponential(4)} N・m</td>
+        </tr>
+        <tr>
+            <td><strong>降伏応力 τ<sub>y</sub></strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">レオロジーモデル降伏閾値</td>
+            <td style="text-align: right; font-family: monospace;">${pr.tau_y.toFixed(3)} Pa</td>
+        </tr>
+    `;
+
     // キャバーン径は槽径 DT を超えない（壁に到達）
+    let isWallLimited = false;
     if (Dc > config.DT) {
         Dc = config.DT;
+        isWallLimited = true;
     }
 
     config.cavern_Dc = Dc;
-    setCavernUI(true, Dc.toFixed(3) + ' m');
+
+    const limitSuffix = isWallLimited ? ' (槽壁到達による制限)' : '';
+
+    const detailHtml = `
+        ${structRows}
+        ${rheologyRows}
+        <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+            <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">キャバーンモデルと推算根拠パラメータ</td>
+        </tr>
+        <tr>
+            <td><strong>キャバーンモデル名称</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">推算に使用する数理モデル</td>
+            <td style="text-align: right;">${cavernModelName}</td>
+        </tr>
+        <tr>
+            <td><strong>推算方程式</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">境界応力釣合い式</td>
+            <td style="text-align: right; font-family: monospace; font-size: 0.72rem;">${cavernFormula}</td>
+        </tr>
+        ${basisRows}
+        <tr style="background: rgba(255,255,255,0.03); font-weight: bold;">
+            <td colspan="3" style="color: var(--accent-color); padding: 6px 12px; font-size: 0.8rem; border-left: 3px solid var(--accent-color);">推算結果</td>
+        </tr>
+        <tr>
+            <td><strong>キャバーン径 D<sub>c</sub></strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径（限界値: 槽径D<sub>T</sub>）</td>
+            <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 0.9rem; color: var(--accent-color);">${Dc.toFixed(3)} m${limitSuffix}</td>
+        </tr>
+        <tr>
+            <td><strong>キャバーン半径 R<sub>c</sub></strong></td>
+            <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の半径 (R<sub>c</sub> = D<sub>c</sub> / 2)</td>
+            <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #38bdf8;">${(Dc / 2).toFixed(3)} m${limitSuffix}</td>
+        </tr>
+    `;
+
+    setCavernUI(true, detailHtml);
 }
 
 function updateSimStatusBadge(currentN, njsN) {
@@ -5739,64 +6075,8 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
     const rxScale = relVortexX || 1.0;
     const ryScale = relVortexY || 1.0;
+    const isRadial = (config.impellerType === 'flat-paddle' || config.impellerType === 'flat-turbine');
     const inLeft = x < cx;
-
-    // ─── インペラ別 流れパターンブレンド比 ───────────────────────────
-    // 各インペラに固有の (axial, oblique, radial) 基本比率を定義する。
-    // axial   : 軸流成分（インペラ中心を基準とした上向きまたは下向き吐出）
-    // oblique : 斜流成分（軸流＋輻流の中間、ピッチドタービン相当）
-    // radial  : 輻流成分（インペラ中心から真横への吐出、上下に対称なドーナツ渦）
-    // 翼角 θ が大きいほど輻流寄りになるよう pitched-paddle/turbine を補正する。
-    // 粒子ごとに ±jitter の揺らぎを加えることで自然な分散を表現する。
-    const theta_deg = config.theta ?? 45;
-
-    // ── 吐出方向の定義 ──
-    // down-pumping: プロペラ・Faudler → 軸方向下向き吐出（インペラ下部から吐出、上部から吸込）
-    // up-pumping  : ピッチドパドル（標準）→ 軸方向上向き吐出（インペラ上部から吐出、下部から吸込）
-    // radial      : フラットパドル・フラットタービン → 水平方向吐出（上下対称）
-    // 注: 吐出中心は必ずインペラ中心 y_imp を基準とすること。
-    const _dischargeDir = {
-        'propeller':      'down',   // プロペラ: 下向き軸流吐出
-        'faudler':        'down',   // Faudler: 下向き吐出（下降流→槽底→壁沿い上昇の循環）
-        'pitched-paddle': 'down',   // ピッチドパドル: 下向き軸流吐出（下降流）
-        'flat-paddle':    'radial', // フラットパドル: 輻流吐出
-        'flat-turbine':   'radial', // フラットタービン: 輻流吐出
-    };
-    const dischargeDir = _dischargeDir[config.impellerType] || 'up';
-
-    // 基本ブレンドテーブル [axial, oblique, radial]
-    const _blendBase = {
-        'propeller':      [0.80, 0.16, 0.04],
-        'faudler':        [0.45, 0.42, 0.13],  // 斜流〜軸流主体、下向き循環
-        'pitched-paddle': null,   // θ依存で計算
-        'flat-paddle':    [0.05, 0.18, 0.77],
-        'flat-turbine':   [0.02, 0.10, 0.88],
-    };
-
-    // pitched-paddle: θ=45°で軸流寄り、θ→90°で輻流寄りに線形補間
-    let blend;
-    if (config.impellerType === 'pitched-paddle') {
-        const t = Math.max(0, Math.min(1, (theta_deg - 30) / 60)); // 30°→0, 90°→1
-        blend = [
-            0.60 * (1 - t) + 0.03 * t,  // axial
-            0.28 * (1 - t) + 0.17 * t,  // oblique
-            0.12 * (1 - t) + 0.80 * t   // radial
-        ];
-    } else {
-        blend = _blendBase[config.impellerType] || [0.20, 0.35, 0.45];
-    }
-
-    // 粒子固有の揺らぎ（relVortexX/Y をシードとして ±5%以内）
-    const jitter = 0.05;
-    const jA = 1.0 + (rxScale - 1.0) * jitter * 2;  // relVortexX は 0.75〜1.25
-    const jR = 1.0 + (ryScale - 1.0) * jitter * 2;
-    const rawA = Math.max(0, blend[0] * jA);
-    const rawO = Math.max(0, blend[1]);
-    const rawR = Math.max(0, blend[2] * jR);
-    const blendSum = rawA + rawO + rawR || 1;
-    const wA = rawA / blendSum;   // 軸流重み
-    const wO = rawO / blendSum;   // 斜流重み
-    const wR = rawR / blendSum;   // 輻流重み
 
     let totalVx = 0;
     let totalVy = 0;
@@ -5804,7 +6084,6 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
     for (let si = 0; si < stages_y.length; si++) {
         const y_imp = stages_y[si];
-        // 各段の影響範囲: 隣段との中点を境界とする
         const y_upper_bound = si < stages_y.length - 1
             ? (stages_y[si] + stages_y[si + 1]) / 2 : y_surf;
         const y_lower_bound = si > 0
@@ -5816,78 +6095,60 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
         const weight = Math.exp(-(dist_to_stage_y * dist_to_stage_y) / (2 * sigma * sigma));
         if (weight < 0.001) continue;
 
-        const inUpper = y < y_imp;  // 粒子がインペラ中心より上にあるか
-        const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
-        const wallThresh = D_px * 0.04;
-        const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
+        const inUpper = y < y_imp;
+        let vx_dir = 0, vy_dir = 0;
 
-        // ── 渦中心の水平位置（X）: インペラ先端半径に基づいて設定 ──
-        // 渦の「目」はインペラ翼先端（cx ± d/2）と槽壁の中点に生じる。
-        const d_px_imp = config.d * scale;
-        const impTipLeft  = cx - d_px_imp / 2;
-        const impTipRight = cx + d_px_imp / 2;
-        const vx_c_shared = inLeft
-            ? (impTipLeft  + lx) / 2    // 左: インペラ先端〜左壁の中点
-            : (impTipRight + rx) / 2;   // 右: インペラ先端〜右壁の中点
-
-        // ── 吐出方向フラグ ──
-        const isDownPumping = (dischargeDir === 'down');
-
-        // ── 輻流成分（Radial）: インペラ中心 y_imp 基準の上下対称ドーナツ渦 ──
-        // 輻流の上下ドーナツ渦構造は up/down-pumping で共通。
-        // 渦中心Yオフセットはインペラ径 d の 1/2 を固定値として使用。
-        let vx_rad = 0, vy_rad = 0;
-        {
-            const vortexYOffset = d_px_imp * 0.5 * ryScale;
+        if (isRadial) {
+            const h_upper = y_imp - y_upper_bound;
+            const h_lower = y_lower_bound - y_imp;
+            const vortexOffset = (D_px / 4) * rxScale;
+            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
             const vy_c = inUpper
-                ? (y_imp - vortexYOffset)
-                : (y_imp + vortexYOffset);
-            const rx_v = x - vx_c_shared, ry_v = y - vy_c;
+                ? (y_upper_bound + (h_upper / 2) * ryScale)
+                : (y_imp + (h_lower / 2) * ryScale);
+            const rx_v = x - vx_c;
+            const ry_v = y - vy_c;
             const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-            // ベル型減衰 + ハードカットオフ: 渦の影響半径を槽半径の60%に制限
-            const cutoff_rad = D_px * 0.30;
-            const sigma_rad = D_px * 0.20;
-            const cf = dist > cutoff_rad ? 0
-                : (dist / sigma_rad) * Math.exp(-0.5 * (dist / sigma_rad) * (dist / sigma_rad));
+
             if (inUpper) {
-                vx_rad = inLeft ? (-ry_v / dist) : (ry_v / dist);
-                vy_rad = inLeft ? (rx_v / dist) : (-rx_v / dist);
+                vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
+                vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
             } else {
-                vx_rad = inLeft ? (ry_v / dist) : (-ry_v / dist);
-                vy_rad = inLeft ? (-rx_v / dist) : (rx_v / dist);
+                vx_dir = inLeft ? (ry_v / dist) : (-ry_v / dist);
+                vy_dir = inLeft ? (-rx_v / dist) : (rx_v / dist);
             }
-            vx_rad *= wallFactor * cf;
-            vy_rad *= wallFactor * cf;
-        }
 
-        // ── 軸流成分（Axial）: インペラ中心 y_imp 基準の大循環ループ ──
-        // up-pumping  （pitched-paddle）    : 上昇→液面→壁沿い下降→底→中心(下から吸込)
-        // down-pumping（propeller/faudler） : 下降→底→壁沿い上昇→液面→中心(上から吸込)
-        // axialSign のみで大循環の向きを制御し、輻流ドーナツ渦には影響させない。
-        let vx_axl = 0, vy_axl = 0;
-        {
-            const vy_c = y_imp;
-            const rx_v = x - vx_c_shared, ry_v = y - vy_c;
+            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
+            const wallThresh = D_px * 0.04;
+            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
+            const centerThresh = D_px * 0.035;
+            const centerFactor = Math.min(1.0, dist / centerThresh);
+
+            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
+            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
+        } else {
+            const b_px = (config.b || 0) * scale;
+            // Align loop center with the impeller center, incorporating blade width and random particle dispersion
+            const vy_c = y_imp + (ryScale - 1.0) * b_px;
+            const vortexOffset = (D_px / 4) * rxScale;
+            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
+            const rx_v = x - vx_c;
+            const ry_v = y - vy_c;
             const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-            const cutoff_axl = D_px * 0.35;
-            const sigma_axl = D_px * 0.25;
-            const cf = dist > cutoff_axl ? 0
-                : (dist / sigma_axl) * Math.exp(-0.5 * (dist / sigma_axl) * (dist / sigma_axl));
-            const axialSign = isDownPumping ? 1.0 : -1.0;
-            vx_axl = (inLeft ? (-ry_v / dist) : (ry_v / dist)) * wallFactor * cf * axialSign;
-            vy_axl = (inLeft ? (rx_v / dist) : (-rx_v / dist)) * wallFactor * cf * axialSign;
+
+            vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
+            vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
+
+            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
+            const wallThresh = D_px * 0.04;
+            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
+            const centerThresh = D_px * 0.05;
+            const centerFactor = Math.min(1.0, dist / centerThresh);
+
+            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
+            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
         }
 
-        // ── 斜流成分（Oblique）: 軸流と輻流の中間（単純平均） ──
-        const vx_obl = (vx_axl + vx_rad) * 0.5;
-        const vy_obl = (vy_axl + vy_rad) * 0.5;
-
-        // ── ブレンド合成 ──
-        const vx_dir = wA * vx_axl + wO * vx_obl + wR * vx_rad;
-        const vy_dir = wA * vy_axl + wO * vy_obl + wR * vy_rad;
-
-        totalVx += vx_dir * speedMagnitude * weight;
-        totalVy += vy_dir * speedMagnitude * weight;
         totalWeight += weight;
     }
 
@@ -5996,26 +6257,13 @@ function initParticleSimulation() {
             px = Math.max(lx + 2, Math.min(rx - 2, px));
             py = Math.max(y_liquid + 2, Math.min(getVesselBottomY(px, coords) - 1, py));
         } else if (mode === 'suspended') {
-            const isFloating = (config.rho_S ?? 2500) < (config.rho ?? 998);
             px = lx + Math.random() * D_px;
             const availableDepth = Math.max(4, getVesselBottomY(px, coords) - y_liquid - 4);
             const surfaceBand = Math.min(30, Math.max(8, Math.min(Math.floor(b_px || 8), availableDepth)));
-            if (isFloating) {
-                // start at bottom to see them float up
-                py = getVesselBottomY(px, coords) - 2 - Math.random() * surfaceBand;
-            } else {
-                // start at surface to see them settle
-                py = y_liquid + 2 + Math.random() * surfaceBand;
-            }
+            py = y_liquid + 2 + Math.random() * surfaceBand;
         } else if (mode === 'settled') {
-            const isFloating = (config.rho_S ?? 2500) < (config.rho ?? 998);
             px = lx + Math.random() * D_px;
-            if (isFloating) {
-                // naturally settled state for light particles is at the surface
-                py = y_liquid + 2 + Math.random() * 8;
-            } else {
-                py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
-            }
+            py = getVesselBottomY(px, coords) - 2 - Math.random() * 8;
         } else {
             px = lx + Math.random() * D_px;
             const top = y_liquid + 2;
@@ -6395,13 +6643,10 @@ function drawParticleSimulation() {
                 p.color = '#38bdf8';
             } else {
                 p.vy = -Math.abs(p.vy) * 0.05;
-                // 下降流(down-pumping): 軸から底へ降りてきた流れは底で外側(壁方向)へスイープ
-                // 上昇流(up-pumping)  : 壁から底へ降りてきた流れは底で内側(軸方向)へスイープ
-                const _isDownAtBottom = { 'propeller': true, 'faudler': true, 'pitched-paddle': true, 'flat-paddle': false, 'flat-turbine': false };
-                const _downPump = _isDownAtBottom[config.impellerType] ?? true;
-                const sweepDir = _downPump
-                    ? (p.x < cx ? 0.8 : -0.8)   // 外側へ
-                    : (p.x < cx ? -0.8 : 0.8);  // 内側へ
+                // 底面掃き: 小さな水平力（回転数比例）でインペラ流れ方向に粒子を動かす
+                const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
+                    ? (p.x < cx ? -0.8 : 0.8)  // 軸流: 外向き
+                    : (p.x < cx ? 0.8 : -0.8); // 半径流: 内向き
                 p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
                 p.color = '#b45309';
             }
@@ -7047,9 +7292,9 @@ function updateSettingsListTab() {
         });
     }
 
-    function renderCol(items) {
-        if (!items || items.length === 0) return '<td style="padding:0;width:50%;vertical-align:top;"></td>';
-        return `<td style="padding:0;width:50%;vertical-align:top;">
+    function renderCol(items, extraStyle = '') {
+        if (!items || items.length === 0) return `<td style="padding:0;width:50%;vertical-align:top;${extraStyle}"></td>`;
+        return `<td style="padding:0;width:50%;vertical-align:top;${extraStyle}">
             <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
                 <tbody>
                     ${items.map(item => {
@@ -7072,16 +7317,18 @@ function updateSettingsListTab() {
     let html = '';
     for (const group of groups) {
         const [col1, col2] = group.cols;
+        const hasCol2 = col2 && col2.length > 0;
         html += `
             <div style="background:var(--bg-tertiary);border:1px solid var(--card-border);border-radius:var(--border-radius-md);padding:14px;grid-column:span 2;">
                 <h4 style="font-size:0.88rem;color:${group.color};margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:6px;font-weight:700;">${group.name}</h4>
                 <table style="width:100%;border-collapse:collapse;">
                     <tbody>
                         <tr style="vertical-align:top;">
-                            ${renderCol(col1)}
-                            <td style="width:1px;background:rgba(255,255,255,0.08);padding:0;"></td>
-                            <td style="width:14px;"></td>
-                            ${renderCol(col2)}
+                            ${renderCol(col1, hasCol2 ? 'padding-right:20px;' : '')}
+                            ${hasCol2 ? `
+                                <td style="width:1px;background:rgba(255,255,255,0.1);padding:0;"></td>
+                                ${renderCol(col2, 'padding-left:20px;')}
+                            ` : `<td style="width:50%;"></td>`}
                         </tr>
                     </tbody>
                 </table>
@@ -7725,12 +7972,10 @@ function drawParticleSimulation() {
             } else {
                 // Rolling/bouncing at bottom
                 p.vy = -Math.abs(p.vy) * 0.05;
-                // 底面掃き: 下降流は外側(壁方向)へ、上昇流は内側(軸方向)へ
-                const _isDownAtBottom2 = { 'propeller': true, 'faudler': true, 'pitched-paddle': true, 'flat-paddle': false, 'flat-turbine': false };
-                const _downPump2 = _isDownAtBottom2[config.impellerType] ?? true;
-                const sweepDir = _downPump2
-                    ? (p.x < cx ? 0.8 : -0.8)   // 外側へ
-                    : (p.x < cx ? -0.8 : 0.8);  // 内側へ
+                // 底面掃き: 小さな水平力（回転数比例）でインペラ流れ方向に粒子を動かす
+                const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
+                    ? (p.x < cx ? -0.8 : 0.8)  // 軸流: 外向き
+                    : (p.x < cx ? 0.8 : -0.8); // 半径流: 内向き
                 p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
                 p.color = '#b45309'; // rolling: medium gold
             }
