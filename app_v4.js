@@ -52,15 +52,15 @@ let config = {
     coilPitch: 0.025,
     coilCenterDia: null,
     coilK: 16.3,
-    mediaType: 'water',
-    mediaTempIn: 80,
-    mediaFlow: 0.05,
-    mediaRho: 1000,
-    mediaMu: 0.001,
-    mediaCp: 4184,
-    mediaK: 0.60,
+    mediaTypeJ: 'water',
+    mediaTempInJ: 80,
+    mediaFlowJ: 0.05,
+    mediaTypeC: 'water',
+    mediaTempInC: 80,
+    mediaFlowC: 0.05,
     mediaViscCorr: 1.0,
-    foulingFactor: 0.0001
+    foulingHsL: 5000,
+    foulingHsM: 10000
 };
 
 // Heat Simulation State variables
@@ -79,7 +79,8 @@ let thermalOffscreenCanvas = null;
 let heatChartData = {
     times: [],
     liquidTemp: [],
-    mediaTempOut: []
+    mediaTempOutJ: [],
+    mediaTempOutC: []
 };
 
 // Rheology model state (loaded from viscometer CSV)
@@ -122,7 +123,7 @@ const DEFAULT_SCALE_PRESETS = [
             coilPitch: 0.015, coilCenterDia: null, coilK: 16.3,
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.01,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
-            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            mediaViscCorr: 1.0, foulingHsL: 5000, foulingHsM: 10000,
             dp_um: 100, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
@@ -146,7 +147,7 @@ const DEFAULT_SCALE_PRESETS = [
             coilPitch: 0.025, coilCenterDia: null, coilK: 16.3,
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.05,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
-            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            mediaViscCorr: 1.0, foulingHsL: 5000, foulingHsM: 10000,
             dp_um: 150, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
@@ -170,7 +171,7 @@ const DEFAULT_SCALE_PRESETS = [
             coilPitch: 0.048, coilCenterDia: null, coilK: 16.3,
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.20,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
-            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            mediaViscCorr: 1.0, foulingHsL: 5000, foulingHsM: 10000,
             dp_um: 150, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
@@ -194,7 +195,7 @@ const DEFAULT_SCALE_PRESETS = [
             coilPitch: 0.095, coilCenterDia: null, coilK: 16.3,
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 0.80,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
-            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            mediaViscCorr: 1.0, foulingHsL: 5000, foulingHsM: 10000,
             dp_um: 200, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
@@ -218,7 +219,7 @@ const DEFAULT_SCALE_PRESETS = [
             coilPitch: 0.200, coilCenterDia: null, coilK: 16.3,
             mediaType: 'water', mediaTempIn: 80, mediaFlow: 3.0,
             mediaRho: 1000, mediaMu: 0.001, mediaCp: 4184, mediaK: 0.60,
-            mediaViscCorr: 1.0, foulingFactor: 0.0001,
+            mediaViscCorr: 1.0, foulingHsL: 5000, foulingHsM: 10000,
             dp_um: 250, rho_S: 2500, solidCp: 800, solidK: 1.0, solidLiquidActive: true,
             solidConcMode: 'wt-ratio', solidConcVal: 1.0,
             sFactorMode: 'auto', sFactorCustom: 5.0,
@@ -436,15 +437,15 @@ function initInputs() {
     // パネル表示切替
     const coilPanel = document.getElementById('coil-params');
     if (coilPanel) coilPanel.style.display = config.coilActive ? 'flex' : 'none';
-    document.getElementById('media-type').value = config.mediaType ?? 'water';
-    document.getElementById('media-temp-in').value = config.mediaTempIn ?? 80;
-    document.getElementById('media-flow').value = config.mediaFlow ?? 0.05;
-    document.getElementById('media-rho').value = config.mediaRho ?? 1000;
-    document.getElementById('media-mu').value = config.mediaMu ?? 0.001;
-    document.getElementById('media-cp').value = config.mediaCp ?? 4184;
-    document.getElementById('media-k').value = config.mediaK ?? 0.60;
+    document.getElementById('media-type-j').value = config.mediaTypeJ ?? 'water';
+    document.getElementById('media-temp-in-j').value = config.mediaTempInJ ?? 80;
+    document.getElementById('media-flow-j').value = config.mediaFlowJ ?? 0.05;
+    document.getElementById('media-type-c').value = config.mediaTypeC ?? 'water';
+    document.getElementById('media-temp-in-c').value = config.mediaTempInC ?? 80;
+    document.getElementById('media-flow-c').value = config.mediaFlowC ?? 0.05;
     document.getElementById('media-visc-corr').value = config.mediaViscCorr ?? 1.0;
-    document.getElementById('fouling-factor').value = config.foulingFactor ?? 0.0001;
+    document.getElementById('fouling-hs-l').value = config.foulingHsL ?? 5000;
+    document.getElementById('fouling-hs-m').value = config.foulingHsM ?? 10000;
 
     updateSolidConcLabel();
     toggleSFactorCustom();
@@ -869,18 +870,20 @@ function initEventListeners() {
     const heatInputs = [
         'liquid-temp-init', 'liquid-cp', 'liquid-k',
         'wall-thickness', 'wall-k', 'jacket-type', 'jacket-gap',
-        'media-type', 'media-temp-in', 'media-flow', 'media-rho',
-        'media-mu', 'media-cp', 'media-k', 'media-visc-corr', 'fouling-factor'
+        'media-type-j', 'media-temp-in-j', 'media-flow-j',
+        'media-type-c', 'media-temp-in-c', 'media-flow-c',
+        'media-visc-corr', 'fouling-hs-l', 'fouling-hs-m'
     ];
     const getHeatPropName = (id) => {
-        if (id === 'media-temp-in') return 'mediaTempIn';
         if (id === 'media-visc-corr') return 'mediaViscCorr';
+        if (id === 'fouling-hs-l') return 'foulingHsL';
+        if (id === 'fouling-hs-m') return 'foulingHsM';
         return id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
     };
     heatInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.addEventListener('input', (e) => {
+            const handler = (e) => {
                 let val = e.target.value;
                 if (e.target.type === 'number') {
                     val = parseFloat(val) || 0;
@@ -890,12 +893,14 @@ function initEventListeners() {
                 if (id === 'jacket-type') {
                     toggleJacketGapInput();
                 }
-                if (id === 'media-type') {
+                if (id.startsWith('media-type')) {
                     toggleMediaTypeInputs();
                 }
 
                 recalculateAll();
-            });
+            };
+            el.addEventListener('input', handler);
+            el.addEventListener('change', handler);
         }
     });
 
@@ -1188,19 +1193,29 @@ function toggleJacketGapInput() {
 }
 
 function toggleMediaTypeInputs() {
-    const type = config.mediaType || 'water';
-    const isWater = type === 'water';
-    const fields = [
-        'media-flow', 'media-rho', 'media-mu', 'media-cp', 'media-k', 'media-visc-corr'
-    ];
-    fields.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.disabled = !isWater;
-            el.style.opacity = isWater ? '1.0' : '0.4';
+    // ジャケット側
+    const typeJ = config.mediaTypeJ || 'water';
+    const labelJ = document.querySelector('label[for="media-temp-in-j"]');
+    if (labelJ) {
+        if (typeJ === 'steam') {
+            labelJ.innerHTML = 'スチームの凝縮温度 T*<sub>j</sub> (°C)';
+        } else {
+            labelJ.innerHTML = '入口温度 T<sub>in,j</sub> (°C)';
         }
-    });
+    }
+
+    // コイル側
+    const typeC = config.mediaTypeC || 'water';
+    const labelC = document.querySelector('label[for="media-temp-in-c"]');
+    if (labelC) {
+        if (typeC === 'steam') {
+            labelC.innerHTML = 'スチームの凝縮温度 T*<sub>c</sub> (°C)';
+        } else {
+            labelC.innerHTML = '入口温度 T<sub>in,c</sub> (°C)';
+        }
+    }
 }
+
 
 // Show feedback message
 function showToast(message, type = 'info') {
@@ -3156,7 +3171,8 @@ function loadSampleData() {
     config.mediaCp = 4184;
     config.mediaK = 0.60;
     config.mediaViscCorr = 1.0;
-    config.foulingFactor = 0.0001;
+    config.foulingHsL = 5000;
+    config.foulingHsM = 10000;
 
     initInputs();
 
@@ -3971,13 +3987,20 @@ function generatePDFReport() {
         ? '渦巻ジャケット（接線流）'
         : (config.jacketType === 'flat-tangential' ? '平板ジャケット（接線流）' : '平板ジャケット（半径流）');
     document.getElementById('pdf-val-coil-active').textContent = config.coilActive ? 'あり' : 'なし';
-    document.getElementById('pdf-val-media-type').textContent = config.mediaType === 'steam' ? 'スチーム' : '水';
-    document.getElementById('pdf-val-media-temp-in').textContent = config.mediaTempIn.toFixed(1);
-    document.getElementById('pdf-val-media-flow').textContent = config.mediaFlow.toFixed(3);
-    document.getElementById('pdf-val-heat-h1').textContent = effH1.toFixed(1);
-    document.getElementById('pdf-val-heat-h2').textContent = effH2.toFixed(1);
-    document.getElementById('pdf-val-heat-u').textContent = effU.toFixed(1);
-    document.getElementById('pdf-val-heat-area').textContent = totalArea.toFixed(4);
+    document.getElementById('pdf-val-media-type').textContent = 
+        `J: ${config.mediaTypeJ === 'steam' ? 'スチーム' : '水'} / C: ${config.mediaTypeC === 'steam' ? 'スチーム' : '水'}`;
+    document.getElementById('pdf-val-media-temp-in').textContent = 
+        `J: ${config.mediaTempInJ.toFixed(1)} / C: ${config.mediaTempInC.toFixed(1)}`;
+    document.getElementById('pdf-val-media-flow').textContent = 
+        `J: ${config.mediaFlowJ.toFixed(3)} / C: ${config.mediaFlowC.toFixed(3)}`;
+    document.getElementById('pdf-val-heat-h1').textContent = 
+        `J: ${heatRes.h1_j.toFixed(1)} / C: ${config.coilActive ? heatRes.h1_c.toFixed(1) : '-'}`;
+    document.getElementById('pdf-val-heat-h2').textContent = 
+        `J: ${heatRes.h2_j.toFixed(1)} / C: ${config.coilActive ? heatRes.h2_c.toFixed(1) : '-'}`;
+    document.getElementById('pdf-val-heat-u').textContent = 
+        `J: ${heatRes.U_j.toFixed(1)} / C: ${config.coilActive ? heatRes.U_c.toFixed(1) : '-'}`;
+    document.getElementById('pdf-val-heat-area').textContent = 
+        `J: ${heatRes.Aj.toFixed(4)} / C: ${config.coilActive ? heatRes.Ac.toFixed(4) : '-'} (Total: ${totalArea.toFixed(4)})`;
 
     // Solid-Liquid data mapping for PDF
     const slSection = document.getElementById('pdf-solid-liquid-section');
@@ -6636,11 +6659,13 @@ function updateSettingsListTab() {
     const container = document.getElementById('settings-list-container');
     if (!container) return;
 
+    // --- 伝熱パラメータの取得 ---
+    const heatRes = calculateHeatTransfer();
+
     // --- レオロジーパラメータの取得 ---
     const rheoModel = (typeof rheologyData !== 'undefined') ? rheologyData.activeModel : 'newtonian';
     const MODEL_LABELS = { newtonian:'Newtonian（ニュートン）', powerlaw:'Power-Law（べき乗則）', bingham:'Bingham（ビンガム）', casson:'Casson（キャッソン）', hb:'Herschel-Bulkley（HB）', cross:'Cross（クロス）', carreau:'Carreau（カロー）' };
     const rheoModelLabel = MODEL_LABELS[rheoModel] || rheoModel;
-    const rheoSample = (typeof rheologyData !== 'undefined') ? (rheologyData.activeSample || '手動入力') : '--';
     const rheoKs = document.getElementById('ks-input') ? document.getElementById('ks-input').value : ((typeof rheologyData !== 'undefined') ? rheologyData.ks : 11.5);
     const rheoAlpha = document.getElementById('decay-alpha-input') ? document.getElementById('decay-alpha-input').value : ((typeof rheologyData !== 'undefined') ? (rheologyData.decayAlpha || 2.0) : 2.0);
     const rheoMuLimit = document.getElementById('mu-limit-factor-input') ? document.getElementById('mu-limit-factor-input').value : ((typeof rheologyData !== 'undefined') ? (rheologyData.muLimitFactor || 20) : 20);
@@ -6706,11 +6731,7 @@ function updateSettingsListTab() {
                     { label: '槽壁熱伝導度 k_w', val: config.wallK, unit: 'W/(m·K)' },
                     { label: '底面形状', val: config.headType, unit: '' }
                 ],
-                [
-                    { label: 'ジャケット伝熱面積 A_j', val: '液面積に準ずる', unit: '' },
-                    { label: 'コイルあり/なし', val: config.coilActive ? 'あり' : 'なし', unit: '' },
-                    { label: 'コイル管の肉厚 t_c', val: config.coilActive ? (((config.coilOuterDia - config.coilInnerDia) / 2 * 1000).toFixed(1)) : '--', unit: 'mm' }
-                ]
+                []
             ]
         },
         {
@@ -6720,8 +6741,7 @@ function updateSettingsListTab() {
                 [
                     { label: '攪拌翼', val: config.impellerType, unit: '' },
                     { label: '攪拌速度 n', val: config.simSpeed, unit: 'rpm' },
-                    { label: '形態板', val: config.baffleActive ? 'あり' : 'なし', unit: '' },
-                    { label: '攪拌液', val: '水', unit: '' }
+                    { label: '形態板', val: config.baffleActive ? 'あり' : 'なし', unit: '' }
                 ],
                 [
                     { label: '攪拌液の密度 ρ', val: config.rho, unit: 'kg/m³' },
@@ -6735,23 +6755,45 @@ function updateSettingsListTab() {
             name: '■ ジャケット',
             color: '#f87171',
             cols: [
-                [
+                config.mediaTypeJ === 'steam' ? [
                     { label: '攪拌液の初期温度 T_0', val: config.liquidTempInit, unit: '°C' },
-                    { label: '攪拌液の最終温度 T_f', val: '--', unit: '°C' },
-                    { label: '伝熱媒体', val: config.mediaType === 'steam' ? '飽和スチーム' : '水（温水/冷水）', unit: '' },
-                    { label: '熱媒体密度 ρ_s', val: config.mediaRho, unit: 'kg/m³' },
-                    { label: '熱媒体の凝縮温度 T*', val: config.mediaTempIn, unit: '°C' },
-                    { label: 'スチーム凝縮水の流量 W_a', val: config.mediaFlow, unit: 'kg/s' },
-                    { label: 'スチーム凝縮水の密度 ρ_a', val: config.mediaRho, unit: 'kg/m³' },
-                    { label: 'スチーム凝縮水の粘度 μ_a', val: config.mediaMu, unit: 'Pa·s' }
+                    { label: '伝熱媒体', val: '飽和スチーム', unit: '' },
+                    { label: 'スチームの凝縮温度 T*', val: config.mediaTempInJ, unit: '°C' },
+                    { label: 'スチーム流量 W_j', val: config.mediaFlowJ, unit: 'kg/s' },
+                    { label: 'ジャケット伝熱面積 A_j', val: heatRes.Aj.toFixed(4), unit: 'm²' }
+                ] : [
+                    { label: '攪拌液の初期温度 T_0', val: config.liquidTempInit, unit: '°C' },
+                    { label: '伝熱媒体', val: '水（温水/冷水）', unit: '' },
+                    { label: '伝熱媒体の入口温度 T_in', val: config.mediaTempInJ, unit: '°C' },
+                    { label: '伝熱媒体の出口温度 T_out', val: heatRes.T_out_j.toFixed(1), unit: '°C' },
+                    { label: '伝熱媒体の流量 W_j', val: config.mediaFlowJ, unit: 'kg/s' },
+                    { label: 'ジャケット伝熱面積 A_j', val: heatRes.Aj.toFixed(4), unit: 'm²' }
                 ],
-                [
-                    { label: 'スチーム凝縮水の比熱容量 Cp_s', val: config.mediaCp, unit: 'J/(kg·K)' },
-                    { label: 'スチーム凝縮水の熱伝導度 k_s', val: config.mediaK, unit: 'W/(m·K)' },
+                config.mediaTypeJ === 'steam' ? [
+                    { label: '飽和蒸気密度 ρ_v', val: heatRes.rho_j.toFixed(3), unit: 'kg/m³' },
+                    { label: '飽和蒸気粘度 μ_v', val: heatRes.mu_j.toExponential(3), unit: 'Pa·s' },
+                    { label: '飽和蒸気比熱 Cp_v', val: heatRes.Cp_j.toFixed(0), unit: 'J/(kg·K)' },
+                    { label: '飽和蒸気熱伝導度 k_v', val: heatRes.k_j.toFixed(4), unit: 'W/(m·K)' },
+                    { label: '凝縮水の密度 ρ_cl', val: (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInJ).rho).toFixed(1), unit: 'kg/m³' },
+                    { label: '凝縮水の粘度 μ_cl', val: (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInJ).mu).toExponential(3), unit: 'Pa·s' },
+                    { label: '凝縮水の熱伝導度 k_cl', val: (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInJ).k).toFixed(3), unit: 'W/(m·K)' },
                     { label: '壁の熱伝導度 h_w', val: config.wallK, unit: 'W/(m·K)' },
-                    { label: '伝熱媒体側の汚れ係数 h_di', val: '10000', unit: 'W/(m²·K)' },
-                    { label: '攪拌液側の汚れ係数 h_do', val: '5000', unit: 'W/(m²·K)' },
-                    { label: '粘度補正項 μ/μ_w', val: config.mediaViscCorr, unit: '' },
+                    { label: '伝熱媒体側 汚れ係数 hs_M', val: (config.foulingHsM ?? 10000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '攪拌液側 汚れ係数 hs_L', val: (config.foulingHsL ?? 5000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: 1, unit: '' },
+                    { label: '粘度補正項 μ/μ_w（伝熱媒体側）', val: config.mediaViscCorr, unit: '' },
+                    { label: '重力加速度 g', val: config.g ?? 9.806, unit: 'm/s²' }
+                ] : [
+                    { label: '伝熱媒体の平均温度 T_avg', val: ((config.mediaTempInJ + heatRes.T_out_j) / 2).toFixed(1), unit: '°C' },
+                    { label: '伝熱媒体の密度 ρ_j', val: heatRes.rho_j.toFixed(1), unit: 'kg/m³' },
+                    { label: '伝熱媒体の比熱容量 Cp_j', val: heatRes.Cp_j.toFixed(0), unit: 'J/(kg·K)' },
+                    { label: '伝熱媒体の粘度 μ_j', val: heatRes.mu_j.toExponential(3), unit: 'Pa·s' },
+                    { label: '伝熱媒体の熱伝導度 k_j', val: heatRes.k_j.toFixed(3), unit: 'W/(m·K)' },
+                    { label: '壁の熱伝導度 h_w', val: config.wallK, unit: 'W/(m·K)' },
+                    { label: '伝熱媒体側 汚れ係数 hs_M', val: (config.foulingHsM ?? 10000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '攪拌液側 汚れ係数 hs_L', val: (config.foulingHsL ?? 5000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: 1, unit: '' },
+                    { label: '粘度補正項 μ/μ_w（伝熱媒体側）', val: config.mediaViscCorr, unit: '' },
                     { label: '重力加速度 g', val: config.g ?? 9.806, unit: 'm/s²' }
                 ]
             ]
@@ -6760,29 +6802,56 @@ function updateSettingsListTab() {
             name: '■ コイル',
             color: '#34d399',
             cols: [
-                [
+                config.mediaTypeC === 'steam' ? [
                     { label: 'コイルあり/なし', val: config.coilActive ? 'あり' : 'なし', unit: '' },
-                    { label: '攪拌液の初期温度 T_0', val: config.liquidTempInit, unit: '°C' },
-                    { label: '攪拌液の最終温度 T_f', val: '--', unit: '°C' },
-                    { label: '伝熱媒体', val: '冷却水', unit: '' },
-                    { label: '伝熱媒体の入口温度 T_in', val: config.mediaTempIn, unit: '°C' },
-                    { label: '伝熱媒体の平均温度上昇 ΔT_c', val: '--', unit: 'K' },
-                    { label: '伝熱媒体の密度 ρ_c', val: config.mediaRho, unit: 'kg/m³' },
-                    { label: '伝熱媒体の粘度 μ_c', val: config.mediaMu, unit: 'Pa·s' },
-                    { label: '伝熱媒体の比熱容量 Cp_c', val: config.mediaCp, unit: 'J/(kg·K)' }
+                    { label: '伝熱媒体', val: '飽和スチーム', unit: '' },
+                    { label: 'スチームの凝縮温度 T*', val: config.mediaTempInC, unit: '°C' },
+                    { label: 'スチーム流量 W_c', val: config.mediaFlowC, unit: 'kg/s' },
+                    { label: 'コイル伝熱面積 A_co', val: config.coilActive ? heatRes.Ac.toFixed(4) : '--', unit: 'm²' }
+                ] : [
+                    { label: 'コイルあり/なし', val: config.coilActive ? 'あり' : 'なし', unit: '' },
+                    { label: '伝熱媒体', val: '水（温水/冷水）', unit: '' },
+                    { label: '伝熱媒体の入口温度 T_in', val: config.mediaTempInC, unit: '°C' },
+                    { label: '伝熱媒体の出口温度 T_out', val: config.coilActive ? heatRes.T_out_c.toFixed(1) : '--', unit: '°C' },
+                    { label: '伝熱媒体の流量 W_c', val: config.mediaFlowC, unit: 'kg/s' },
+                    { label: 'コイル伝熱面積 A_co', val: config.coilActive ? heatRes.Ac.toFixed(4) : '--', unit: 'm²' }
                 ],
-                [
+                config.mediaTypeC === 'steam' ? [
+                    { label: '飽和蒸気密度 ρ_v', val: config.coilActive ? heatRes.rho_c.toFixed(3) : '--', unit: 'kg/m³' },
+                    { label: '飽和蒸気粘度 μ_v', val: config.coilActive ? heatRes.mu_c.toExponential(3) : '--', unit: 'Pa·s' },
+                    { label: '飽和蒸気比熱 Cp_v', val: config.coilActive ? heatRes.Cp_c.toFixed(0) : '--', unit: 'J/(kg·K)' },
+                    { label: '飽和蒸気熱伝導度 k_v', val: config.coilActive ? heatRes.k_c.toFixed(4) : '--', unit: 'W/(m·K)' },
+                    { label: '凝縮水の密度 ρ_cl', val: config.coilActive ? (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInC).rho).toFixed(1) : '--', unit: 'kg/m³' },
+                    { label: '凝縮水の粘度 μ_cl', val: config.coilActive ? (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInC).mu).toExponential(3) : '--', unit: 'Pa·s' },
+                    { label: '凝縮水の熱伝導度 k_cl', val: config.coilActive ? (interpolateProperties(WATER_PROP_TABLE, config.mediaTempInC).k).toFixed(3) : '--', unit: 'W/(m·K)' },
+                    { label: 'コイル管の肉厚 t_c', val: config.coilActive ? (((config.coilOuterDia - config.coilInnerDia) / 2 * 1000).toFixed(1)) : '--', unit: 'mm' },
                     { label: 'コイル外径 d_co', val: config.coilActive ? config.coilOuterDia : '--', unit: 'm' },
                     { label: 'コイル内径 d_ci', val: config.coilActive ? config.coilInnerDia : '--', unit: 'm' },
                     { label: 'コイルピッチ p_c', val: config.coilActive ? config.coilPitch : '--', unit: 'm' },
                     { label: 'コイル中心径 D_c', val: config.coilActive ? (config.coilCenterDia ? config.coilCenterDia : '槽径×0.7') : '--', unit: config.coilActive && config.coilCenterDia ? 'm' : '' },
                     { label: 'コイル熱伝導度 k_c', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
-                    { label: '伝熱媒体の熱伝導度 k_c', val: config.mediaK, unit: 'W/(m·K)' },
-                    { label: '伝熱媒体の流速 u_c', val: '1.0', unit: 'm/s' },
                     { label: 'コイル管壁の熱伝導度 k_cw', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
-                    { label: '攪拌液側の汚れ係数 h_di', val: '5000', unit: 'W/(m²·K)' },
-                    { label: '伝熱媒体側の汚れ係数 h_do', val: '5000', unit: 'W/(m²·K)' },
-                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: '0.8', unit: '' },
+                    { label: '攪拌液側 汚れ係数 hs_L', val: (config.foulingHsL ?? 5000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '伝熱媒体側 汚れ係数 hs_M', val: (config.foulingHsM ?? 10000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: 1, unit: '' },
+                    { label: '粘度補正項 μ/μ_w（伝熱媒体側）', val: config.mediaViscCorr, unit: '' }
+                ] : [
+                    { label: '伝熱媒体の平均温度 T_avg', val: config.coilActive ? ((config.mediaTempInC + heatRes.T_out_c) / 2).toFixed(1) : '--', unit: '°C' },
+                    { label: '伝熱媒体の密度 ρ_c', val: config.coilActive ? heatRes.rho_c.toFixed(1) : '--', unit: 'kg/m³' },
+                    { label: '伝熱媒体の比熱容量 Cp_c', val: config.coilActive ? heatRes.Cp_c.toFixed(0) : '--', unit: 'J/(kg·K)' },
+                    { label: '伝熱媒体の粘度 μ_c', val: config.coilActive ? heatRes.mu_c.toExponential(3) : '--', unit: 'Pa·s' },
+                    { label: '伝熱媒体の熱伝導度 k_c', val: config.coilActive ? heatRes.k_c.toFixed(3) : '--', unit: 'W/(m·K)' },
+                    { label: 'コイル管の肉厚 t_c', val: config.coilActive ? (((config.coilOuterDia - config.coilInnerDia) / 2 * 1000).toFixed(1)) : '--', unit: 'mm' },
+                    { label: 'コイル外径 d_co', val: config.coilActive ? config.coilOuterDia : '--', unit: 'm' },
+                    { label: 'コイル内径 d_ci', val: config.coilActive ? config.coilInnerDia : '--', unit: 'm' },
+                    { label: 'コイルピッチ p_c', val: config.coilActive ? config.coilPitch : '--', unit: 'm' },
+                    { label: 'コイル中心径 D_c', val: config.coilActive ? (config.coilCenterDia ? config.coilCenterDia : '槽径×0.7') : '--', unit: config.coilActive && config.coilCenterDia ? 'm' : '' },
+                    { label: 'コイル熱伝導度 k_c', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
+                    { label: '伝熱媒体の流速 u_c', val: config.coilActive ? heatRes.u_c.toFixed(2) : '--', unit: 'm/s' },
+                    { label: 'コイル管壁の熱伝導度 k_cw', val: config.coilActive ? config.coilK : '--', unit: 'W/(m·K)' },
+                    { label: '攪拌液側 汚れ係数 hs_L', val: (config.foulingHsL ?? 5000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '伝熱媒体側 汚れ係数 hs_M', val: (config.foulingHsM ?? 10000).toFixed(0), unit: 'W/(m²·K)' },
+                    { label: '粘度補正項 μ/μ_w（攪拌液側）', val: 1, unit: '' },
                     { label: '粘度補正項 μ/μ_w（伝熱媒体側）', val: config.mediaViscCorr, unit: '' }
                 ]
             ]
@@ -6793,7 +6862,6 @@ function updateSettingsListTab() {
             cols: [
                 [
                     { label: '流動モデル', val: rheoModelLabel, unit: '' },
-                    { label: 'サンプル名', val: rheoSample, unit: '' },
                     { label: 'Metzner-Otto定数 ks', val: rheoKs, unit: '-' },
                     { label: '減衰係数 α', val: rheoAlpha, unit: '-' },
                     { label: '流動限界粘度倍率', val: rheoMuLimit, unit: '-' }
@@ -6861,14 +6929,18 @@ function updateSettingsListTab() {
         return `<td style="padding:0;width:50%;vertical-align:top;">
             <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
                 <tbody>
-                    ${items.map(item => `
+                    ${items.map(item => {
+                        const isDyn = item.isDynamic !== false;
+                        const colorStyle = isDyn ? 'color: var(--accent-color);' : 'color: var(--text-primary);';
+                        return `
                         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
                             <td style="padding:5px 6px 5px 0;color:var(--text-secondary);width:62%;">${item.label}</td>
-                            <td style="padding:5px 0;text-align:right;font-family:monospace;font-weight:600;color:var(--text-primary);">
+                            <td style="padding:5px 0;text-align:right;font-family:monospace;font-weight:600;${colorStyle}">
                                 ${item.val !== undefined && item.val !== null ? item.val : '--'}&nbsp;<span style="color:var(--text-muted);font-size:0.68rem;font-weight:normal;">${item.unit}</span>
                             </td>
                         </tr>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </td>`;
@@ -7890,19 +7962,72 @@ function drawParticleSimulation() {
 // Heat Transfer Calculations & Simulation Tab Logic
 // ====================================================
 
+// 水の物性テーブル (0〜100℃)
+const WATER_PROP_TABLE = [
+    { T: 0,   rho: 999.9, Cp: 4217, k: 0.569, mu: 1.792e-3 },
+    { T: 10,  rho: 999.7, Cp: 4192, k: 0.587, mu: 1.307e-3 },
+    { T: 20,  rho: 998.2, Cp: 4182, k: 0.602, mu: 1.002e-3 },
+    { T: 30,  rho: 995.7, Cp: 4178, k: 0.618, mu: 0.797e-3 },
+    { T: 40,  rho: 992.3, Cp: 4178, k: 0.632, mu: 0.653e-3 },
+    { T: 50,  rho: 988.1, Cp: 4180, k: 0.642, mu: 0.547e-3 },
+    { T: 60,  rho: 983.2, Cp: 4184, k: 0.654, mu: 0.467e-3 },
+    { T: 70,  rho: 977.8, Cp: 4189, k: 0.664, mu: 0.404e-3 },
+    { T: 80,  rho: 971.8, Cp: 4196, k: 0.672, mu: 0.355e-3 },
+    { T: 90,  rho: 965.3, Cp: 4205, k: 0.678, mu: 0.315e-3 },
+    { T: 100, rho: 958.4, Cp: 4215, k: 0.682, mu: 0.282e-3 }
+];
+
+// 飽和水蒸気の物性テーブル (100〜260℃)
+const STEAM_PROP_TABLE = [
+    { T: 100, rho: 0.598, Cp: 2098, k: 0.0241, mu: 1.20e-5 },
+    { T: 120, rho: 1.121, Cp: 2181, k: 0.0259, mu: 1.28e-5 },
+    { T: 140, rho: 1.966, Cp: 2257, k: 0.0281, mu: 1.36e-5 },
+    { T: 160, rho: 3.258, Cp: 2416, k: 0.0305, mu: 1.44e-5 },
+    { T: 180, rho: 5.16,  Cp: 2592, k: 0.0330, mu: 1.52e-5 },
+    { T: 200, rho: 7.86,  Cp: 2788, k: 0.0361, mu: 1.60e-5 },
+    { T: 220, rho: 11.61, Cp: 3052, k: 0.0394, mu: 1.68e-5 },
+    { T: 240, rho: 16.75, Cp: 3412, k: 0.0435, mu: 1.76e-5 },
+    { T: 260, rho: 23.7,  Cp: 4082, k: 0.0483, mu: 1.84e-5 }
+];
+
+// 伝熱媒体の物性値を温度から線形補間する関数
+function interpolateProperties(table, T) {
+    if (T <= table[0].T) return { ...table[0] };
+    if (T >= table[table.length - 1].T) return { ...table[table.length - 1] };
+    
+    for (let i = 0; i < table.length - 1; i++) {
+        if (T >= table[i].T && T <= table[i+1].T) {
+            const t0 = table[i].T;
+            const t1 = table[i+1].T;
+            const ratio = (T - t0) / (t1 - t0);
+            
+            return {
+                T: T,
+                rho: table[i].rho + ratio * (table[i+1].rho - table[i].rho),
+                Cp: table[i].Cp + ratio * (table[i+1].Cp - table[i].Cp),
+                k: table[i].k + ratio * (table[i+1].k - table[i].k),
+                mu: table[i].mu + ratio * (table[i+1].mu - table[i].mu)
+            };
+        }
+    }
+    return { ...table[0] };
+}
+
 function calculateHeatTransfer() {
     // 槽径 D_T, 翼径 d, 液密度 rho, 代表粘度 mu_eff (非ニュートンでなければmu)
     const D_T = config.DT;
     const d = config.d;
     const H_geom = config.H;
-    // 固液有効物性値の取得 (固液系がONの場合は有効物性値、OFFの場合は純液体の物性値が返る)
+    // 固液有効物性値の取得
     const effProps = getEffectiveProperties();
     const rho_L = effProps.rho;
     const Cp_L = effProps.Cp;
     const k_L = effProps.k;
     const t_w = config.wallThickness || 0.003;
     const k_w = config.wallK || 16.3;
-    const r_d = config.foulingFactor || 0.0001;
+    const hs_L = config.foulingHsL ?? 5000;
+    const hs_M = config.foulingHsM ?? 10000;
+    const r_d = 1 / Math.max(1, hs_L) + 1 / Math.max(1, hs_M);
 
     // 代表粘度の取得
     const mu_L = (rheologyData.activeModel !== 'newtonian' && typeof getEffectiveViscosity === 'function')
@@ -7917,185 +8042,394 @@ function calculateHeatTransfer() {
     const Re = (rho_L * n * d * d) / Math.max(1e-6, mu_L);
     const Pr = (Cp_L * mu_L) / Math.max(1e-6, k_L);
 
-    // --- (1) 槽内液側境膜伝熱係数 h1 の計算 ---
-    let K_j = 0.36;
-    let K_c = 0.87;
-    let alpha_j = 2 / 3, alpha_c = 0.62;
-    let beta_j = 1 / 3, beta_c = 1 / 3;
-    let f_factor = 1.0;
+    // --- (1) 撹拌槽の幾何学的寸法（永田の式用） ---
+    const n_stages = getActiveStages();
+    const b = config.b;
+    const clearance_impeller = config.clearance;
+    
+    // 液深 H_liq
+    const H_liq = getLiquidHeight();
 
-    const isBaffled = config.baffleActive && config.nB > 0 && config.Bw > 0;
-    const type = config.impellerType;
+    // 翼最下段の物理高さ C_1 (鏡板最深部からインペラ中心まで)
+    const C1 = clearance_impeller + b / 2;
+    // 翼最上段の物理高さ C_top
+    const C_top = H_geom + b / 2; 
 
-    // ジャケット用定数
-    if (type === 'flat-turbine') {
-        K_j = isBaffled ? 0.74 : 0.54;
-    } else if (type === 'propeller') {
-        K_j = isBaffled ? 0.50 : 0.37;
-    } else { // パドル系
-        K_j = 0.36;
-    }
-
-    // コイル用定数
-    if (type === 'flat-turbine') {
-        K_c = 1.50; alpha_c = 2 / 3;
-    } else if (type === 'propeller') {
-        K_c = 0.83; alpha_c = 2 / 3;
+    // 各段の物理的高さ C_i の総和 sum_C
+    let sum_C = 0;
+    if (n_stages === 1) {
+        sum_C = C1;
     } else {
-        K_c = 0.87; alpha_c = 0.62;
+        const gap = (C_top - C1) / (n_stages - 1);
+        for (let i = 0; i < n_stages; i++) {
+            sum_C += C1 + i * gap;
+        }
     }
+    const sum_b = n_stages * b;
+    const np_val = config.np || 2;
+    const theta_rad = (config.theta || 90) * Math.PI / 180;
+    const sin_theta = Math.sin(theta_rad);
 
-    const Nu_Lj = K_j * Math.pow(Re, alpha_j) * Math.pow(Pr, beta_j) * f_factor;
-    const h1_j = (Nu_Lj * k_L) / D_T;
-
-    const Nu_Lc = K_c * Math.pow(Re, alpha_c) * Math.pow(Pr, beta_c) * f_factor;
-    const h1_c = (Nu_Lc * k_L) / D_T;
-
-    // --- (2) 伝熱面積の計算 ---
-    let h_dish = 0;
-    let A_dish = 0;
-    const R = D_T / 2;
-    const headType = config.headType;
-
-    if (headType === 'semi-elliptical') {
-        h_dish = R / 2; A_dish = 1.382 * Math.PI * R * R;
-    } else if (headType === 'dish') {
-        h_dish = 0.1935 * D_T; A_dish = 1.15 * Math.PI * R * R;
-    } else if (headType === 'hemispherical') {
-        h_dish = R; A_dish = 2.0 * Math.PI * R * R;
-    } else { // flat
-        h_dish = 0; A_dish = Math.PI * R * R;
-    }
-
-    const h_cyl = Math.max(0, H_geom - h_dish);
-    const A_cyl = Math.PI * D_T * h_cyl;
-    const Aj = A_cyl + A_dish;
-
+    // コイル幾何パラメータの計算
     const d_co = config.coilOuterDia ?? 0.010;
     const d_ci = config.coilInnerDia ?? 0.008;
     const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
     const D_c = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * D_T;
-    const clearance = config.clearance ?? 0;
-    const N_t = Math.max(1, Math.floor((H_geom - 2 * clearance) / p_c));
+    const clearance_coil = config.clearance ?? 0;
+    
+    // コイル巻き数 N_t (既存の描画ロジックと整合)
+    const R = D_T / 2;
+    let h_dish = 0;
+    const headType = config.headType;
+    if (headType === 'semi-elliptical') {
+        h_dish = R / 2;
+    } else if (headType === 'dish') {
+        h_dish = 0.1935 * D_T;
+    } else if (headType === 'hemispherical') {
+        h_dish = R;
+    }
+    // 物理的コイルSpan:
+    const coilSpan_phys = H_geom + h_dish - d_co/2 - clearance_coil - 0.02;
+    const N_t = Math.max(1, Math.floor(Math.max(0.01, coilSpan_phys) / p_c));
     const L_c = N_t * Math.PI * D_c;
     const Ac = config.coilActive ? (Math.PI * d_co * L_c) : 0;
 
-    // --- (3) 熱媒体側境膜伝熱係数 h2 の計算 ---
-    let h2_j = 0;
-    let h2_c = 0;
-    const isSteam = config.mediaType === 'steam';
-    const W_j = config.mediaFlow || 0.05;
-    const rho_j = config.mediaRho || 1000;
-    const mu_j = config.mediaMu || 0.001;
-    const Cp_j = config.mediaCp || 4184;
-    const k_j = config.mediaK || 0.60;
+    // コイル位置の自動判定
+    // インペラ最上段中心の鏡板接合部からの高さ
+    const C_top_straight = C_top - h_dish;
+    // コイル下端の鏡板接合部からの高さ
+    const H_coil_bottom = H_geom - clearance_coil - N_t * p_c;
+    // 判定
+    const isCoilUnderneath = C_top_straight < H_coil_bottom;
+
+    // --- (2) 槽内液側境膜伝熱係数 h1 の計算 (永田の式) ---
+    let h1_j = 0;
+    let h1_c = 0;
+
+    const isBaffled = config.baffleActive && config.nB > 0 && config.Bw > 0;
+    const isPropeller = config.impellerType === 'propeller' || config.impellerType === 'faudler';
+
+    // (A) ジャケット側
+    if (isPropeller) {
+        // プロペラのジャケット
+        const alpha = 0.33;
+        const beta1 = 2 / 3;
+        const beta2 = -0.25;
+        const beta3 = 0.15;
+        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 *
+                      Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
+        h1_j = (Nu_Lj * k_L) / D_T;
+    } else {
+        // パドル・傾斜パドル・タービンのジャケット
+        let alpha = 0.51;
+        let beta1 = 2 / 3;
+        let beta2 = -0.25;
+        let beta3 = 0.15;
+        let beta4 = 0.15;
+        let beta5 = 0.15;
+        let beta6 = 0.5;
+        let beta7 = 0;
+
+        if (isBaffled) {
+            alpha = 1.40;
+            beta2 = -0.3;
+            beta3 = 0.2;
+            beta4 = 0.45;
+            beta5 = 0.2;
+            beta6 = 0.5;
+            beta7 = -0.6;
+        } else if (config.coilActive) {
+            alpha = 0.54;
+        }
+
+        const term_geom = Math.pow(d / D_T, beta2) *
+                          Math.pow(sum_C / (n_stages * H_liq), beta3) *
+                          Math.pow(sum_b / D_T, beta4) *
+                          Math.pow(np_val, beta5) *
+                          Math.pow(sin_theta, beta6) *
+                          Math.pow(H_liq / D_T, beta7);
+
+        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 * term_geom;
+        h1_j = (Nu_Lj * k_L) / D_T;
+    }
+
+    // (B) コイル側
+    if (config.coilActive) {
+        if (isPropeller) {
+            // プロペラのコイル
+            const alpha = 1.31;
+            const beta1 = 0.56;
+            const beta2 = -0.25;
+            const beta3 = 0.15;
+            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 *
+                          Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
+            h1_c = (Nu_Lc * k_L) / D_T;
+        } else {
+            // パドル・傾斜パドル・タービンのコイル
+            let alpha = 0.825;
+            let beta1 = 0.56;
+            let beta2 = -0.25;
+            let beta3 = 0;
+            let beta4 = 0.15;
+            let beta5 = 0.15;
+            let beta6 = 0;
+            let beta7 = -0.3;
+            let flag_coil_pos = 'inside';
+
+            if (isBaffled) {
+                alpha = 2.68;
+                beta1 = 0.56;
+                beta2 = -0.3;
+                beta3 = 0.15;
+                beta4 = 0.3;
+                beta5 = 0.2;
+                beta6 = 0.5;
+                beta7 = -0.5;
+                flag_coil_pos = 'baffled';
+            } else if (isCoilUnderneath) {
+                alpha = 1.05;
+                beta1 = 0.62;
+                beta3 = 0.15;
+                beta7 = 1.0;
+                flag_coil_pos = 'underneath';
+            }
+
+            let hd_term_val = H_liq / D_T;
+            if (flag_coil_pos === 'inside') {
+                hd_term_val = d_co / D_T;
+            } else if (flag_coil_pos === 'underneath') {
+                hd_term_val = D_c / D_T;
+            }
+
+            const term_geom = Math.pow(d / D_T, beta2) *
+                              Math.pow(sum_C / (n_stages * H_liq), beta3) *
+                              Math.pow(sum_b / D_T, beta4) *
+                              Math.pow(np_val, beta5) *
+                              (beta6 > 0 ? Math.pow(sin_theta, beta6) : 1.0) *
+                              Math.pow(hd_term_val, beta7);
+
+            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 * term_geom;
+            h1_c = (Nu_Lc * k_L) / D_T;
+        }
+    }
+
+    // --- (3) ジャケット伝熱面積 ---
+    const R_v = D_T / 2;
+    let h_dish_j = 0;
+    let A_dish = 0;
+    if (headType === 'semi-elliptical') {
+        h_dish_j = R_v / 2; A_dish = 1.382 * Math.PI * R_v * R_v;
+    } else if (headType === 'dish') {
+        h_dish_j = 0.1935 * D_T; A_dish = 1.15 * Math.PI * R_v * R_v;
+    } else if (headType === 'hemispherical') {
+        h_dish_j = R_v; A_dish = 2.0 * Math.PI * R_v * R_v;
+    } else {
+        h_dish_j = 0; A_dish = Math.PI * R_v * R_v;
+    }
+    const h_cyl_j = Math.max(0, H_geom - h_dish_j);
+    const A_cyl = Math.PI * D_T * h_cyl_j;
+    const Aj = A_cyl + A_dish;
+
+    // --- (4) 熱媒体側の伝熱計算 ＆ 反復計算 ---
+    const T_L = typeof heatSimTemp !== 'undefined' ? heatSimTemp : (config.liquidTempInit ?? 20.0);
     const viscCorr = config.mediaViscCorr || 1.0;
-    const T_in = config.mediaTempIn;
 
-    if (isSteam) {
-        // スチームの凝縮伝熱係数 (新潟大学晶析工学研究室解説資料に基づく)
-        // 飽和水(100℃)の物性
-        const rho_cl = 958;
-        const mu_cl = 0.00028;
-        const k_cl = 0.68;
+    // (A) ジャケット側
+    const isSteamJ = config.mediaTypeJ === 'steam';
+    const T_in_j = config.mediaTempInJ ?? 80;
+    const W_j = config.mediaFlowJ ?? 0.05;
+    
+    let T_out_j = T_in_j;
+    let rho_j = 1000, Cp_j = 4184, k_j = 0.60, mu_j = 0.001;
+    let h2_j = 0;
+    let U_j = 0;
+    let Q_j = 0;
+
+    if (isSteamJ) {
+        T_out_j = T_in_j;
+        const steamProps = interpolateProperties(STEAM_PROP_TABLE, T_in_j);
+        const waterProps = interpolateProperties(WATER_PROP_TABLE, T_in_j);
+        rho_j = steamProps.rho;
+        Cp_j = steamProps.Cp;
+        k_j = steamProps.k;
+        mu_j = steamProps.mu;
+
+        const rho_cl = waterProps.rho;
+        const mu_cl = waterProps.mu;
+        const k_cl = waterProps.k;
         const g = config.g || 9.806;
+        const rho_v = steamProps.rho;
+        const D_To = D_T + 2 * t_w;
 
-        // ジャケット側の凝縮 (垂直管外)
-        const Gamma_j = W_j / (Math.PI * D_T);
-        const Ref_j = 4 * Gamma_j / mu_cl;
-        const prop_factor = Math.pow(Math.pow(k_cl, 3) * Math.pow(rho_cl, 2) * g / Math.pow(mu_cl, 2), 1 / 3);
+        const Gamma_j = W_j / (Math.PI * D_To);
+        const Ref_j = 4 * Gamma_j / Math.max(1e-7, mu_cl);
+        const prop_factor = Math.pow(Math.pow(k_cl, 3) * rho_cl * (rho_cl - rho_v) * g / Math.pow(mu_cl, 2), 1 / 3);
 
         if (Ref_j < 2100) {
             h2_j = 1.88 * prop_factor * Math.pow(Ref_j, -1 / 3);
         } else {
             h2_j = 0.0077 * prop_factor * Math.pow(Ref_j, 0.4);
         }
-
-        // コイル側の凝縮 (水平管内)
-        if (config.coilActive) {
-            const Gamma_c = W_j / L_c;
-            const Ref_c = 4 * Gamma_c / mu_cl;
-            h2_c = 0.76 * prop_factor * Math.pow(Ref_c, -1 / 3);
-        }
-    } else {
-        // ジャケット側水流速と伝熱係数
-        const D1 = D_T + 2 * t_w;
-        const s_j = config.jacketGap || 0.010;
-        const D2 = D1 + 2 * s_j;
-        let Ac_flow = 0;
-        let P_wet = 0;
-        let D_eq = 0;
-        const jacketType = config.jacketType || 'flat';
-        const isSpiral = jacketType === 'spiral';
-        const isFlatTangential = jacketType === 'flat-tangential';
-        const isFlatRadial = jacketType === 'flat' || jacketType === 'flat-radial';
-        let L_flow = Math.max(1e-6, isSpiral ? Math.PI * D_T : (isFlatTangential ? Math.PI * D_T : D_T / 2));
-
-        if (isSpiral) {
-            Ac_flow = s_j * s_j;
-            P_wet = 4 * s_j;
-        } else {
-            Ac_flow = (Math.PI / 4) * (D2 * D2 - D1 * D1);
-            P_wet = Math.PI * (D1 + D2);
-        }
-
-        D_eq = Math.max(1e-6, 4 * Ac_flow / P_wet);
-
-        const u_j = W_j / (rho_j * Math.max(1e-6, Ac_flow));
-        const Re_j = (rho_j * u_j * D_eq) / Math.max(1e-6, mu_j);
-        const Pr_j = (Cp_j * mu_j) / Math.max(1e-6, k_j);
-
-        let Nu_j = 0;
-        if (Re_j < 2100) {
-            // 層流: Sieder-Tate式（流路長 L_flow を利用）
-            Nu_j = 1.86 * Math.pow(Re_j * Pr_j * (D_eq / L_flow), 1 / 3) * Math.pow(1.0, 0.14);
-        } else if (Re_j < 10000) {
-            // 遷移流: Hausenの修正式
-            Nu_j = 0.116 * (Math.pow(Re_j, 2 / 3) - 125) * Math.pow((Cp_j * mu_j) / k_j, 1 / 3) * (1 + Math.pow(D_eq / L_flow, 2 / 3));
-        } else {
-            // 乱流: Sieder-Tate式
-            Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1 / 3) * viscCorr;
-        }
-        Nu_j = Math.max(Nu_j, 0.0);
-        h2_j = (Nu_j * k_j) / Math.max(1e-6, D_eq);
-
-        // コイル管内の伝熱係数
-        if (config.coilActive) {
-            const u_c = W_j / (rho_j * (Math.PI * d_ci * d_ci / 4));
-            const Re_c = (rho_j * u_c * d_ci) / Math.max(1e-6, mu_j);
-            const Pr_c = (Cp_j * mu_j) / Math.max(1e-6, k_j);
-            let Nu_c = 0;
-            if (Re_c < 2300) {
-                Nu_c = 3.66;
-            } else {
-                Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1 / 3) * viscCorr * (1 + 3.5 * (d_ci / D_c));
-            }
-            h2_c = (Nu_c * k_j) / d_ci;
-        }
-    }
-
-    // --- (4) 総括伝熱係数 U の計算 ---
-    const R_wall_j = t_w / k_w;
-    let U_j = 0;
-    if (h1_j > 0 && h2_j > 0) {
+        
+        const R_wall_j = t_w / k_w;
         U_j = 1 / (1 / h1_j + R_wall_j + 1 / h2_j + r_d);
+        Q_j = U_j * Aj * (T_in_j - T_L);
+    } else {
+        T_out_j = T_in_j - 2.0;
+        const R_wall_j = t_w / k_w;
+
+        for (let iter = 0; iter < 6; iter++) {
+            const T_avg = (T_in_j + T_out_j) / 2;
+            const wProps = interpolateProperties(WATER_PROP_TABLE, T_avg);
+            rho_j = wProps.rho;
+            Cp_j = wProps.Cp;
+            k_j = wProps.k;
+            mu_j = wProps.mu;
+
+            const D1 = D_T + 2 * t_w;
+            const s_j = config.jacketGap || 0.010;
+            const D2 = D1 + 2 * s_j;
+
+            let D_eq = 0;
+            let Ac_flow = 0;
+            const jacketType = config.jacketType || 'flat';
+            const isSpiral = jacketType === 'spiral';
+            const isFlatTangential = jacketType === 'flat-tangential';
+            const L_flow = Math.max(1e-6, isSpiral ? Math.PI * D_T : (isFlatTangential ? Math.PI * D_T : D_T / 2));
+
+            if (isSpiral || isFlatTangential) {
+                D_eq = s_j;
+                Ac_flow = s_j * s_j;
+            } else {
+                D_eq = 2 * s_j;
+                Ac_flow = (Math.PI / 4) * (D2 * D2 - D1 * D1);
+            }
+
+            const u_j = W_j / (rho_j * Math.max(1e-7, Ac_flow));
+            const Re_j = (rho_j * u_j * D_eq) / Math.max(1e-7, mu_j);
+            const Pr_j = (Cp_j * mu_j) / Math.max(1e-7, k_j);
+
+            let Nu_j = 0;
+            if (Re_j < 2100) {
+                Nu_j = 1.86 * Math.pow(Re_j * Pr_j * (D_eq / L_flow), 1 / 3) * viscCorr;
+            } else if (Re_j < 10000) {
+                Nu_j = 0.116 * (Math.pow(Re_j, 2 / 3) - 125) * Math.pow(Pr_j, 1 / 3) * (1 + Math.pow(D_eq / L_flow, 2 / 3)) * viscCorr;
+            } else {
+                Nu_j = 0.023 * Math.pow(Re_j, 0.8) * Math.pow(Pr_j, 1 / 3) * viscCorr;
+            }
+            Nu_j = Math.max(Nu_j, 0.0);
+            h2_j = (Nu_j * k_j) / Math.max(1e-6, D_eq);
+
+            U_j = 1 / (1 / h1_j + R_wall_j + 1 / h2_j + r_d);
+            
+            const exponent = -(U_j * Aj) / Math.max(1e-3, W_j * Cp_j);
+            T_out_j = T_L + (T_in_j - T_L) * Math.exp(exponent);
+        }
+        Q_j = W_j * Cp_j * (T_in_j - T_out_j);
     }
+
+    // (B) コイル側
+    const isSteamC = config.mediaTypeC === 'steam';
+    const T_in_c = config.mediaTempInC ?? 80;
+    const W_c = config.mediaFlowC ?? 0.05;
+
+    let T_out_c = T_in_c;
+    let rho_c = 1000, Cp_c = 4184, k_c = 0.60, mu_c = 0.001;
+    let h2_c = 0;
+    let U_c = 0;
+    let Q_c = 0;
+    let u_c = 0;
 
     const t_c_wall = Math.max(0.0005, (d_co - d_ci) / 2);
     const k_c_wall = config.coilK ?? 16.3;
     const R_wall_c = t_c_wall / k_c_wall;
-    let U_c = 0;
-    if (config.coilActive && h1_c > 0 && h2_c > 0) {
-        U_c = 1 / (1 / h1_c + R_wall_c + 1 / h2_c + r_d);
+
+    if (config.coilActive) {
+        if (isSteamC) {
+            T_out_c = T_in_c;
+            const steamProps = interpolateProperties(STEAM_PROP_TABLE, T_in_c);
+            const waterProps = interpolateProperties(WATER_PROP_TABLE, T_in_c);
+            rho_c = steamProps.rho;
+            Cp_c = steamProps.Cp;
+            k_c = steamProps.k;
+            mu_c = steamProps.mu;
+
+            const rho_cl = waterProps.rho;
+            const mu_cl = waterProps.mu;
+            const k_cl = waterProps.k;
+            const g = config.g || 9.806;
+            const rho_v = steamProps.rho;
+
+            const Gamma_c = W_c / L_c;
+            const Ref_c = 4 * Gamma_c / Math.max(1e-7, mu_cl);
+            const prop_factor = Math.pow(Math.pow(k_cl, 3) * rho_cl * (rho_cl - rho_v) * g / Math.pow(mu_cl, 2), 1 / 3);
+
+            h2_c = 0.76 * prop_factor * Math.pow(Ref_c, -1 / 3);
+
+            U_c = 1 / (1 / h1_c + R_wall_c + 1 / h2_c + r_d);
+            Q_c = U_c * Ac * (T_in_c - T_L);
+        } else {
+            T_out_c = T_in_c - 2.0;
+
+            for (let iter = 0; iter < 6; iter++) {
+                const T_avg = (T_in_c + T_out_c) / 2;
+                const wProps = interpolateProperties(WATER_PROP_TABLE, T_avg);
+                rho_c = wProps.rho;
+                Cp_c = wProps.Cp;
+                k_c = wProps.k;
+                mu_c = wProps.mu;
+
+                u_c = W_c / (rho_c * (Math.PI * d_ci * d_ci / 4));
+                const Re_c = (rho_c * u_c * d_ci) / Math.max(1e-7, mu_c);
+                const Pr_c = (Cp_c * mu_c) / Math.max(1e-7, k_c);
+                
+                let Nu_c = 0;
+                if (Re_c < 2300) {
+                    Nu_c = 3.66;
+                } else {
+                    Nu_c = 0.023 * Math.pow(Re_c, 0.8) * Math.pow(Pr_c, 1 / 3) * viscCorr * (1 + 3.5 * (d_ci / D_c));
+                }
+                h2_c = (Nu_c * k_c) / d_ci;
+
+                U_c = 1 / (1 / h1_c + R_wall_c + 1 / h2_c + r_d);
+                
+                const exponent = -(U_c * Ac) / Math.max(1e-3, W_c * Cp_c);
+                T_out_c = T_L + (T_in_c - T_L) * Math.exp(exponent);
+            }
+            Q_c = W_c * Cp_c * (T_in_c - T_out_c);
+        }
     }
 
     const UA_total = U_j * Aj + (config.coilActive ? U_c * Ac : 0);
+    const Q_total = Q_j + Q_c;
+
+    const R_wall_j = t_w / k_w;
 
     return {
+        Re, Pr,
         h1_j, h2_j, U_j, Aj, R_wall_j,
+        T_in_j, T_out_j, Q_j,
+        mediaTypeJ: config.mediaTypeJ, mediaFlowJ: config.mediaFlowJ,
+        rho_j, Cp_j, k_j, mu_j,
+        
         h1_c, h2_c, U_c, Ac, R_wall_c,
-        r_d, UA_total,
-        Cp_L, rho_L, Cp_j, W_j, T_in, isSteam
+        T_in_c, T_out_c, Q_c,
+        mediaTypeC: config.mediaTypeC, mediaFlowC: config.mediaFlowC,
+        rho_c, Cp_c, k_c, mu_c,
+        u_c,
+        
+        r_d_L: 1 / Math.max(1, hs_L),
+        r_d_M: 1 / Math.max(1, hs_M),
+        r_d, UA_total, Q_total,
+
+        
+        // 互換用
+        rho_L,
+        Cp_L,
+        isSteam: config.mediaTypeJ === 'steam',
+        T_in: T_in_j,
+        W_j,
+        Cp_j
     };
 }
 
@@ -8134,17 +8468,7 @@ function updateHeatCalcUI() {
     }
 
     const T_L = heatSimTemp;
-    let Q = 0;
-    let T_out = res.T_in;
-
-    if (!res.isSteam) {
-        const exponent = -(res.UA_total) / Math.max(1e-3, res.W_j * res.Cp_j);
-        T_out = T_L + (res.T_in - T_L) * Math.exp(exponent);
-        Q = res.W_j * res.Cp_j * (res.T_in - T_out);
-    } else {
-        T_out = res.T_in;
-        Q = res.UA_total * (res.T_in - T_L);
-    }
+    const Q = res.Q_total;
 
     const elQ = document.getElementById('heat-res-Q');
     const elQv = document.getElementById('heat-res-Qv');
@@ -8154,8 +8478,25 @@ function updateHeatCalcUI() {
         const V_liq = (config.V_act && config.V_act > 0) ? (config.V_act * 1e-3) : (calcLiquidVolumeForPv() || 0.001);
         const Qv = Q / Math.max(1e-6, V_liq);
         elQv.textContent = Qv.toFixed(1) + " W/m³";
+
+        // スラリー質量あたり Qv/mass [W/kg]
+        const elQvMass = document.getElementById('heat-res-Qv-mass');
+        if (elQvMass) {
+            const rho_eff = getEffectiveDensity();
+            const M_slurry = rho_eff * V_liq;
+            const Qv_mass = Q / Math.max(1e-6, M_slurry);
+            elQvMass.textContent = Qv_mass.toFixed(3) + " W/kg";
+        }
+
     }
-    if (elTout) elTout.textContent = T_out.toFixed(1) + " °C";
+
+    if (elTout) {
+        if (config.coilActive) {
+            elTout.textContent = `J: ${res.T_out_j.toFixed(1)}°C / C: ${res.T_out_c.toFixed(1)}°C`;
+        } else {
+            elTout.textContent = `J: ${res.T_out_j.toFixed(1)}°C`;
+        }
+    }
 
     const tempDisp = document.getElementById('heat-sim-temp-display');
     if (tempDisp) {
@@ -8187,8 +8528,10 @@ function initHeatSimulation() {
 
     heatChartData.times = [0];
     heatChartData.liquidTemp = [heatSimTemp];
-    const res = calculateHeatTransfer();
-    heatChartData.mediaTempOut = [res.T_in];
+    const res0 = calculateHeatTransfer();
+    heatChartData.mediaTempOutJ = [res0.T_in_j ?? res0.T_in ?? config.mediaTempInJ ?? 80];
+    heatChartData.mediaTempOutC = [config.coilActive ? (res0.T_in_c ?? res0.T_in ?? config.mediaTempInC ?? 80) : null];
+
 
     initHeatChart();
     initHeatResistChart();
@@ -8367,15 +8710,14 @@ function updateHeatPhysics() {
     const V_act = getLiquidVolume();
     const M_L = res.rho_L * V_act;
 
-    let Q = 0;
-    let T_out = res.T_in;
-    if (!res.isSteam) {
-        const exponent = -(res.UA_total) / Math.max(1e-3, res.W_j * res.Cp_j);
-        T_out = heatSimTemp + (res.T_in - heatSimTemp) * Math.exp(exponent);
-        Q = res.W_j * res.Cp_j * (res.T_in - T_out);
-    } else {
-        T_out = res.T_in;
-        Q = res.UA_total * (res.T_in - heatSimTemp);
+    const Q = res.Q_total;
+
+    // Calculate a representative average outlet temperature for the chart
+    const W_j_Cp = res.mediaFlowJ * res.Cp_j;
+    const W_c_Cp = config.coilActive ? (res.mediaFlowC * res.Cp_c) : 0;
+    let T_out = res.T_in_j;
+    if (W_j_Cp + W_c_Cp > 0) {
+        T_out = (res.T_out_j * W_j_Cp + res.T_out_c * W_c_Cp) / (W_j_Cp + W_c_Cp);
     }
 
     const dT = (Q / (M_L * res.Cp_L)) * dt;
@@ -8385,12 +8727,14 @@ function updateHeatPhysics() {
     if (heatSimTime - lastTime >= 1.0) {
         heatChartData.times.push(Math.round(heatSimTime));
         heatChartData.liquidTemp.push(heatSimTemp);
-        heatChartData.mediaTempOut.push(T_out);
+        heatChartData.mediaTempOutJ.push(res.T_out_j);
+        heatChartData.mediaTempOutC.push(config.coilActive ? res.T_out_c : null);
 
         if (heatChartData.times.length > 150) {
             heatChartData.times.shift();
             heatChartData.liquidTemp.shift();
-            heatChartData.mediaTempOut.shift();
+            heatChartData.mediaTempOutJ.shift();
+            heatChartData.mediaTempOutC.shift();
         }
 
         updateHeatChart();
@@ -9249,14 +9593,26 @@ function initHeatChart() {
                     pointRadius: 1
                 },
                 {
-                    label: '熱媒体出口温度 T_out',
-                    data: heatChartData.mediaTempOut,
+                    label: '熱媒体出口温度 T_out (ジャケット)',
+                    data: heatChartData.mediaTempOutJ,
                     borderColor: '#06b6d4',
                     backgroundColor: 'rgba(6, 182, 212, 0.1)',
                     borderWidth: 1.5,
                     borderDash: [3, 3],
                     tension: 0.1,
-                    pointRadius: 1
+                    pointRadius: 1,
+                    spanGaps: true
+                },
+                {
+                    label: '熱媒体出口温度 T_out (コイル)',
+                    data: heatChartData.mediaTempOutC,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 1.5,
+                    borderDash: [5, 2],
+                    tension: 0.1,
+                    pointRadius: 1,
+                    spanGaps: false
                 }
             ]
         },
@@ -9311,7 +9667,8 @@ function updateHeatChart() {
     // データはどちらのモードも実温度をそのまま使用
     heatChart.data.labels = heatChartData.times;
     heatChart.data.datasets[0].data = heatChartData.liquidTemp;
-    heatChart.data.datasets[1].data = heatChartData.mediaTempOut;
+    heatChart.data.datasets[1].data = heatChartData.mediaTempOutJ;
+    heatChart.data.datasets[2].data = heatChartData.mediaTempOutC;
 
     if (heatColorScaleMode === 'absolute') {
         // 絶対モード: 初期液温〜熱媒入口温度で固定
@@ -9367,11 +9724,18 @@ function initHeatResistChart() {
                     borderWidth: 0
                 },
                 {
-                    label: '汚れ抵抗',
+                    label: '汚れ抵抗 (攪拌液側)',
                     data: [0, 0],
-                    backgroundColor: 'rgba(107, 114, 128, 0.7)',
+                    backgroundColor: 'rgba(107, 114, 128, 0.8)',
+                    borderWidth: 0
+                },
+                {
+                    label: '汚れ抵抗 (熱媒体側)',
+                    data: [0, 0],
+                    backgroundColor: 'rgba(156, 163, 175, 0.6)',
                     borderWidth: 0
                 }
+
             ]
         },
         options: {
@@ -9427,49 +9791,55 @@ function updateHeatResistChart(res) {
     }
     if (!heatResistChart) return;
 
+    const R_dL = res.r_d_L || 0;  // 攪拌液側汚れ抵抗 (1/hs_L)
+    const R_dM = res.r_d_M || 0;  // 熱媒体側汚れ抵抗 (1/hs_M)
+
     // ジャケット側
     const R_h1_j = res.h1_j > 0 ? (1 / res.h1_j) : 0;
     const R_h2_j = res.h2_j > 0 ? (1 / res.h2_j) : 0;
-    const R_w_j = res.R_wall_j || 0;
-    const R_d = res.r_d || 0;
-    const total_j = R_h1_j + R_w_j + R_h2_j + R_d;
+    const R_w_j  = res.R_wall_j || 0;
+    const total_j = R_h1_j + R_w_j + R_h2_j + R_dL + R_dM;
 
-    let pct_h1_j = 0, pct_w_j = 0, pct_h2_j = 0, pct_d_j = 0;
+    let pct_h1_j = 0, pct_w_j = 0, pct_h2_j = 0, pct_dL_j = 0, pct_dM_j = 0;
     if (total_j > 0) {
         pct_h1_j = (R_h1_j / total_j) * 100;
-        pct_w_j = (R_w_j / total_j) * 100;
+        pct_w_j  = (R_w_j  / total_j) * 100;
         pct_h2_j = (R_h2_j / total_j) * 100;
-        pct_d_j = (R_d / total_j) * 100;
+        pct_dL_j = (R_dL   / total_j) * 100;
+        pct_dM_j = (R_dM   / total_j) * 100;
     }
 
     // コイル側
-    let pct_h1_c = 0, pct_w_c = 0, pct_h2_c = 0, pct_d_c = 0;
+    let pct_h1_c = 0, pct_w_c = 0, pct_h2_c = 0, pct_dL_c = 0, pct_dM_c = 0;
     if (config.coilActive) {
         const R_h1_c = res.h1_c > 0 ? (1 / res.h1_c) : 0;
         const R_h2_c = res.h2_c > 0 ? (1 / res.h2_c) : 0;
-        const R_w_c = res.R_wall_c || 0;
-        const total_c = R_h1_c + R_w_c + R_h2_c + R_d;
+        const R_w_c  = res.R_wall_c || 0;
+        const total_c = R_h1_c + R_w_c + R_h2_c + R_dL + R_dM;
 
         if (total_c > 0) {
             pct_h1_c = (R_h1_c / total_c) * 100;
-            pct_w_c = (R_w_c / total_c) * 100;
+            pct_w_c  = (R_w_c  / total_c) * 100;
             pct_h2_c = (R_h2_c / total_c) * 100;
-            pct_d_c = (R_d / total_c) * 100;
+            pct_dL_c = (R_dL   / total_c) * 100;
+            pct_dM_c = (R_dM   / total_c) * 100;
         }
     }
 
     if (config.coilActive) {
         heatResistChart.data.labels = ['壁(ｼﾞｬｹｯﾄ)', 'コイル'];
         heatResistChart.data.datasets[0].data = [pct_h1_j, pct_h1_c];
-        heatResistChart.data.datasets[1].data = [pct_w_j, pct_w_c];
+        heatResistChart.data.datasets[1].data = [pct_w_j,  pct_w_c];
         heatResistChart.data.datasets[2].data = [pct_h2_j, pct_h2_c];
-        heatResistChart.data.datasets[3].data = [pct_d_j, pct_d_c];
+        heatResistChart.data.datasets[3].data = [pct_dL_j, pct_dL_c];
+        heatResistChart.data.datasets[4].data = [pct_dM_j, pct_dM_c];
     } else {
         heatResistChart.data.labels = ['壁(ｼﾞｬｹｯﾄ)'];
         heatResistChart.data.datasets[0].data = [pct_h1_j];
         heatResistChart.data.datasets[1].data = [pct_w_j];
         heatResistChart.data.datasets[2].data = [pct_h2_j];
-        heatResistChart.data.datasets[3].data = [pct_d_j];
+        heatResistChart.data.datasets[3].data = [pct_dL_j];
+        heatResistChart.data.datasets[4].data = [pct_dM_j];
     }
 
     heatResistChart.update();

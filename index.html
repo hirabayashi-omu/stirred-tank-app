@@ -152,6 +152,10 @@
                                 style="font-size: 0.72rem; color: var(--accent-color); margin-top: 2px; font-weight: 500;">
                                 推算液高: -- m</div>
                         </div>
+                        <div class="input-group full-width" style="margin-top:6px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">
+                            <label for="fouling-hs-l">攪拌液側 汚れ係数 hs<sub>L</sub> (W/m²/K)</label>
+                            <input type="number" id="fouling-hs-l" value="5000" step="100" min="1">
+                        </div>
 
                     </div>
                                     </div>
@@ -638,44 +642,57 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- ジャケット側熱媒体パラメータ -->
+                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                            <span style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">ジャケット側熱媒体</span>
+                        </div>
                         <div class="input-group full-width">
-                            <label for="media-type">熱媒体の種類</label>
-                            <select id="media-type">
+                            <label for="media-type-j">熱媒体の種類（ジャケット）</label>
+                            <select id="media-type-j">
                                 <option value="water" selected>水 (温水・冷水)</option>
                                 <option value="steam">スチーム</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label for="media-temp-in">熱媒体入り口温度 T<sub>in</sub> (°C)</label>
-                            <input type="number" id="media-temp-in" value="80" step="0.1">
+                            <label for="media-temp-in-j">入口温度 T<sub>in,j</sub> (°C)</label>
+                            <input type="number" id="media-temp-in-j" value="80" step="0.1">
                         </div>
                         <div class="input-group">
-                            <label for="media-flow">熱媒体質量流量 W<sub>j</sub> (kg/s)</label>
-                            <input type="number" id="media-flow" value="0.05" step="0.01">
+                            <label for="media-flow-j">質量流量 W<sub>j</sub> (kg/s)</label>
+                            <input type="number" id="media-flow-j" value="0.05" step="0.01">
+                        </div>
+
+                        <!-- コイル側熱媒体パラメータ -->
+                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                            <span style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">コイル側熱媒体</span>
+                        </div>
+                        <div class="input-group full-width">
+                            <label for="media-type-c">熱媒体の種類（コイル）</label>
+                            <select id="media-type-c">
+                                <option value="water" selected>水 (温水・冷水)</option>
+                                <option value="steam">スチーム</option>
+                            </select>
                         </div>
                         <div class="input-group">
-                            <label for="media-rho">熱媒体密度 ρ<sub>j</sub> (kg/m³)</label>
-                            <input type="number" id="media-rho" value="1000" step="0.1">
+                            <label for="media-temp-in-c">入口温度 T<sub>in,c</sub> (°C)</label>
+                            <input type="number" id="media-temp-in-c" value="80" step="0.1">
                         </div>
                         <div class="input-group">
-                            <label for="media-mu">熱媒体粘度 μ<sub>j</sub> (Pa·s)</label>
-                            <input type="number" id="media-mu" value="0.001" step="0.0001">
+                            <label for="media-flow-c">質量流量 W<sub>c</sub> (kg/s)</label>
+                            <input type="number" id="media-flow-c" value="0.05" step="0.01">
                         </div>
-                        <div class="input-group">
-                            <label for="media-cp">熱媒体比熱 Cp<sub>j</sub> (J/(kg·K))</label>
-                            <input type="number" id="media-cp" value="4184" step="1">
-                        </div>
-                        <div class="input-group">
-                            <label for="media-k">熱媒体熱伝導度 k<sub>j</sub> (W/(m·K))</label>
-                            <input type="number" id="media-k" value="0.60" step="0.01">
+
+                        <!-- 共通の伝熱補助パラメータ -->
+                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">伝熱補助パラメータ</span>
                         </div>
                         <div class="input-group">
                             <label for="media-visc-corr">粘度補正項 (通常1.0)</label>
                             <input type="number" id="media-visc-corr" value="1.0" step="0.01">
                         </div>
                         <div class="input-group">
-                            <label for="fouling-factor">汚れ係数 r<sub>d</sub> (m²·K/W)</label>
-                            <input type="number" id="fouling-factor" value="0.0001" step="0.00005">
+                            <label for="fouling-hs-m">熱媒体側 汚れ係数 hs<sub>M</sub> (W/m²/K)</label>
+                            <input type="number" id="fouling-hs-m" value="10000" step="100" min="1">
                         </div>
                     </div>
                                     </div>
@@ -1228,6 +1245,11 @@
                                                 <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);"
                                                     id="heat-res-Qv">-- W/m³</td>
                                             </tr>
+                                            <tr style="background: rgba(16, 185, 129, 0.05);">
+                                                <td><strong>Qv/mass</strong></td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--success-color);"
+                                                    id="heat-res-Qv-mass">-- W/kg</td>
+                                            </tr>
                                             <tr style="background: rgba(239, 68, 68, 0.04);">
                                                 <td><strong>媒体出口温度 T<sub>out</sub></strong></td>
                                                 <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;"
@@ -1295,7 +1317,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="dim-ratio-tbody">
-                                    <tr style="background: rgba(6,182,212,0.04);">
+                                    <tr style="background: rgba(6,182,212,0.04); color: var(--accent-color); font-weight: 600;">
                                         <td id="dr-d-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
                                         <td id="dr-C-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
                                         <td id="dr-b-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
