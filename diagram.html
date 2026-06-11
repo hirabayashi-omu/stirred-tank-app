@@ -1131,9 +1131,17 @@
             impAngle = 0; lastFrameT = null;
             draw();
             try {
-                if (window.opener && !window.opener.closed) window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+                let openerClosed = true;
+                try {
+                    openerClosed = window.opener && window.opener.closed;
+                } catch (e) {
+                    openerClosed = false; // SecurityError means it's likely open but cross-origin
+                }
+                if (window.opener && !openerClosed) {
+                    window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+                }
             } catch (e) {
-                if (window.opener) window.opener.postMessage({ type: 'AgitatorDiagramReady' }, '*');
+                // Ignore
             }
             setInterval(() => { const cur = localStorage.getItem('agitator_current_state'); if (cur !== lastSavedStateJSON) loadState(); }, 1000);
         });

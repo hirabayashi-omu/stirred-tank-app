@@ -4585,11 +4585,21 @@ function saveCurrentState() {
 }
 
 function syncDiagramWindow() {
-    if (!window.diagramWindow || window.diagramWindow.closed) {
-        return;
-    }
+    if (!window.diagramWindow) return;
+    
+    let isClosed = true;
     try {
-        const isPseudo = (rheologyData.activeModel === 'powerlaw');
+        isClosed = window.diagramWindow.closed;
+    } catch (e) {
+        // file:// プロトコル等でクロスオリジン制約に引っかかる場合、
+        // .closed へのアクセスで SecurityError が出るため開いているとみなす
+        isClosed = false;
+    }
+    
+    if (isClosed) return;
+
+    try {
+        const isPseudo = (typeof rheologyData !== 'undefined' && rheologyData && rheologyData.activeModel === 'powerlaw');
         window.diagramWindow.postMessage({
             type: 'AgitatorSimRealtimeSync',
             config: { ...config, isPseudoCavern: isPseudo }
@@ -5026,8 +5036,11 @@ function updateSimulatorResults() {
         document.getElementById('sim-res-Njs-rpm').textContent = '-- rpm';
         document.getElementById('sim-res-P-njs').textContent = '-- W';
         document.getElementById('sim-res-Pv-njs').textContent = '-- W/m³';
+        document.getElementById('sim-res-Pm-njs').textContent = '-- W/kg';
 
         updateSimStatusBadge(0, 100);
+        updateCavernDiameter();
+        if (typeof _updateNjsCache === 'function') _updateNjsCache();
         updateFlowCharacteristics();
         return;
     }
@@ -5050,6 +5063,9 @@ function updateSimulatorResults() {
 
     document.getElementById('sim-res-P-njs').textContent = P_njs.toFixed(3) + ' W';
     document.getElementById('sim-res-Pv-njs').textContent = Pv_njs.toFixed(1) + ' W/m³';
+    const M_slurry = effRho * V;
+    const Pm_njs = M_slurry > 0 ? P_njs / M_slurry : 0;
+    document.getElementById('sim-res-Pm-njs').textContent = Pm_njs.toFixed(3) + ' W/kg';
 
     updateSimStatusBadge(config.simSpeed, res.Njs_rpm);
     updateCavernDiameter();
@@ -5069,15 +5085,33 @@ function updateSimulatorResultsOnly() {
 
 // 降伏応力流体用キャバーン径（流動領域）の推算 (Elson et al.)
 function updateCavernDiameter() {
-    const cavernRow = document.getElementById('cavern-row');
-    const dcLabel = document.getElementById('sim-res-cavern-dc');
-    if (!cavernRow || !dcLabel) return;
+    const cavernTabBtn = document.getElementById('inner-tab-btn-cavern');
+    const cavernTbody = document.getElementById('cavern-results-tbody');
+    
+    function setCavernUI(display, text) {
+        if (cavernTabBtn) {
+            cavernTabBtn.style.display = display ? 'inline-block' : 'none';
+            // もし非表示にされていて現在アクティブなら他のタブに切り替える
+            if (!display && cavernTabBtn.classList.contains('active')) {
+                switchInnerTab('suspension');
+            }
+        }
+        if (cavernTbody) {
+            cavernTbody.innerHTML = `
+                <tr>
+                    <td><strong>キャバーン径 Dc</strong></td>
+                    <td style="color: var(--text-muted); font-size: 0.65rem;">流動領域の直径</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--accent-color);">${text}</td>
+                </tr>
+            `;
+        }
+    }
 
-    const mod = rheologyData?.activeModel;
+    const mod = typeof rheologyData !== 'undefined' && rheologyData ? rheologyData.activeModel : null;
     const isYieldFluid = mod === 'bingham' || mod === 'casson' || mod === 'hb';
     const isPowerLaw = mod === 'powerlaw';
 
-    const models = rheologyData?.samples?.[rheologyData?.activeSample] || [];
+    const models = typeof rheologyData !== 'undefined' && rheologyData && rheologyData.samples ? (rheologyData.samples[rheologyData.activeSample] || []) : [];
     const modelInfo = models.find(m => m.modelId === mod);
     const pr = modelInfo?.params;
 
@@ -5090,26 +5124,16 @@ function updateCavernDiameter() {
         const limitFactor = rheologyData.muLimitFactor ?? 20.0;
 
         if (n_rps <= 0) {
-            dcLabel.textContent = '--- (停止中)';
             config.cavern_Dc = null;
-            cavernRow.style.display = 'table-row';
+            setCavernUI(true, '--- (停止中)');
             return;
         }
         if (pr.n >= 1.0) {
-            dcLabel.textContent = '--- (ニュートン的)';
             config.cavern_Dc = null;
-            cavernRow.style.display = 'table-row';
+            setCavernUI(true, '--- (ニュートン的)');
             return;
         }
 
-        // ずり速度閾値モデル（Wilkens et al. 2005 ベース）:
-        //   γ(r) = ks * N * (d/(2r))^alpha  (翼から離れるほどずり速度低下)
-        //   流動限界ずり速度: γ_c = ks * N_max / limitFactor  (固定値)
-        //   境界条件 γ(r_c) = γ_c を解く:
-        //     r_c = (d/2) * (ks*N / γ_c)^(1/alpha)
-        //         = (d/2) * (N/N_max * limitFactor)^(1/alpha)
-        //   limitFactor が大きい → γ_c が小さい → キャバーン大
-        //   N が大きい → キャバーン大 ✓
         const N_max = 1200 / 60;  // スライダー最大回転数 [rps]
         const arg = (n_rps / N_max) * limitFactor;
         let Dc_pseudo;
@@ -5122,22 +5146,20 @@ function updateCavernDiameter() {
 
         config.cavern_Dc = Dc_pseudo;
         config.cavernModel = 'spherical'; // 擬似キャバーンは球形で近似
-        dcLabel.textContent = Dc_pseudo.toFixed(3) + ' m (疑似)';
-        cavernRow.style.display = 'table-row';
+        setCavernUI(true, Dc_pseudo.toFixed(3) + ' m (疑似)');
         return;
     }
 
     if (!isYieldFluid || !pr || !pr.tau_y || pr.tau_y <= 0) {
-        cavernRow.style.display = 'none';
         config.cavern_Dc = null;
+        setCavernUI(false, '');
         return;
     }
 
     const n_rps = config.simSpeed / 60;
     if (n_rps <= 0) {
-        dcLabel.textContent = '0.000 m';
         config.cavern_Dc = 0;
-        cavernRow.style.display = 'table-row';
+        setCavernUI(true, '0.000 m');
         return;
     }
 
@@ -5157,8 +5179,6 @@ function updateCavernDiameter() {
             1 / 3
         );
     } else if (config.cavernModel === 'torus') {
-        // トーラスモデル: Dc = (3/(π³(1-β²)) · T/τy)^(1/3)
-        // β = d/Dc → 反復計算で解く
         const d = config.d;
         let Dc_iter = d * 2.0; // 初期推定値
         for (let i = 0; i < 50; i++) {
@@ -5185,9 +5205,8 @@ function updateCavernDiameter() {
         Dc = config.DT;
     }
 
-    dcLabel.textContent = Dc.toFixed(3) + ' m';
     config.cavern_Dc = Dc;
-    cavernRow.style.display = 'table-row';
+    setCavernUI(true, Dc.toFixed(3) + ' m');
 }
 
 function updateSimStatusBadge(currentN, njsN) {
@@ -5484,10 +5503,16 @@ function getTempAtPoint(px, py, coords) {
 // ここで θ = 1/τ_L (Lagrangian積分時間スケールの逆数), σ^2 = 2 u'^2 / τ_L
 function ouStep(wx, wy, theta, sigma, dt_sim) {
     const decay = Math.exp(-theta * dt_sim);
-    const noise_std = sigma * Math.sqrt((1 - decay * decay) / (2 * theta) * 2 * theta);
+    // 厳密なOU過程のノイズ項の標準偏差
+    const noise_std = sigma * Math.sqrt((1 - decay * decay) / (2 * theta));
+    
+    // 4つのMath.random()の和(分散1/3)から標準正規分布N(0,1)の近似を作る
+    // Z = (sum(U) - 2) / sqrt(1/3) = (sum(U) - 2) * sqrt(3)
+    const norm_factor = 1.73205; 
+    
     return {
-        wx: decay * wx + noise_std * (Math.random() + Math.random() + Math.random() + Math.random() - 2) * 0.7071,
-        wy: decay * wy + noise_std * (Math.random() + Math.random() + Math.random() + Math.random() - 2) * 0.7071
+        wx: decay * wx + noise_std * (Math.random() + Math.random() + Math.random() + Math.random() - 2) * norm_factor,
+        wy: decay * wy + noise_std * (Math.random() + Math.random() + Math.random() + Math.random() - 2) * norm_factor
     };
 }
 
@@ -5636,7 +5661,23 @@ function getCavernDecay(x, y, coords) {
 function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     const { cx, D_px, scale, y_deepest, y_liquid, lx, rx } = coords;
 
+    // お客様のご要望により固定値を設定（UI調整は非表示）
+    const tweakSuction = 0.5; // インペラ吸引力 0.5
+    let tweakCavern = 1.2;    // 大循環のひろがり 1.2
+
     const rpm = speed_rpm || 0;
+    
+    // ★ご要望：大循環の広がりをスイープするようにランダム変動させる（マクロ不安定性の再現）
+    // ゆっくりとした周期の波と、少し早い波を合成して、予測不能な「呼吸（広がり・縮み）」を生成
+    if (rpm > 0) {
+        const t = performance.now() / 1000;
+        // ご要望により、揺らぎの速さを「回転数（RPM）」に完全比例させます
+        // 全体的に揺らぎを遅めにするため、係数を大幅に下げてゆっくりと変動するように調整
+        const sweepSpeed = (rpm / 300) * 0.4; 
+        const sweepPhase = Math.sin(t * sweepSpeed) * 0.6 + Math.sin(t * sweepSpeed * 0.37) * 0.4;
+        // さらに広めのスイープのご要望により、±80%の超巨大な振幅でスイープ変動させる
+        tweakCavern *= (1.0 + sweepPhase * 0.80);
+    }
     let vortexDepth = Math.pow(rpm / 600, 2) * D_px * 0.05;
     if (config.baffleActive) vortexDepth *= 0.12;
     const maxAllowedDepth = Math.max(0, (y_deepest - y_liquid) * 0.6);
@@ -5719,7 +5760,9 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     const submergedStageFraction = getSubmergedImpellerStageFraction(coords);
     if (submergedStageFraction <= 0) return { vx: 0, vy: 0 };
 
-    const speedMagnitude = C_velocity * v_phys * scale * submergedStageFraction;
+    // ご要望により、ポンプとしての吐出能力（＝吸い込み力）を少しマイルドに調整
+    const suction_boost = 1.2;
+    const speedMagnitude = C_velocity * v_phys * scale * submergedStageFraction * suction_boost;
 
     const cavernDecay = getCavernDecay(x, y, coords);
     if (cavernDecay === 0) return { vx: 0, vy: 0 };
@@ -5727,10 +5770,72 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
     let stages_y = getSubmergedImpellerStagePositions(coords);
     if (stages_y.length === 0) stages_y = getImpellerStagePositions(coords);
 
-    const rxScale = relVortexX || 1.0;
-    const ryScale = relVortexY || 1.0;
-    const isRadial = (config.impellerType === 'flat-paddle' || config.impellerType === 'flat-turbine');
+    // ── マクロ不安定性 (Macro-Instability) のシミュレーション ──
+    // 実機で発生する低周波の渦の揺らぎを再現し、粒子が不自然に特定の軌道に密集するのを防ぐ
+    const t_wobble = performance.now() / 1000;
+    const globalWobbleX = Math.sin(t_wobble * 2.1) * 0.15;
+    const globalWobbleY = Math.cos(t_wobble * 1.7) * 0.15;
+
+    const rxScale = (relVortexX || 1.0) + globalWobbleX;
+    const ryScale = (relVortexY || 1.0) + globalWobbleY;
     const inLeft = x < cx;
+
+    // ─── インペラ別 流れパターンブレンド比 ───────────────────────────
+    // 各インペラに固有の (axial, oblique, radial) 基本比率を定義する。
+    // axial   : 軸流成分（インペラ中心を基準とした上向きまたは下向き吐出）
+    // oblique : 斜流成分（軸流＋輻流の中間、ピッチドタービン相当）
+    // radial  : 輻流成分（インペラ中心から真横への吐出、上下に対称なドーナツ渦）
+    // 翼角 θ が大きいほど輻流寄りになるよう pitched-paddle/turbine を補正する。
+    // 粒子ごとに ±jitter の揺らぎを加えることで自然な分散を表現する。
+    const theta_deg = config.theta ?? 45;
+
+    // ── 吐出方向の定義 ──
+    // down-pumping: プロペラ・Faudler → 軸方向下向き吐出（インペラ下部から吐出、上部から吸込）
+    // up-pumping  : ピッチドパドル（標準）→ 軸方向上向き吐出（インペラ上部から吐出、下部から吸込）
+    // radial      : フラットパドル・フラットタービン → 水平方向吐出（上下対称）
+    // 注: 吐出中心は必ずインペラ中心 y_imp を基準とすること。
+    const _dischargeDir = {
+        'propeller':      'down',   // プロペラ: 下向き軸流吐出
+        'faudler':        'down',   // Faudler: 下向き吐出（下降流→槽底→壁沿い上昇の循環）
+        'pitched-paddle': 'down',   // ピッチドパドル: 下向き軸流吐出（下降流）
+        'flat-paddle':    'radial', // フラットパドル: 輻流吐出
+        'flat-turbine':   'radial', // フラットタービン: 輻流吐出
+    };
+    const dischargeDir = _dischargeDir[config.impellerType] || 'up';
+
+    // 基本ブレンドテーブル [axial, oblique, radial]
+    const _blendBase = {
+        'propeller':      [0.80, 0.16, 0.04],
+        'faudler':        [0.45, 0.42, 0.13],  // 斜流〜軸流主体、下向き循環
+        'pitched-paddle': null,   // θ依存で計算
+        'flat-paddle':    [0.05, 0.18, 0.77],
+        'flat-turbine':   [0.02, 0.10, 0.88],
+    };
+
+    // pitched-paddle: θ=45°で軸流寄り、θ→90°で輻流寄りに線形補間
+    let blend;
+    if (config.impellerType === 'pitched-paddle') {
+        const t = Math.max(0, Math.min(1, (theta_deg - 30) / 60)); // 30°→0, 90°→1
+        blend = [
+            0.60 * (1 - t) + 0.03 * t,  // axial
+            0.28 * (1 - t) + 0.17 * t,  // oblique
+            0.12 * (1 - t) + 0.80 * t   // radial
+        ];
+    } else {
+        blend = _blendBase[config.impellerType] || [0.20, 0.35, 0.45];
+    }
+
+    // 粒子固有の揺らぎ（relVortexX/Y をシードとして ±5%以内）
+    const jitter = 0.05;
+    const jA = 1.0 + (rxScale - 1.0) * jitter * 2;  // relVortexX は 0.75〜1.25
+    const jR = 1.0 + (ryScale - 1.0) * jitter * 2;
+    const rawA = Math.max(0, blend[0] * jA);
+    const rawO = Math.max(0, blend[1]);
+    const rawR = Math.max(0, blend[2] * jR);
+    const blendSum = rawA + rawO + rawR || 1;
+    const wA = rawA / blendSum;   // 軸流重み
+    const wO = rawO / blendSum;   // 斜流重み
+    const wR = rawR / blendSum;   // 輻流重み
 
     let totalVx = 0;
     let totalVy = 0;
@@ -5738,6 +5843,7 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
 
     for (let si = 0; si < stages_y.length; si++) {
         const y_imp = stages_y[si];
+        // 各段の影響範囲: 隣段との中点を境界とする
         const y_upper_bound = si < stages_y.length - 1
             ? (stages_y[si] + stages_y[si + 1]) / 2 : y_surf;
         const y_lower_bound = si > 0
@@ -5749,67 +5855,139 @@ function getMeanFlowVelocity(x, y, speed_rpm, coords, relVortexX, relVortexY) {
         const weight = Math.exp(-(dist_to_stage_y * dist_to_stage_y) / (2 * sigma * sigma));
         if (weight < 0.001) continue;
 
-        const inUpper = y < y_imp;
-        let vx_dir = 0, vy_dir = 0;
+        const inUpper = y < y_imp;  // 粒子がインペラ中心より上にあるか
+        const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
+        const wallThresh = D_px * 0.04;
+        // 壁際で流速が完全に死なないように（壁に沿って流れる「ウォールジェット」を表現）
+        // 最小係数を0.3から0.7に引き上げ、壁際でも70%の流速を維持
+        const wallFactor = Math.max(0.7, Math.min(1.0, wallDist / wallThresh));
 
-        if (isRadial) {
-            const h_upper = y_imp - y_upper_bound;
-            const h_lower = y_lower_bound - y_imp;
-            const vortexOffset = (D_px / 4) * rxScale;
-            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
-            const vy_c = inUpper
-                ? (y_upper_bound + (h_upper / 2) * ryScale)
-                : (y_imp + (h_lower / 2) * ryScale);
-            const rx_v = x - vx_c;
-            const ry_v = y - vy_c;
-            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-
-            if (inUpper) {
-                vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
-                vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
-            } else {
-                vx_dir = inLeft ? (ry_v / dist) : (-ry_v / dist);
-                vy_dir = inLeft ? (-rx_v / dist) : (rx_v / dist);
-            }
-
-            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
-            const wallThresh = D_px * 0.04;
-            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
-            const centerThresh = D_px * 0.035;
-            const centerFactor = Math.min(1.0, dist / centerThresh);
-
-            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
-            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
-        } else {
-            const h_zone = y_lower_bound - y_upper_bound;
-            const vy_c = y_upper_bound + (h_zone / 2) * ryScale;
-            const vortexOffset = (D_px / 4) * rxScale;
-            const vx_c = inLeft ? (lx + vortexOffset) : (rx - vortexOffset);
-            const rx_v = x - vx_c;
-            const ry_v = y - vy_c;
-            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
-
-            vx_dir = inLeft ? (-ry_v / dist) : (ry_v / dist);
-            vy_dir = inLeft ? (rx_v / dist) : (-rx_v / dist);
-
-            const wallDist = Math.min(x - lx, rx - x, y - y_surf, getVesselBottomY(x, coords) - y);
-            const wallThresh = D_px * 0.04;
-            const wallFactor = Math.max(0.3, Math.min(1.0, wallDist / wallThresh));
-            const centerThresh = D_px * 0.05;
-            const centerFactor = Math.min(1.0, dist / centerThresh);
-
-            totalVx += vx_dir * speedMagnitude * wallFactor * centerFactor * weight;
-            totalVy += vy_dir * speedMagnitude * wallFactor * centerFactor * weight;
+        // ── バッフルによる渦の定期的せん断効果 ──
+        // バッフル枚数(nB)が多いほど、大きなマクロ渦が定期的に破壊（せん断）され、
+        // 粒子が軌道から外れてランダムに混ざる効果が強くなる
+        let shearFactor = 1.0;
+        if (config.baffleActive) {
+            const nB = Math.max(1, Math.min(8, config.nB || 4));
+            // 流体の旋回速度はインペラ回転数の約1/3程度と仮定
+            const fluid_rps = (rpm / 60) * 0.33;
+            const passFreq = fluid_rps * nB; // バッフル通過周波数 [Hz]
+            
+            const t_anim = performance.now() / 1000;
+            const phase = (t_anim * passFreq) % 1.0;
+            
+            // バッフル枚数nBが多いほど、深いせん断が起こる
+            const shearDepth = Math.min(0.95, 0.3 + 0.12 * nB); 
+            // パルス状の減衰関数: バッフル通過時(phase=0 or 1)にマクロ渦が崩壊する
+            shearFactor = 1.0 - shearDepth * Math.exp(-15 * Math.min(phase, 1 - phase));
         }
 
+        // ── 渦中心の水平位置（X）: インペラ先端半径に基づいて設定 ──
+        // 渦の「目」はインペラ翼先端（cx ± d/2）と槽壁の中点に生じる。
+        const d_px_imp = config.d * scale;
+        const impTipLeft  = cx - d_px_imp / 2;
+        const impTipRight = cx + d_px_imp / 2;
+        const vx_c_shared = inLeft
+            ? (impTipLeft  + lx) / 2    // 左: インペラ先端〜左壁の中点
+            : (impTipRight + rx) / 2;   // 右: インペラ先端〜右壁の中点
+
+        // ── 吐出方向フラグ ──
+        const isDownPumping = (dischargeDir === 'down');
+
+        // ── 輻流成分（Radial）: インペラ中心 y_imp 基準の上下対称ドーナツ渦 ──
+        // 輻流の上下ドーナツ渦構造は up/down-pumping で共通。
+        // 渦中心Yオフセットはインペラ径 d の 1/2 を固定値として使用。
+        let vx_rad = 0, vy_rad = 0;
+        {
+            const vortexYOffset = d_px_imp * 0.5 * ryScale;
+            const vy_c = inUpper
+                ? (y_imp - vortexYOffset)
+                : (y_imp + vortexYOffset);
+            const rx_v = x - vx_c_shared, ry_v = y - vy_c;
+            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+            // 「吸引力が遠くまで届きすぎる」とのご要望を受け、基本のシグマ（減衰半径）を小さくし、
+            // 遠方へ行くほど急速に流速が落ちるように調整
+            let cutoff_rad = D_px * 1.5;
+            let sigma_rad = D_px * 0.35;
+            
+            // ★キャバーン（死水域）がある場合は、渦のサイズ自体をキャバーン内に収める（沈殿・蓄積の回避）
+            if (config.cavern_Dc > 0) {
+                const cavernRadius = (config.cavern_Dc / 2) * scale;
+                cutoff_rad = Math.min(cutoff_rad, cavernRadius * 0.7);
+                sigma_rad = Math.min(sigma_rad, cavernRadius * 0.25);
+            }
+            
+            // スライダーによる手動調整を適用
+            cutoff_rad *= tweakCavern;
+            sigma_rad *= tweakCavern;
+            
+            const cf = (dist > cutoff_rad ? 0
+                : (dist / sigma_rad) * Math.exp(-0.5 * (dist / sigma_rad) * (dist / sigma_rad))) * shearFactor;
+            
+            if (inUpper) {
+                vx_rad = inLeft ? (-ry_v / dist) : (ry_v / dist);
+                vy_rad = inLeft ? (rx_v / dist) : (-rx_v / dist);
+            } else {
+                vx_rad = inLeft ? (ry_v / dist) : (-ry_v / dist);
+                vy_rad = inLeft ? (-rx_v / dist) : (rx_v / dist);
+            }
+            vx_rad *= wallFactor * cf;
+            vy_rad *= wallFactor * cf;
+        }
+
+        // ── 軸流成分（Axial）: インペラ中心 y_imp 基準の大循環ループ ──
+        // up-pumping  （pitched-paddle）    : 上昇→液面→壁沿い下降→底→中心(下から吸込)
+        // down-pumping（propeller/faudler） : 下降→底→壁沿い上昇→液面→中心(上から吸込)
+        // axialSign のみで大循環の向きを制御し、輻流ドーナツ渦には影響させない。
+        let vx_axl = 0, vy_axl = 0;
+        {
+            const vy_c = y_imp;
+            const rx_v = x - vx_c_shared, ry_v = y - vy_c;
+            const dist = Math.sqrt(rx_v * rx_v + ry_v * ry_v) || 1;
+            // 同様に、上下方向の大ループについても減衰を早くし、遠方への吸引力を抑える
+            let cutoff_axl = D_px * 2.0;
+            let sigma_axl = D_px * 0.45;
+            
+            // ★キャバーン（死水域）がある場合は、大ループもキャバーン内に収める
+            if (config.cavern_Dc > 0) {
+                const cavernRadius = (config.cavern_Dc / 2) * scale;
+                cutoff_axl = Math.min(cutoff_axl, cavernRadius * 0.8);
+                sigma_axl = Math.min(sigma_axl, cavernRadius * 0.3);
+            }
+            
+            // スライダーによる手動調整を適用
+            cutoff_axl *= tweakCavern;
+            sigma_axl *= tweakCavern;
+            
+            const cf = (dist > cutoff_axl ? 0
+                : (dist / sigma_axl) * Math.exp(-0.5 * (dist / sigma_axl) * (dist / sigma_axl))) * shearFactor;
+            const axialSign = isDownPumping ? 1.0 : -1.0;
+
+            vx_axl = (inLeft ? (-ry_v / dist) : (ry_v / dist)) * wallFactor * cf * axialSign;
+            vy_axl = (inLeft ? (rx_v / dist) : (-rx_v / dist)) * wallFactor * cf * axialSign;
+        }
+
+        // ── 斜流成分（Oblique）: 軸流と輻流の中間（単純平均） ──
+        const vx_obl = (vx_axl + vx_rad) * 0.5;
+        const vy_obl = (vy_axl + vy_rad) * 0.5;
+
+        // ── ブレンド合成 ──
+        const vx_dir = wA * vx_axl + wO * vx_obl + wR * vx_rad;
+        const vy_dir = wA * vy_axl + wO * vy_obl + wR * vy_rad;
+
+        totalVx += vx_dir * speedMagnitude * weight;
+        totalVy += vy_dir * speedMagnitude * weight;
         totalWeight += weight;
     }
 
     if (totalWeight < 0.001) return { vx: 0, vy: 0 };
-    const normFactor = Math.min(1.5, totalWeight) / totalWeight;
+    // スライダー調整（吸引力・流速倍率）を適用
+    const normFactor = (Math.min(1.5, totalWeight) / totalWeight) * tweakSuction;
+    // ★マクロ渦の総和に対しては cavernDecay を掛けない（発散ゼロを保つため）。
+    // 代わりに渦サイズ(cutoff等)でキャバーン内に閉じ込めている。
+    // 浮力や温度勾配などの付加的な微小流速にのみ cavernDecay を適用する。
     return {
-        vx: totalVx * normFactor * cavernDecay + surfaceWarmVx + (typeof gradVx !== 'undefined' ? gradVx : 0),
-        vy: (totalVy * normFactor + buoyancyVy) * cavernDecay + (typeof gradVy !== 'undefined' ? gradVy : 0)
+        vx: totalVx * normFactor + surfaceWarmVx * cavernDecay + (typeof gradVx !== 'undefined' ? gradVx * cavernDecay : 0),
+        vy: totalVy * normFactor + buoyancyVy * cavernDecay + (typeof gradVy !== 'undefined' ? gradVy * cavernDecay : 0)
     };
 }
 
@@ -6204,7 +6382,12 @@ function drawParticleSimulation() {
     const d_ou = config.d ?? 0.06;
     const v_tip_phys = Math.PI * d_ou * n_rps_ou;   // [m/s]
     const L_int_phys = 0.1 * d_ou;                   // [m]
-    const u_rms_phys = 0.08 * v_tip_phys;            // [m/s]
+    // 実際の撹拌槽のインペラ吐出部付近の乱流強度は非常に高いため（20%〜30%）、
+    // 物理的な拡散（ランダムウォーク）を強めて不自然な軌道への密集を防ぐ
+    // お客様のご要望により、乱流強度を限界突破（250%相当にブースト）
+    // お客様のご要望により固定値を設定（UI調整は非表示）
+    const tweakTurb = 5.0; // 乱流の強さ 5倍で固定
+    const u_rms_phys = 2.50 * v_tip_phys * tweakTurb;            // [m/s]
     const tau_L_phys = (u_rms_phys > 1e-6) ? (1.1 * L_int_phys / u_rms_phys) : 1.0; // [s]
     // px 換算: sigma_px = u_rms [m/s] * scale [px/m] * C_velocity
     const m_per_px_ou = (config.DT ?? 0.105) / (coords.D_px);
@@ -6215,7 +6398,12 @@ function drawParticleSimulation() {
 
     simCtx.save();
     simParticles.forEach(p => {
-        if (!p.relSize) p.relSize = 0.6 + Math.random() * 0.8;
+        if (!p.hasWiderDistribution) {
+            // ご要望により、さらに「超極小粒子」も含めた広帯域分布に設定（0.05倍〜3.05倍）
+            // 3乗分布を用いて、微小粒子が大多数を占めつつ、ごく稀に巨大粒子が混ざる現実に近い分布へ
+            p.relSize = 0.05 + Math.pow(Math.random(), 3) * 3.0;
+            p.hasWiderDistribution = true;
+        }
         p.radius = baseRadius * p.relSize;
 
         // ── OU 乱流更新 ──
@@ -6223,11 +6411,18 @@ function drawParticleSimulation() {
         p.wx = ouResult.wx;
         p.wy = ouResult.wy;
 
-        // ── 平均流速 ──
-        const meanFlow = getMeanFlowVelocity(p.x, p.y, config.simSpeed, coords, p.relVortexX, p.relVortexY);
+        // ── 平均流速 (Midpoint Method / RK2) ──
+        // 1次オイラー積分による人工的な遠心力ドリフト（粒子が渦の外周に不自然に吹き溜まる現象）を
+        // 解消するため、中間点（0.5フレーム先）での流速を評価して軌道の膨張を防ぐ
+        const flow1 = getMeanFlowVelocity(p.x, p.y, config.simSpeed, coords, p.relVortexX, p.relVortexY);
+        const mid_x = p.x + flow1.vx * 0.5;
+        const mid_y = p.y + flow1.vy * 0.5;
+        const meanFlow = getMeanFlowVelocity(mid_x, mid_y, config.simSpeed, coords, p.relVortexX, p.relVortexY);
 
         // ── Stokes 終端沈降速度 [px/frame] ──
-        const dp_m = Math.max(0.1, config.dp_um || 150) * 1e-6;
+        const mean_dp_m = Math.max(0.1, config.dp_um || 150) * 1e-6;
+        // 粒度分布（p.relSize: 0.6〜1.4）を物理計算にも反映させる
+        const dp_m = mean_dp_m * p.relSize;
         const R_p = dp_m * 0.5;
         const mu_f = Math.max(0.001, config.mu || 0.001);
         const g_acc = config.g || 9.806;
@@ -6242,15 +6437,78 @@ function drawParticleSimulation() {
         const vt_total_m_s = (2 / 9) * (delta_rho_total * g_acc * R_p * R_p) / mu_f;  // [m/s]
         const vt_total_px = Math.max(-8, Math.min(8, 0.00487 * vt_total_m_s * (1 / m_per_px_ou)));
 
-        // ── LPT 速度統合 ──
-        // 目標速度 = 平均流 + OU乱流 + 体積力に基づく沈降/浮上
-        const target_vx = meanFlow.vx + p.wx;
-        const target_vy = meanFlow.vy + p.wy + vt_total_px;
+        // ── マイクロスケール渦の取得 ──
+        // 振幅は OU ノイズと同程度のオーダーに調整
+        const microEddy = getMicroVortexVelocity(p.x, p.y, t_anim, u_rms_px * 2.5);
 
+        // ── 渦によるスリングショット（遠心力での接線方向への飛び出し）＋ ねじれ効果 ──
+        // マイクロ渦の流速が局所的に強い場所で、ランダムに粒子が接線方向へ弾き飛ばされる
+        // 乱流強化のご要望により、発生確率を上げ、「ねじれ（直交成分）」の力を強く加える
+        const eddySpeedSq = microEddy.vx * microEddy.vx + microEddy.vy * microEddy.vy;
+        if (eddySpeedSq > (u_rms_px * u_rms_px * 0.1) && Math.random() < 0.30) {
+            // ランダムな左右のねじれ方向
+            const twistSign = Math.random() < 0.5 ? 1 : -1;
+            const twistVx = -microEddy.vy * 5.0 * twistSign;
+            const twistVy =  microEddy.vx * 5.0 * twistSign;
+            
+            // 進行方向への爆発的加速 ＋ 強烈な横回転（ねじれ）
+            p.vx += microEddy.vx * 4.0 + twistVx;
+            p.vy += microEddy.vy * 4.0 + twistVy;
+        }
+
+        // ── 主旋回流（画面奥・手前方向の回転）による遠心力ドリフト（2D投影上の水平力） ──
+        // 撹拌槽特有の現象: 流体が主軸周りを旋回しているため、重い粒子（ρS > ρL）は遠心力で外側の壁へ、
+        // 軽い粒子・気泡（ρS < ρL）は圧力勾配により中心軸へ向かって水平ドリフトする
+        const r_px = Math.abs(p.x - cx);
+        const r_m = Math.max(0.001, r_px * m_per_px_ou); // [m]
+        
+        // 旋回流の強さ（バッフルなしだとインペラとほぼ同じ速度で回る）
+        const swirlRatio = config.baffleActive ? 0.6 : 0.95; 
+        
+        // 旋回流はインペラ付近で最も強く、離れると減衰する（自由渦モデル近似）
+        let y_dist_to_closest_imp = 9999;
+        if (typeof stages_y !== 'undefined') {
+            stages_y.forEach(sy => {
+                const dy = Math.abs(p.y - sy);
+                if (dy < y_dist_to_closest_imp) y_dist_to_closest_imp = dy;
+            });
+        } else {
+            y_dist_to_closest_imp = Math.abs(p.y - y_liquid); // fallback
+        }
+        
+        const r_m_imp = (config.d * 0.5); // インペラ半径
+        const r_norm = Math.max(1.0, r_m / r_m_imp); // 1.0以上
+        const axial_decay = Math.exp(-y_dist_to_closest_imp / (coords.scale * config.d * 0.5));
+        
+        // 旋回速度 (インペラから離れるほど 1/r で弱くなり、上下に離れても弱くなる)
+        const u_theta_m_s = swirlRatio * v_tip_phys * (1.0 / r_norm) * axial_decay;
+        
+        // 遠心加速度 a_c = u_θ^2 / r
+        // 極端な空洞化を防ぐため、遠心力の誇張（ブースト）を通常の1.0倍に戻します
+        const visual_boost = 1.0;
+        const a_c = visual_boost * ((u_theta_m_s * u_theta_m_s) / r_m); // [m/s^2]
+        
         // Stokes 追従係数（粒子の慣性時間スケールに依存）
         // τ_p = ρ_p * d_p² / (18 μ_f) [s]
         const tau_p = Math.max(1e-6, rhoS * dp_m * dp_m / (18 * mu_f));  // [s]
-        const stokesRelax = Math.min(0.95, Math.max(0.02, dt_frame_s / (tau_p + dt_frame_s)));
+        
+        // ドリフト速度 = 緩和時間 * 加速度 * 密度比効果
+        const v_drift_m_s = tau_p * a_c * (delta_rho_total / rhoS);
+        
+        // [px/frame] に変換 (過大な値をクリップ: 猛烈に飛ぶように上限30px/frameに引き上げ)
+        const v_drift_px = Math.max(-30, Math.min(30, 0.00487 * v_drift_m_s * (1 / m_per_px_ou)));
+        
+        // 軸から遠ざかる方向を正としてXベクトル化
+        const centrifugal_vx = (p.x > cx) ? v_drift_px : -v_drift_px;
+
+        // ── LPT 速度統合 ──
+        // 目標速度 = 平均流 + OU乱流 + マイクロ渦 + 遠心ドリフト + 沈降/浮上
+        const target_vx = meanFlow.vx + p.wx + microEddy.vx + centrifugal_vx;
+        const target_vy = meanFlow.vy + p.wy + microEddy.vy + vt_total_px;
+        
+        // 空洞化を防ぐため、計算上の慣性のブーストを100倍から25倍へ少し落ち着かせます
+        const visual_inertia_boost = 25.0;
+        const stokesRelax = Math.min(0.95, Math.max(0.005, dt_frame_s / (tau_p * visual_inertia_boost + dt_frame_s)));
 
         p.vx += (target_vx - p.vx) * stokesRelax;
         p.vy += (target_vy - p.vy) * stokesRelax;
@@ -6267,13 +6525,15 @@ function drawParticleSimulation() {
         }
 
         // ── 壁境界条件 ──
-        if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.2; }
-        if (p.x > rx - p.radius) { p.x = rx - p.radius; p.vx = -p.vx * 0.2; }
+        // ご要望（速度を失わない）により、壁での反発係数を0.2から0.95へ引き上げ、完全弾性衝突に近い跳ね返りにします
+        if (p.x < lx + p.radius) { p.x = lx + p.radius; p.vx = -p.vx * 0.95; }
+        if (p.x > rx - p.radius) { p.x = rx - p.radius; p.vx = -p.vx * 0.95; }
 
         const y_surf_p = getSharedSurfaceY(p.x, coords, rpm, t_anim);
         if (p.y < y_surf_p + p.radius) {
             p.y = y_surf_p + p.radius;
-            p.vy = Math.abs(p.vy) * 0.1;
+            // 水面でも速度を失わずに跳ね返る
+            p.vy = Math.abs(p.vy) * 0.95;
         }
 
         // コイル衝突
@@ -6308,16 +6568,23 @@ function drawParticleSimulation() {
                 p.vx *= 0.4;
                 p.color = '#38bdf8';
             } else {
-                p.vy = -Math.abs(p.vy) * 0.05;
-                const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
-                    ? (p.x < cx ? -0.8 : 0.8) : (p.x < cx ? 0.8 : -0.8);
-                p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
+                // ご要望（速度を失わない）により、底面での垂直方向の反発係数も0.05から0.95へ引き上げます
+                p.vy = -Math.abs(p.vy) * 0.95;
+                // 下降流(down-pumping): 軸から底へ降りてきた流れは底で外側(壁方向)へスイープ
+                // 上昇流(up-pumping)  : 壁から底へ降りてきた流れは底で内側(軸方向)へスイープ
+                const _isDownAtBottom = { 'propeller': true, 'faudler': true, 'pitched-paddle': true, 'flat-paddle': false, 'flat-turbine': false };
+                const _downPump = _isDownAtBottom[config.impellerType] ?? true;
+                const sweepDir = _downPump
+                    ? (p.x < cx ? 0.8 : -0.8)   // 外側へ
+                    : (p.x < cx ? -0.8 : 0.8);  // 内側へ
+                // 底面の掃流効果を強める（壁際での減速を相殺して勢いよく流す）
+                p.vx += sweepDir * 0.8 * (config.simSpeed / 300);
                 p.color = '#b45309';
             }
         } else {
             if (config.simSpeed >= njs_rpm) {
                 p.color = '#f59e0b';
-            } else if (delta_rho < 0) {
+            } else if (delta_rho_total < 0) {
                 p.color = '#38bdf8';
             } else {
                 p.color = '#d97706';
@@ -7001,40 +7268,26 @@ function updateSettingsListTab() {
 }
 
 function switchInnerTab(tab) {
-    const btnSusp = document.getElementById('inner-tab-btn-suspension');
-    const btnFlow = document.getElementById('inner-tab-btn-flow');
-    const contentSusp = document.getElementById('inner-tab-content-suspension');
-    const contentFlow = document.getElementById('inner-tab-content-flow');
+    const tabs = ['suspension', 'flow', 'cavern'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`inner-tab-btn-${t}`);
+        const content = document.getElementById(`inner-tab-content-${t}`);
+        if (!btn || !content) return;
 
-    if (!btnSusp || !btnFlow || !contentSusp || !contentFlow) return;
-
-    if (tab === 'suspension') {
-        btnSusp.classList.add('active');
-        btnSusp.style.color = 'var(--accent-color)';
-        btnSusp.style.borderBottom = '2px solid var(--accent-color)';
-        btnSusp.style.fontWeight = '600';
-
-        btnFlow.classList.remove('active');
-        btnFlow.style.color = 'var(--text-secondary)';
-        btnFlow.style.borderBottom = '2px solid transparent';
-        btnFlow.style.fontWeight = '500';
-
-        contentSusp.style.display = 'block';
-        contentFlow.style.display = 'none';
-    } else {
-        btnFlow.classList.add('active');
-        btnFlow.style.color = 'var(--accent-color)';
-        btnFlow.style.borderBottom = '2px solid var(--accent-color)';
-        btnFlow.style.fontWeight = '600';
-
-        btnSusp.classList.remove('active');
-        btnSusp.style.color = 'var(--text-secondary)';
-        btnSusp.style.borderBottom = '2px solid transparent';
-        btnSusp.style.fontWeight = '500';
-
-        contentSusp.style.display = 'none';
-        contentFlow.style.display = 'block';
-    }
+        if (t === tab) {
+            btn.classList.add('active');
+            btn.style.color = 'var(--accent-color)';
+            btn.style.borderBottom = '2px solid var(--accent-color)';
+            btn.style.fontWeight = '600';
+            content.style.display = 'block';
+        } else {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.borderBottom = '2px solid transparent';
+            btn.style.fontWeight = '500';
+            content.style.display = 'none';
+        }
+    });
 }
 
 function initParticleSimulation() {
@@ -7648,10 +7901,12 @@ function drawParticleSimulation() {
             } else {
                 // Rolling/bouncing at bottom
                 p.vy = -Math.abs(p.vy) * 0.05;
-                // 底面掃き: 小さな水平力（回転数比例）でインペラ流れ方向に粒子を動かす
-                const sweepDir = (config.impellerType === 'pitched-paddle' || config.impellerType === 'propeller')
-                    ? (p.x < cx ? -0.8 : 0.8)  // 軸流: 外向き
-                    : (p.x < cx ? 0.8 : -0.8); // 半径流: 内向き
+                // 底面掃き: 下降流は外側(壁方向)へ、上昇流は内側(軸方向)へ
+                const _isDownAtBottom2 = { 'propeller': true, 'faudler': true, 'pitched-paddle': true, 'flat-paddle': false, 'flat-turbine': false };
+                const _downPump2 = _isDownAtBottom2[config.impellerType] ?? true;
+                const sweepDir = _downPump2
+                    ? (p.x < cx ? 0.8 : -0.8)   // 外側へ
+                    : (p.x < cx ? -0.8 : 0.8);  // 内側へ
                 p.vx += sweepDir * 0.12 * (config.simSpeed / 300);
                 p.color = '#b45309'; // rolling: medium gold
             }
