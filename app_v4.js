@@ -510,10 +510,10 @@ function initEventListeners() {
                 // ファウドラー（中間的な放射流）: α≈2.0
                 const alphaPresetMap = {
                     'pitched-paddle': 3.0,
-                    'flat-paddle':    2.0,
-                    'flat-turbine':   2.0,
-                    'propeller':      3.0,
-                    'faudler':        2.0
+                    'flat-paddle': 2.0,
+                    'flat-turbine': 2.0,
+                    'propeller': 3.0,
+                    'faudler': 2.0
                 };
                 if (presetMap[val]) {
                     rheologyData.ks = presetMap[val];
@@ -2541,13 +2541,13 @@ function updateRheologyUI() {
     const clearBtn = document.getElementById('btn-clear-rheology');
 
     const ALL_MODELS = [
-        { id:'newtonian', label:'Newtonian（μ = 一定）' },
-        { id:'powerlaw',  label:'Power-Law（べき乗則）' },
-        { id:'bingham',   label:'Bingham（ビンガム）' },
-        { id:'casson',    label:'Casson（キャッソン）' },
-        { id:'hb',        label:'Herschel-Bulkley（HB）' },
-        { id:'cross',     label:'Cross（クロス）' },
-        { id:'carreau',   label:'Carreau（カロー）' },
+        { id: 'newtonian', label: 'Newtonian（μ = 一定）' },
+        { id: 'powerlaw', label: 'Power-Law（べき乗則）' },
+        { id: 'bingham', label: 'Bingham（ビンガム）' },
+        { id: 'casson', label: 'Casson（キャッソン）' },
+        { id: 'hb', label: 'Herschel-Bulkley（HB）' },
+        { id: 'cross', label: 'Cross（クロス）' },
+        { id: 'carreau', label: 'Carreau（カロー）' },
     ];
 
     const samples = Object.keys(rheologyData.samples);
@@ -2596,7 +2596,7 @@ function updateRheologyUI() {
     const cavernModelGroup = document.getElementById('cavern-model-group');
     if (cavernModelGroup) {
         const isYieldFluid = rheologyData.activeModel === 'bingham' || rheologyData.activeModel === 'casson' || rheologyData.activeModel === 'hb';
-        const isPowerLaw   = rheologyData.activeModel === 'powerlaw';
+        const isPowerLaw = rheologyData.activeModel === 'powerlaw';
         // 降伏値モデル: キャバーン形状モデル選択を表示
         cavernModelGroup.style.display = isYieldFluid ? 'block' : 'none';
         // αグループは「降伏値あり かつ 円筒モデル選択時」のみ表示
@@ -2637,12 +2637,12 @@ function updateRheologyUI() {
     const pr_rheo = selectedModelInfo?.params;
     const infoEl = document.getElementById('pseudo-cavern-info');
     if (infoEl && rheologyData.activeModel === 'powerlaw' && pr_rheo?.K != null) {
-        const ks_v  = rheologyData.ks || 11.5;
+        const ks_v = rheologyData.ks || 11.5;
         const n_rps_rep = (config.simSpeed ?? 300) / 60;
         const limitFactor_v = rheologyData.muLimitFactor ?? 20.0;
         const gamma_blade = ks_v * n_rps_rep;
         const gamma_c = ks_v * n_rps_rep / limitFactor_v;  // スライダー回転数基準の流動限界ずり速度
-        infoEl.textContent = `γ_blade ≈ ${gamma_blade.toFixed(1)} s⁻¹, γ_c ≈ ${gamma_c.toFixed(1)} s⁻¹ (N≈${(n_rps_rep*60).toFixed(0)} rpm)`;
+        infoEl.textContent = `γ_blade ≈ ${gamma_blade.toFixed(1)} s⁻¹, γ_c ≈ ${gamma_c.toFixed(1)} s⁻¹ (N≈${(n_rps_rep * 60).toFixed(0)} rpm)`;
     } else if (infoEl) {
         infoEl.textContent = '';
     }
@@ -3987,19 +3987,19 @@ function generatePDFReport() {
         ? '渦巻ジャケット（接線流）'
         : (config.jacketType === 'flat-tangential' ? '平板ジャケット（接線流）' : '平板ジャケット（半径流）');
     document.getElementById('pdf-val-coil-active').textContent = config.coilActive ? 'あり' : 'なし';
-    document.getElementById('pdf-val-media-type').textContent = 
+    document.getElementById('pdf-val-media-type').textContent =
         `J: ${config.mediaTypeJ === 'steam' ? 'スチーム' : '水'} / C: ${config.mediaTypeC === 'steam' ? 'スチーム' : '水'}`;
-    document.getElementById('pdf-val-media-temp-in').textContent = 
+    document.getElementById('pdf-val-media-temp-in').textContent =
         `J: ${config.mediaTempInJ.toFixed(1)} / C: ${config.mediaTempInC.toFixed(1)}`;
-    document.getElementById('pdf-val-media-flow').textContent = 
+    document.getElementById('pdf-val-media-flow').textContent =
         `J: ${config.mediaFlowJ.toFixed(3)} / C: ${config.mediaFlowC.toFixed(3)}`;
-    document.getElementById('pdf-val-heat-h1').textContent = 
+    document.getElementById('pdf-val-heat-h1').textContent =
         `J: ${heatRes.h1_j.toFixed(1)} / C: ${config.coilActive ? heatRes.h1_c.toFixed(1) : '-'}`;
-    document.getElementById('pdf-val-heat-h2').textContent = 
+    document.getElementById('pdf-val-heat-h2').textContent =
         `J: ${heatRes.h2_j.toFixed(1)} / C: ${config.coilActive ? heatRes.h2_c.toFixed(1) : '-'}`;
-    document.getElementById('pdf-val-heat-u').textContent = 
+    document.getElementById('pdf-val-heat-u').textContent =
         `J: ${heatRes.U_j.toFixed(1)} / C: ${config.coilActive ? heatRes.U_c.toFixed(1) : '-'}`;
-    document.getElementById('pdf-val-heat-area').textContent = 
+    document.getElementById('pdf-val-heat-area').textContent =
         `J: ${heatRes.Aj.toFixed(4)} / C: ${config.coilActive ? heatRes.Ac.toFixed(4) : '-'} (Total: ${totalArea.toFixed(4)})`;
 
     // Solid-Liquid data mapping for PDF
@@ -5071,7 +5071,7 @@ function updateCavernDiameter() {
 
     const mod = rheologyData?.activeModel;
     const isYieldFluid = mod === 'bingham' || mod === 'casson' || mod === 'hb';
-    const isPowerLaw  = mod === 'powerlaw';
+    const isPowerLaw = mod === 'powerlaw';
 
     const models = rheologyData?.samples?.[rheologyData?.activeSample] || [];
     const modelInfo = models.find(m => m.modelId === mod);
@@ -5079,9 +5079,9 @@ function updateCavernDiameter() {
 
     // ── Power-law 疑似キャバーン計算 ───────────────────────────────
     if (isPowerLaw && pr && pr.K != null && pr.n != null) {
-        const n_rps   = config.simSpeed / 60;
-        const d       = config.d;
-        const ks      = rheologyData.ks || 11.5;
+        const n_rps = config.simSpeed / 60;
+        const d = config.d;
+        const ks = rheologyData.ks || 11.5;
         const alpha_d = rheologyData.decayAlpha ?? 2.0;   // ずり速度減衰係数
         const limitFactor = rheologyData.muLimitFactor ?? 20.0;
 
@@ -5198,7 +5198,7 @@ function updateSimStatusBadge(currentN, njsN) {
     if (startModeSelect) {
         const settledOpt = startModeSelect.querySelector('option[value="settled"]');
         if (settledOpt) settledOpt.textContent = isFloating ? '静置(液面浮上)' : '沈殿';
-        
+
         const suspendedOpt = startModeSelect.querySelector('option[value="suspended"]');
         if (suspendedOpt) suspendedOpt.textContent = isFloating ? '底面配置(浮上検証)' : '液面付近';
     }
@@ -5609,7 +5609,7 @@ function getCavernDecay(x, y, coords) {
             // トーラス: 断面中心は cx±R_ring, y_imp_s
             // r_sec = cavern_Dc/2 (断面半径)
             const R_ring = (config.d / 2) * scale;
-            const r_sec  = (config.cavern_Dc / 2) * scale;
+            const r_sec = (config.cavern_Dc / 2) * scale;
             // 左右の断面円との距離の最小値
             let dL = Math.sqrt(Math.pow(x - (cx - R_ring), 2) + Math.pow(y - y_imp_s, 2));
             let dR = Math.sqrt(Math.pow(x - (cx + R_ring), 2) + Math.pow(y - y_imp_s, 2));
@@ -6087,7 +6087,7 @@ function drawParticleSimulation() {
         } else if (config.cavernModel === 'torus') {
             // トーラス: 翼径中心(±R_ring)に断面半径r_sec の円を2つ描画
             const R_ring_px = (config.d / 2) * scale;   // リング半径[px]
-            const r_sec_px  = (config.cavern_Dc / 2) * scale; // 断面半径[px]
+            const r_sec_px = (config.cavern_Dc / 2) * scale; // 断面半径[px]
             // 断面円左右（2D断面投影）
             for (const sign of [-1, 1]) {
                 const gx = cx + sign * R_ring_px;
@@ -6115,7 +6115,7 @@ function drawParticleSimulation() {
 
         if (config.cavernModel === 'torus') {
             const R_ring_px = (config.d / 2) * scale;
-            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            const r_sec_px = (config.cavern_Dc / 2) * scale;
             simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
             simCtx.font = '10px sans-serif';
             simCtx.fillText('流動領域(トーラス)', cx + R_ring_px + r_sec_px + 6, y_imp2 - 5);
@@ -6515,6 +6515,19 @@ function drawParticleSimulation() {
     simCtx.restore();
     simCtx.restore();
 }
+function renderCol(cols) {
+    return cols.map((col, index) => `
+        <div class="col-items" style="flex:1;">
+            ${col.map(item => `
+                <div class="item" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span class="label" style="color:var(--text-secondary);">${item.label}</span>
+                    <span class="val" style="font-weight:600;">${item.val} ${item.unit}</span>
+                </div>
+            `).join('')}
+        </div>
+        ${index < cols.length - 1 ? '<div class="separator" style="width:1px; background:var(--border-color); margin:0 12px;"></div>' : ''}
+    `).join('');
+}
 function adjustChartCardHeight() {
     const chartCard = document.querySelector('.card.chart-card');
     if (!chartCard) return;
@@ -6552,15 +6565,15 @@ function switchMainTab(tab) {
     config.activeTab = tab;
     saveCurrentState();
 
-    const btnRushton   = document.getElementById('tab-btn-rushton');
-    const btnPartsim   = document.getElementById('tab-btn-partsim');
-    const btnHeatsim   = document.getElementById('tab-btn-heatsim');
-    const btnExpsheet  = document.getElementById('tab-btn-expsheet');
-    const btnSettings  = document.getElementById('tab-btn-settings');
+    const btnRushton = document.getElementById('tab-btn-rushton');
+    const btnPartsim = document.getElementById('tab-btn-partsim');
+    const btnHeatsim = document.getElementById('tab-btn-heatsim');
+    const btnExpsheet = document.getElementById('tab-btn-expsheet');
+    const btnSettings = document.getElementById('tab-btn-settings');
 
-    const contentRushton  = document.getElementById('tab-content-rushton');
-    const contentPartsim  = document.getElementById('tab-content-partsim');
-    const contentHeatsim  = document.getElementById('tab-content-heatsim');
+    const contentRushton = document.getElementById('tab-content-rushton');
+    const contentPartsim = document.getElementById('tab-content-partsim');
+    const contentHeatsim = document.getElementById('tab-content-heatsim');
     const contentExpsheet = document.getElementById('tab-content-expsheet');
     const contentSettings = document.getElementById('tab-content-settings');
 
@@ -6664,7 +6677,7 @@ function updateSettingsListTab() {
 
     // --- レオロジーパラメータの取得 ---
     const rheoModel = (typeof rheologyData !== 'undefined') ? rheologyData.activeModel : 'newtonian';
-    const MODEL_LABELS = { newtonian:'Newtonian（ニュートン）', powerlaw:'Power-Law（べき乗則）', bingham:'Bingham（ビンガム）', casson:'Casson（キャッソン）', hb:'Herschel-Bulkley（HB）', cross:'Cross（クロス）', carreau:'Carreau（カロー）' };
+    const MODEL_LABELS = { newtonian: 'Newtonian（ニュートン）', powerlaw: 'Power-Law（べき乗則）', bingham: 'Bingham（ビンガム）', casson: 'Casson（キャッソン）', hb: 'Herschel-Bulkley（HB）', cross: 'Cross（クロス）', carreau: 'Carreau（カロー）' };
     const rheoModelLabel = MODEL_LABELS[rheoModel] || rheoModel;
     const rheoKs = document.getElementById('ks-input') ? document.getElementById('ks-input').value : ((typeof rheologyData !== 'undefined') ? rheologyData.ks : 11.5);
     const rheoAlpha = document.getElementById('decay-alpha-input') ? document.getElementById('decay-alpha-input').value : ((typeof rheologyData !== 'undefined') ? (rheologyData.decayAlpha || 2.0) : 2.0);
@@ -6741,7 +6754,14 @@ function updateSettingsListTab() {
                 [
                     { label: '攪拌翼', val: config.impellerType, unit: '' },
                     { label: '攪拌速度 n', val: config.simSpeed, unit: 'rpm' },
-                    { label: '形態板', val: config.baffleActive ? 'あり' : 'なし', unit: '' }
+
+                    ...(config.baffleActive ? [
+                        { label: '邪魔板', val: 'あり', unit: '' },
+                        { label: '邪魔板枚数 n_B', val: config.nB, unit: '枚' },
+                        { label: '邪魔板幅 B_w', val: config.Bw != null ? (config.Bw * 1000).toFixed(1) : '--', unit: 'mm' }
+                    ] : [
+                        { label: '邪魔板', val: 'なし', unit: '' }
+                    ])
                 ],
                 [
                     { label: '攪拌液の密度 ρ', val: config.rho, unit: 'kg/m³' },
@@ -6751,6 +6771,7 @@ function updateSettingsListTab() {
                 ]
             ]
         },
+
         {
             name: '■ ジャケット',
             color: '#f87171',
@@ -6890,7 +6911,7 @@ function updateSettingsListTab() {
         const rhoL = config.rho;
         const rhoS = config.rho_S ?? 2500;
         const eps = (rhoS * (1 - props.c_s)) / (rhoS * (1 - props.c_s) + rhoL * props.c_s);
-        
+
         const n_rep = (config.simSpeed ?? 300) / 60;
         const isNewt = rheologyData.activeModel === 'newtonian';
         let mu_val = '';
@@ -6930,9 +6951,9 @@ function updateSettingsListTab() {
             <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
                 <tbody>
                     ${items.map(item => {
-                        const isDyn = item.isDynamic !== false;
-                        const colorStyle = isDyn ? 'color: var(--accent-color);' : 'color: var(--text-primary);';
-                        return `
+            const isDyn = item.isDynamic !== false;
+            const colorStyle = isDyn ? 'color: var(--accent-color);' : 'color: var(--text-primary);';
+            return `
                         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
                             <td style="padding:5px 6px 5px 0;color:var(--text-secondary);width:62%;">${item.label}</td>
                             <td style="padding:5px 0;text-align:right;font-family:monospace;font-weight:600;${colorStyle}">
@@ -6940,7 +6961,7 @@ function updateSettingsListTab() {
                             </td>
                         </tr>
                         `;
-                    }).join('')}
+        }).join('')}
                 </tbody>
             </table>
         </td>`;
@@ -6956,7 +6977,8 @@ function updateSettingsListTab() {
                     <tbody>
                         <tr style="vertical-align:top;">
                             ${renderCol(col1)}
-                            <td style="width:20px;"></td>
+                            <td style="width:1px;background:rgba(255,255,255,0.08);padding:0;"></td>
+                            <td style="width:14px;"></td>
                             ${renderCol(col2)}
                         </tr>
                     </tbody>
@@ -7332,7 +7354,7 @@ function drawParticleSimulation() {
         } else if (config.cavernModel === 'torus') {
             // トーラスモデル: 翼径中心(±R_ring)に断面半径r_sec の円を2つくり抜く
             const R_ring_px = (config.d / 2) * scale;
-            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            const r_sec_px = (config.cavern_Dc / 2) * scale;
             for (const sign of [-1, 1]) {
                 const gx = cx + sign * R_ring_px;
                 const gr = simCtx.createRadialGradient(gx, y_imp, r_sec_px * 0.15, gx, y_imp, r_sec_px * 1.3);
@@ -7364,7 +7386,7 @@ function drawParticleSimulation() {
         // ラベル描画
         if (config.cavernModel === 'torus') {
             const R_ring_px = (config.d / 2) * scale;
-            const r_sec_px  = (config.cavern_Dc / 2) * scale;
+            const r_sec_px = (config.cavern_Dc / 2) * scale;
             simCtx.fillStyle = 'rgba(245, 158, 11, 0.9)';
             simCtx.font = '10px sans-serif';
             simCtx.fillText('流動領域(トーラス)', cx + R_ring_px + r_sec_px + 6, y_imp - 5);
@@ -7964,16 +7986,16 @@ function drawParticleSimulation() {
 
 // 水の物性テーブル (0〜100℃)
 const WATER_PROP_TABLE = [
-    { T: 0,   rho: 999.9, Cp: 4217, k: 0.569, mu: 1.792e-3 },
-    { T: 10,  rho: 999.7, Cp: 4192, k: 0.587, mu: 1.307e-3 },
-    { T: 20,  rho: 998.2, Cp: 4182, k: 0.602, mu: 1.002e-3 },
-    { T: 30,  rho: 995.7, Cp: 4178, k: 0.618, mu: 0.797e-3 },
-    { T: 40,  rho: 992.3, Cp: 4178, k: 0.632, mu: 0.653e-3 },
-    { T: 50,  rho: 988.1, Cp: 4180, k: 0.642, mu: 0.547e-3 },
-    { T: 60,  rho: 983.2, Cp: 4184, k: 0.654, mu: 0.467e-3 },
-    { T: 70,  rho: 977.8, Cp: 4189, k: 0.664, mu: 0.404e-3 },
-    { T: 80,  rho: 971.8, Cp: 4196, k: 0.672, mu: 0.355e-3 },
-    { T: 90,  rho: 965.3, Cp: 4205, k: 0.678, mu: 0.315e-3 },
+    { T: 0, rho: 999.9, Cp: 4217, k: 0.569, mu: 1.792e-3 },
+    { T: 10, rho: 999.7, Cp: 4192, k: 0.587, mu: 1.307e-3 },
+    { T: 20, rho: 998.2, Cp: 4182, k: 0.602, mu: 1.002e-3 },
+    { T: 30, rho: 995.7, Cp: 4178, k: 0.618, mu: 0.797e-3 },
+    { T: 40, rho: 992.3, Cp: 4178, k: 0.632, mu: 0.653e-3 },
+    { T: 50, rho: 988.1, Cp: 4180, k: 0.642, mu: 0.547e-3 },
+    { T: 60, rho: 983.2, Cp: 4184, k: 0.654, mu: 0.467e-3 },
+    { T: 70, rho: 977.8, Cp: 4189, k: 0.664, mu: 0.404e-3 },
+    { T: 80, rho: 971.8, Cp: 4196, k: 0.672, mu: 0.355e-3 },
+    { T: 90, rho: 965.3, Cp: 4205, k: 0.678, mu: 0.315e-3 },
     { T: 100, rho: 958.4, Cp: 4215, k: 0.682, mu: 0.282e-3 }
 ];
 
@@ -7983,30 +8005,30 @@ const STEAM_PROP_TABLE = [
     { T: 120, rho: 1.121, Cp: 2181, k: 0.0259, mu: 1.28e-5 },
     { T: 140, rho: 1.966, Cp: 2257, k: 0.0281, mu: 1.36e-5 },
     { T: 160, rho: 3.258, Cp: 2416, k: 0.0305, mu: 1.44e-5 },
-    { T: 180, rho: 5.16,  Cp: 2592, k: 0.0330, mu: 1.52e-5 },
-    { T: 200, rho: 7.86,  Cp: 2788, k: 0.0361, mu: 1.60e-5 },
+    { T: 180, rho: 5.16, Cp: 2592, k: 0.0330, mu: 1.52e-5 },
+    { T: 200, rho: 7.86, Cp: 2788, k: 0.0361, mu: 1.60e-5 },
     { T: 220, rho: 11.61, Cp: 3052, k: 0.0394, mu: 1.68e-5 },
     { T: 240, rho: 16.75, Cp: 3412, k: 0.0435, mu: 1.76e-5 },
-    { T: 260, rho: 23.7,  Cp: 4082, k: 0.0483, mu: 1.84e-5 }
+    { T: 260, rho: 23.7, Cp: 4082, k: 0.0483, mu: 1.84e-5 }
 ];
 
 // 伝熱媒体の物性値を温度から線形補間する関数
 function interpolateProperties(table, T) {
     if (T <= table[0].T) return { ...table[0] };
     if (T >= table[table.length - 1].T) return { ...table[table.length - 1] };
-    
+
     for (let i = 0; i < table.length - 1; i++) {
-        if (T >= table[i].T && T <= table[i+1].T) {
+        if (T >= table[i].T && T <= table[i + 1].T) {
             const t0 = table[i].T;
-            const t1 = table[i+1].T;
+            const t1 = table[i + 1].T;
             const ratio = (T - t0) / (t1 - t0);
-            
+
             return {
                 T: T,
-                rho: table[i].rho + ratio * (table[i+1].rho - table[i].rho),
-                Cp: table[i].Cp + ratio * (table[i+1].Cp - table[i].Cp),
-                k: table[i].k + ratio * (table[i+1].k - table[i].k),
-                mu: table[i].mu + ratio * (table[i+1].mu - table[i].mu)
+                rho: table[i].rho + ratio * (table[i + 1].rho - table[i].rho),
+                Cp: table[i].Cp + ratio * (table[i + 1].Cp - table[i].Cp),
+                k: table[i].k + ratio * (table[i + 1].k - table[i].k),
+                mu: table[i].mu + ratio * (table[i + 1].mu - table[i].mu)
             };
         }
     }
@@ -8046,14 +8068,14 @@ function calculateHeatTransfer() {
     const n_stages = getActiveStages();
     const b = config.b;
     const clearance_impeller = config.clearance;
-    
+
     // 液深 H_liq
     const H_liq = getLiquidHeight();
 
     // 翼最下段の物理高さ C_1 (鏡板最深部からインペラ中心まで)
     const C1 = clearance_impeller + b / 2;
     // 翼最上段の物理高さ C_top
-    const C_top = H_geom + b / 2; 
+    const C_top = H_geom + b / 2;
 
     // 各段の物理的高さ C_i の総和 sum_C
     let sum_C = 0;
@@ -8076,7 +8098,7 @@ function calculateHeatTransfer() {
     const p_c = Math.max(d_co * 1.01, config.coilPitch ?? (2.5 * d_co));
     const D_c = (config.coilCenterDia && config.coilCenterDia > 0) ? config.coilCenterDia : 0.7 * D_T;
     const clearance_coil = config.clearance ?? 0;
-    
+
     // コイル巻き数 N_t (既存の描画ロジックと整合)
     const R = D_T / 2;
     let h_dish = 0;
@@ -8089,7 +8111,7 @@ function calculateHeatTransfer() {
         h_dish = R;
     }
     // 物理的コイルSpan:
-    const coilSpan_phys = H_geom + h_dish - d_co/2 - clearance_coil - 0.02;
+    const coilSpan_phys = H_geom + h_dish - d_co / 2 - clearance_coil - 0.02;
     const N_t = Math.max(1, Math.floor(Math.max(0.01, coilSpan_phys) / p_c));
     const L_c = N_t * Math.PI * D_c;
     const Ac = config.coilActive ? (Math.PI * d_co * L_c) : 0;
@@ -8116,8 +8138,8 @@ function calculateHeatTransfer() {
         const beta1 = 2 / 3;
         const beta2 = -0.25;
         const beta3 = 0.15;
-        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 *
-                      Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
+        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1 / 3) * 1.0 *
+            Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
         h1_j = (Nu_Lj * k_L) / D_T;
     } else {
         // パドル・傾斜パドル・タービンのジャケット
@@ -8143,13 +8165,13 @@ function calculateHeatTransfer() {
         }
 
         const term_geom = Math.pow(d / D_T, beta2) *
-                          Math.pow(sum_C / (n_stages * H_liq), beta3) *
-                          Math.pow(sum_b / D_T, beta4) *
-                          Math.pow(np_val, beta5) *
-                          Math.pow(sin_theta, beta6) *
-                          Math.pow(H_liq / D_T, beta7);
+            Math.pow(sum_C / (n_stages * H_liq), beta3) *
+            Math.pow(sum_b / D_T, beta4) *
+            Math.pow(np_val, beta5) *
+            Math.pow(sin_theta, beta6) *
+            Math.pow(H_liq / D_T, beta7);
 
-        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 * term_geom;
+        const Nu_Lj = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1 / 3) * 1.0 * term_geom;
         h1_j = (Nu_Lj * k_L) / D_T;
     }
 
@@ -8161,8 +8183,8 @@ function calculateHeatTransfer() {
             const beta1 = 0.56;
             const beta2 = -0.25;
             const beta3 = 0.15;
-            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 *
-                          Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
+            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1 / 3) * 1.0 *
+                Math.pow(d / D_T, beta2) * Math.pow(clearance_impeller / H_liq, beta3);
             h1_c = (Nu_Lc * k_L) / D_T;
         } else {
             // パドル・傾斜パドル・タービンのコイル
@@ -8202,13 +8224,13 @@ function calculateHeatTransfer() {
             }
 
             const term_geom = Math.pow(d / D_T, beta2) *
-                              Math.pow(sum_C / (n_stages * H_liq), beta3) *
-                              Math.pow(sum_b / D_T, beta4) *
-                              Math.pow(np_val, beta5) *
-                              (beta6 > 0 ? Math.pow(sin_theta, beta6) : 1.0) *
-                              Math.pow(hd_term_val, beta7);
+                Math.pow(sum_C / (n_stages * H_liq), beta3) *
+                Math.pow(sum_b / D_T, beta4) *
+                Math.pow(np_val, beta5) *
+                (beta6 > 0 ? Math.pow(sin_theta, beta6) : 1.0) *
+                Math.pow(hd_term_val, beta7);
 
-            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1/3) * 1.0 * term_geom;
+            const Nu_Lc = alpha * Math.pow(Re, beta1) * Math.pow(Pr, 1 / 3) * 1.0 * term_geom;
             h1_c = (Nu_Lc * k_L) / D_T;
         }
     }
@@ -8238,7 +8260,7 @@ function calculateHeatTransfer() {
     const isSteamJ = config.mediaTypeJ === 'steam';
     const T_in_j = config.mediaTempInJ ?? 80;
     const W_j = config.mediaFlowJ ?? 0.05;
-    
+
     let T_out_j = T_in_j;
     let rho_j = 1000, Cp_j = 4184, k_j = 0.60, mu_j = 0.001;
     let h2_j = 0;
@@ -8270,7 +8292,7 @@ function calculateHeatTransfer() {
         } else {
             h2_j = 0.0077 * prop_factor * Math.pow(Ref_j, 0.4);
         }
-        
+
         const R_wall_j = t_w / k_w;
         U_j = 1 / (1 / h1_j + R_wall_j + 1 / h2_j + r_d);
         Q_j = U_j * Aj * (T_in_j - T_L);
@@ -8321,7 +8343,7 @@ function calculateHeatTransfer() {
             h2_j = (Nu_j * k_j) / Math.max(1e-6, D_eq);
 
             U_j = 1 / (1 / h1_j + R_wall_j + 1 / h2_j + r_d);
-            
+
             const exponent = -(U_j * Aj) / Math.max(1e-3, W_j * Cp_j);
             T_out_j = T_L + (T_in_j - T_L) * Math.exp(exponent);
         }
@@ -8382,7 +8404,7 @@ function calculateHeatTransfer() {
                 u_c = W_c / (rho_c * (Math.PI * d_ci * d_ci / 4));
                 const Re_c = (rho_c * u_c * d_ci) / Math.max(1e-7, mu_c);
                 const Pr_c = (Cp_c * mu_c) / Math.max(1e-7, k_c);
-                
+
                 let Nu_c = 0;
                 if (Re_c < 2300) {
                     Nu_c = 3.66;
@@ -8392,7 +8414,7 @@ function calculateHeatTransfer() {
                 h2_c = (Nu_c * k_c) / d_ci;
 
                 U_c = 1 / (1 / h1_c + R_wall_c + 1 / h2_c + r_d);
-                
+
                 const exponent = -(U_c * Ac) / Math.max(1e-3, W_c * Cp_c);
                 T_out_c = T_L + (T_in_c - T_L) * Math.exp(exponent);
             }
@@ -8411,18 +8433,18 @@ function calculateHeatTransfer() {
         T_in_j, T_out_j, Q_j,
         mediaTypeJ: config.mediaTypeJ, mediaFlowJ: config.mediaFlowJ,
         rho_j, Cp_j, k_j, mu_j,
-        
+
         h1_c, h2_c, U_c, Ac, R_wall_c,
         T_in_c, T_out_c, Q_c,
         mediaTypeC: config.mediaTypeC, mediaFlowC: config.mediaFlowC,
         rho_c, Cp_c, k_c, mu_c,
         u_c,
-        
+
         r_d_L: 1 / Math.max(1, hs_L),
         r_d_M: 1 / Math.max(1, hs_M),
         r_d, UA_total, Q_total,
 
-        
+
         // 互換用
         rho_L,
         Cp_L,
@@ -9797,16 +9819,16 @@ function updateHeatResistChart(res) {
     // ジャケット側
     const R_h1_j = res.h1_j > 0 ? (1 / res.h1_j) : 0;
     const R_h2_j = res.h2_j > 0 ? (1 / res.h2_j) : 0;
-    const R_w_j  = res.R_wall_j || 0;
+    const R_w_j = res.R_wall_j || 0;
     const total_j = R_h1_j + R_w_j + R_h2_j + R_dL + R_dM;
 
     let pct_h1_j = 0, pct_w_j = 0, pct_h2_j = 0, pct_dL_j = 0, pct_dM_j = 0;
     if (total_j > 0) {
         pct_h1_j = (R_h1_j / total_j) * 100;
-        pct_w_j  = (R_w_j  / total_j) * 100;
+        pct_w_j = (R_w_j / total_j) * 100;
         pct_h2_j = (R_h2_j / total_j) * 100;
-        pct_dL_j = (R_dL   / total_j) * 100;
-        pct_dM_j = (R_dM   / total_j) * 100;
+        pct_dL_j = (R_dL / total_j) * 100;
+        pct_dM_j = (R_dM / total_j) * 100;
     }
 
     // コイル側
@@ -9814,22 +9836,22 @@ function updateHeatResistChart(res) {
     if (config.coilActive) {
         const R_h1_c = res.h1_c > 0 ? (1 / res.h1_c) : 0;
         const R_h2_c = res.h2_c > 0 ? (1 / res.h2_c) : 0;
-        const R_w_c  = res.R_wall_c || 0;
+        const R_w_c = res.R_wall_c || 0;
         const total_c = R_h1_c + R_w_c + R_h2_c + R_dL + R_dM;
 
         if (total_c > 0) {
             pct_h1_c = (R_h1_c / total_c) * 100;
-            pct_w_c  = (R_w_c  / total_c) * 100;
+            pct_w_c = (R_w_c / total_c) * 100;
             pct_h2_c = (R_h2_c / total_c) * 100;
-            pct_dL_c = (R_dL   / total_c) * 100;
-            pct_dM_c = (R_dM   / total_c) * 100;
+            pct_dL_c = (R_dL / total_c) * 100;
+            pct_dM_c = (R_dM / total_c) * 100;
         }
     }
 
     if (config.coilActive) {
         heatResistChart.data.labels = ['壁(ｼﾞｬｹｯﾄ)', 'コイル'];
         heatResistChart.data.datasets[0].data = [pct_h1_j, pct_h1_c];
-        heatResistChart.data.datasets[1].data = [pct_w_j,  pct_w_c];
+        heatResistChart.data.datasets[1].data = [pct_w_j, pct_w_c];
         heatResistChart.data.datasets[2].data = [pct_h2_j, pct_h2_c];
         heatResistChart.data.datasets[3].data = [pct_dL_j, pct_dL_c];
         heatResistChart.data.datasets[4].data = [pct_dM_j, pct_dM_c];
