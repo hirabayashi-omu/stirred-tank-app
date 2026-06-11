@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>攪拌槽 動力推算＆可視化システム</title>
+    <title>攪拌槽特性解析システム</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,307 +46,384 @@
                     style="border: 1px solid rgba(6, 182, 212, 0.25); background: rgba(6, 182, 212, 0.03); padding: 16px; border-radius: var(--border-radius-md); margin-bottom: 24px; box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.05);">
                     <!-- Experiment Meta Info -->
                     <section class="config-section" style="margin-bottom: 20px;">
-                        <h3 class="acc-h3 collapsed" data-target="sec-meta" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="file-text"></i> 実験情報<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
-                    <div class="acc-body collapsed" id="sec-meta">
-                        <div class="input-grid">
-                            <div class="input-group full-width">
-                                <label for="exp-number">実験番号</label>
-                                <input type="text" id="exp-number" value="EXP-001">
-                            </div>
-                            <div class="input-group">
-                                <label for="exp-date">実験日</label>
-                                <input type="date" id="exp-date">
-                            </div>
-                            <div class="input-group">
-                                <label for="exp-author">作成者</label>
-                                <input type="text" id="exp-author" value="攪拌 太郎">
-                            </div>
-                            <div class="input-group">
-                                <label for="ambient-temp">環境温度 T<sub>amb</sub> (°C)</label>
-                                <input type="number" id="ambient-temp" value="25" step="0.1">
+                        <h3 class="acc-h3 collapsed" data-target="sec-meta"
+                            style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                                data-feather="file-text"></i> 実験情報<i data-feather="chevron-down" class="acc-chevron"
+                                style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                        <div class="acc-body collapsed" id="sec-meta">
+                            <div class="input-grid">
+                                <div class="input-group full-width">
+                                    <label for="exp-number">実験番号</label>
+                                    <input type="text" id="exp-number" value="EXP-001">
+                                </div>
+                                <div class="input-group">
+                                    <label for="exp-date">実験日</label>
+                                    <input type="date" id="exp-date">
+                                </div>
+                                <div class="input-group">
+                                    <label for="exp-author">作成者</label>
+                                    <input type="text" id="exp-author" value="攪拌 太郎">
+                                </div>
+                                <div class="input-group">
+                                    <label for="ambient-temp">環境温度 T<sub>amb</sub> (°C)</label>
+                                    <input type="number" id="ambient-temp" value="25" step="0.1">
+                                </div>
                             </div>
                         </div>
-                                        </div>
-                </section>
+                    </section>
 
                     <!-- Presets Management -->
                     <section class="config-section" style="margin-bottom: 0;">
-                        <h3 class="acc-h3 collapsed" data-target="sec-preset" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="save"></i> 実験プリセット<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
-                    <div class="acc-body collapsed" id="sec-preset">
-                        <div class="input-grid" style="grid-template-columns: 1fr; gap: 8px;">
-                            <div class="input-group">
-                                <label for="preset-select">保存済みプリセット</label>
-                                <select id="preset-select" style="font-size: 0.8rem; padding: 6px 10px;">
-                                    <option value="">-- 実験プリセット選択 --</option>
-                                </select>
-                            </div>
-                            <div class="flex-row" style="gap: 8px; margin-top: 4px;">
-                                <button id="save-preset-btn" class="btn btn-secondary"
-                                    style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
-                                    <i data-feather="plus" style="width:14px; height:14px;"></i> 保存
-                                </button>
-                                <button id="load-preset-btn" class="btn btn-primary"
-                                    style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
-                                    <i data-feather="folder" style="width:14px; height:14px;"></i> 読込
-                                </button>
-                                <button id="delete-preset-btn" class="btn btn-secondary"
-                                    style="color:var(--danger-color); border-color:rgba(239,68,68,0.2); padding: 8px; width: auto;"
-                                    disabled>
-                                    <i data-feather="trash-2" style="width:14px; height:14px;"></i>
-                                </button>
+                        <h3 class="acc-h3 collapsed" data-target="sec-preset"
+                            style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                                data-feather="save"></i> 実験プリセット<i data-feather="chevron-down" class="acc-chevron"
+                                style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                        <div class="acc-body collapsed" id="sec-preset">
+                            <div class="input-grid" style="grid-template-columns: 1fr; gap: 8px;">
+                                <div class="input-group">
+                                    <label for="preset-select">保存済みプリセット</label>
+                                    <select id="preset-select" style="font-size: 0.8rem; padding: 6px 10px;">
+                                        <option value="">-- 実験プリセット選択 --</option>
+                                    </select>
+                                </div>
+                                <div class="flex-row" style="gap: 8px; margin-top: 4px;">
+                                    <button id="save-preset-btn" class="btn btn-secondary"
+                                        style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;">
+                                        <i data-feather="plus" style="width:14px; height:14px;"></i> 保存
+                                    </button>
+                                    <button id="load-preset-btn" class="btn btn-primary"
+                                        style="flex: 1; padding: 8px 12px; font-size: 0.75rem; width: auto;" disabled>
+                                        <i data-feather="folder" style="width:14px; height:14px;"></i> 読込
+                                    </button>
+                                    <button id="delete-preset-btn" class="btn btn-secondary"
+                                        style="color:var(--danger-color); border-color:rgba(239,68,68,0.2); padding: 8px; width: auto;"
+                                        disabled>
+                                        <i data-feather="trash-2" style="width:14px; height:14px;"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                                        </div>
-                </section>
+                    </section>
                 </div>
 
                 <!-- Physical quantities -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-physics" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="settings"></i> 物理量データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-physics"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="settings"></i> 物理量データ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-physics">
-                    <div class="input-grid">
-                        <div class="input-group">
-                            <label for="g">重力加速度 g (m/s²)</label>
-                            <input type="number" id="g" value="9.806" step="0.001">
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label for="g">重力加速度 g (m/s²)</label>
+                                <input type="number" id="g" value="9.806" step="0.001">
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Liquid Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-liquid" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="droplet"></i> 攪拌液データ・物性<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-liquid"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="droplet"></i> 攪拌液データ・物性<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-liquid">
-                    <div class="input-grid">
-                        <div class="input-group">
-                            <label for="rho">液密度 ρ (kg/m³)</label>
-                            <input type="number" id="rho" value="998" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label for="liquid-temp-init">初期温度 T<sub>L0</sub> (°C)</label>
-                            <input type="number" id="liquid-temp-init" value="20" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label for="liquid-cp">比熱容量 Cp<sub>L</sub> (J/(kg·K))</label>
-                            <input type="number" id="liquid-cp" value="4184" step="1">
-                        </div>
-                        <div class="input-group">
-                            <label for="liquid-k">熱伝導度 k<sub>L</sub> (W/(m·K))</label>
-                            <input type="number" id="liquid-k" value="0.60" step="0.01">
-                        </div>
-                        <div class="input-group">
-                            <label for="mu">液粘度 μ (Pa·s) <span
-                                    style="font-size:0.75rem;opacity:0.6;">(理想系)</span></label>
-                            <input type="number" id="mu" value="0.417" step="0.001">
-                        </div>
-                        <div class="input-group full-width">
-                            <label for="V-act">液量 V<sub>act</sub> (L) <span style="font-size:0.75rem;opacity:0.6;">※ 0 =
-                                    概算値を使用</span></label>
-                            <input type="number" id="V-act" value="0.7295" step="0.0001" min="0">
-                            <div id="v-est-display"
-                                style="font-size: 0.72rem; color: var(--accent-color); margin-top: 3px; font-weight: 500;">
-                                概算値: -- L</div>
-                            <div id="h-est-display"
-                                style="font-size: 0.72rem; color: var(--accent-color); margin-top: 2px; font-weight: 500;">
-                                推算液高: -- m</div>
-                        </div>
-                        <div class="input-group full-width" style="margin-top:6px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">
-                            <label for="fouling-hs-l">攪拌液側 汚れ係数 hs<sub>L</sub> (W/m²/K)</label>
-                            <input type="number" id="fouling-hs-l" value="5000" step="100" min="1">
-                        </div>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label for="rho">液密度 ρ (kg/m³)</label>
+                                <input type="number" id="rho" value="998" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label for="liquid-temp-init">初期温度 T<sub>L0</sub> (°C)</label>
+                                <input type="number" id="liquid-temp-init" value="20" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label for="liquid-cp">比熱容量 Cp<sub>L</sub> (J/(kg·K))</label>
+                                <input type="number" id="liquid-cp" value="4184" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="liquid-k">熱伝導度 k<sub>L</sub> (W/(m·K))</label>
+                                <input type="number" id="liquid-k" value="0.60" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label for="mu">液粘度 μ (Pa·s) <span
+                                        style="font-size:0.75rem;opacity:0.6;">(理想系)</span></label>
+                                <input type="number" id="mu" value="0.417" step="0.001">
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="V-act">液量 V<sub>act</sub> (L) <span style="font-size:0.75rem;opacity:0.6;">※
+                                        0 =
+                                        概算値を使用</span></label>
+                                <input type="number" id="V-act" value="0.7295" step="0.0001" min="0">
+                                <div id="v-est-display"
+                                    style="font-size: 0.72rem; color: var(--accent-color); margin-top: 3px; font-weight: 500;">
+                                    概算値: -- L</div>
+                                <div id="h-est-display"
+                                    style="font-size: 0.72rem; color: var(--accent-color); margin-top: 2px; font-weight: 500;">
+                                    推算液高: -- m</div>
+                            </div>
+                            <div class="input-group full-width"
+                                style="margin-top:6px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">
+                                <label for="fouling-hs-l">攪拌液側 汚れ係数 hs<sub>L</sub> (W/m²/K)</label>
+                                <input type="number" id="fouling-hs-l" value="5000" step="100" min="1">
+                            </div>
 
+                        </div>
                     </div>
-                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Rheology Model (Non-Newtonian) -->
                 <section class="config-section" id="rheology-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-rheology" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="activity"></i> レオロジーモデル<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-rheology"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="activity"></i> レオロジーモデル<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-rheology">
-                    <div class="input-grid">
+                        <div class="input-grid">
 
-                        <!-- ===== 入力モード切替タブ ===== -->
-                        <div class="input-group full-width" style="margin-bottom:4px;">
-                            <div style="display:flex;gap:0;border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden;">
-                                <button id="rheo-tab-csv" onclick="switchRheoTab('csv')"
-                                    style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(6,182,212,0.25);color:#38bdf8;font-weight:600;transition:all 0.2s;">
-                                    <i data-feather="upload" style="width:12px;height:12px;vertical-align:middle;"></i> CSV読込
-                                </button>
-                                <button id="rheo-tab-manual" onclick="switchRheoTab('manual')"
-                                    style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(255,255,255,0.04);color:var(--text-secondary);transition:all 0.2s;">
-                                    <i data-feather="edit-3" style="width:12px;height:12px;vertical-align:middle;"></i> 手動入力
-                                </button>
+                            <!-- ===== 入力モード切替タブ ===== -->
+                            <div class="input-group full-width" style="margin-bottom:4px;">
+                                <div
+                                    style="display:flex;gap:0;border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden;">
+                                    <button id="rheo-tab-csv" onclick="switchRheoTab('csv')"
+                                        style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(6,182,212,0.25);color:#38bdf8;font-weight:600;transition:all 0.2s;">
+                                        <i data-feather="upload"
+                                            style="width:12px;height:12px;vertical-align:middle;"></i> CSV読込
+                                    </button>
+                                    <button id="rheo-tab-manual" onclick="switchRheoTab('manual')"
+                                        style="flex:1;padding:7px 0;font-size:0.8rem;border:none;cursor:pointer;background:rgba(255,255,255,0.04);color:var(--text-secondary);transition:all 0.2s;">
+                                        <i data-feather="edit-3"
+                                            style="width:12px;height:12px;vertical-align:middle;"></i> 手動入力
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- ===== CSVモード ===== -->
-                        <div id="rheo-csv-panel" class="input-group full-width" style="padding:0;">
-                            <div style="display:flex; gap:8px;">
-                                <label for="rheology-csv-input" class="btn-csv-load"
-                                    style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
-                                    <i data-feather="upload" style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
-                                    <span style="font-size:0.72rem;opacity:0.6;display:block;">粘度計アプリCSV</span>
-                                </label>
-                                <button type="button" id="btn-clear-rheology"
-                                    style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;" title="クリア">
-                                    <i data-feather="trash-2" style="width:14px;height:14px;vertical-align:middle;"></i>
-                                </button>
-                            </div>
-                            <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
-                            <div class="input-group full-width" style="margin-top:8px;padding:0;">
-                                <label for="rheology-sample-select">サンプル選択</label>
-                                <select id="rheology-sample-select" style="opacity:0.5;" disabled>
-                                    <option value="">-- CSV未読込 --</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- ===== 手動入力モード ===== -->
-                        <div id="rheo-manual-panel" class="input-group full-width" style="display:none;padding:0;">
-                            <div style="padding:10px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;">
-                                <label style="font-size:0.8rem;color:#f59e0b;font-weight:600;display:block;margin-bottom:8px;">
-                                    <i data-feather="edit-3" style="width:13px;height:13px;vertical-align:middle;"></i>
-                                    流動モデルとパラメータを直接入力
-                                </label>
-                                <div class="input-group" style="margin-bottom:8px;">
-                                    <label for="manual-model-select" style="font-size:0.78rem;">流動モデル選択</label>
-                                    <select id="manual-model-select" onchange="onManualModelChange()">
-                                        <option value="newtonian">Newtonian（ニュートン流体）</option>
-                                        <option value="powerlaw" selected>Power-Law（べき乗則）</option>
-                                        <option value="bingham">Bingham（ビンガム）</option>
-                                        <option value="casson">Casson（キャッソン）</option>
-                                        <option value="hb">Herschel-Bulkley（HB）</option>
-                                        <option value="cross">Cross（クロス）</option>
-                                        <option value="carreau">Carreau（カロー）</option>
+                            <!-- ===== CSVモード ===== -->
+                            <div id="rheo-csv-panel" class="input-group full-width" style="padding:0;">
+                                <div style="display:flex; gap:8px;">
+                                    <label for="rheology-csv-input" class="btn-csv-load"
+                                        style="flex:1; display:block; padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; font-size:0.85rem; text-align:center;">
+                                        <i data-feather="upload"
+                                            style="width:14px;height:14px;vertical-align:middle;"></i> ファイル選択
+                                        <span style="font-size:0.72rem;opacity:0.6;display:block;">粘度計アプリCSV</span>
+                                    </label>
+                                    <button type="button" id="btn-clear-rheology"
+                                        style="padding:8px 12px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; cursor:pointer; font-size:0.85rem; display:none;"
+                                        title="クリア">
+                                        <i data-feather="trash-2"
+                                            style="width:14px;height:14px;vertical-align:middle;"></i>
+                                    </button>
+                                </div>
+                                <input type="file" id="rheology-csv-input" accept=".csv" style="display:none;">
+                                <div class="input-group full-width" style="margin-top:8px;padding:0;">
+                                    <label for="rheology-sample-select">サンプル選択</label>
+                                    <select id="rheology-sample-select" style="opacity:0.5;" disabled>
+                                        <option value="">-- CSV未読込 --</option>
                                     </select>
                                 </div>
-                                <!-- パラメータ入力グループ（モデルごとに表示切替） -->
-                                <div id="manual-params-newtonian" class="manual-params" style="display:none;">
-                                    <div class="input-group"><label>粘度 η₀ (Pa·s)</label>
-                                        <input type="number" id="mp-newtonian-eta0" value="0.001" step="0.0001" min="1e-6" onchange="applyManualModel()"></div>
+                            </div>
+
+                            <!-- ===== 手動入力モード ===== -->
+                            <div id="rheo-manual-panel" class="input-group full-width" style="display:none;padding:0;">
+                                <div
+                                    style="padding:10px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;">
+                                    <label
+                                        style="font-size:0.8rem;color:#f59e0b;font-weight:600;display:block;margin-bottom:8px;">
+                                        <i data-feather="edit-3"
+                                            style="width:13px;height:13px;vertical-align:middle;"></i>
+                                        流動モデルとパラメータを直接入力
+                                    </label>
+                                    <div class="input-group" style="margin-bottom:8px;">
+                                        <label for="manual-model-select" style="font-size:0.78rem;">流動モデル選択</label>
+                                        <select id="manual-model-select" onchange="onManualModelChange()">
+                                            <option value="newtonian">Newtonian（ニュートン流体）</option>
+                                            <option value="powerlaw" selected>Power-Law（べき乗則）</option>
+                                            <option value="bingham">Bingham（ビンガム）</option>
+                                            <option value="casson">Casson（キャッソン）</option>
+                                            <option value="hb">Herschel-Bulkley（HB）</option>
+                                            <option value="cross">Cross（クロス）</option>
+                                            <option value="carreau">Carreau（カロー）</option>
+                                        </select>
+                                    </div>
+                                    <!-- パラメータ入力グループ（モデルごとに表示切替） -->
+                                    <div id="manual-params-newtonian" class="manual-params" style="display:none;">
+                                        <div class="input-group"><label>粘度 η₀ (Pa·s)</label>
+                                            <input type="number" id="mp-newtonian-eta0" value="0.001" step="0.0001"
+                                                min="1e-6" onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-powerlaw" class="manual-params"
+                                        style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
+                                            <input type="number" id="mp-pl-K" value="1.0" step="0.01" min="1e-6"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>n [-]</label>
+                                            <input type="number" id="mp-pl-n" value="0.5" step="0.01" min="0.01" max="2"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-bingham" class="manual-params"
+                                        style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>τ_y (Pa)</label>
+                                            <input type="number" id="mp-bi-tauy" value="1.0" step="0.1" min="0"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>η_p (Pa·s)</label>
+                                            <input type="number" id="mp-bi-etap" value="0.01" step="0.001" min="1e-6"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-casson" class="manual-params"
+                                        style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>τ_y (Pa)</label>
+                                            <input type="number" id="mp-ca-tauy" value="1.0" step="0.1" min="0"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>η_p (Pa·s)</label>
+                                            <input type="number" id="mp-ca-etap" value="0.01" step="0.001" min="1e-6"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-hb" class="manual-params"
+                                        style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>τ_y (Pa)</label>
+                                            <input type="number" id="mp-hb-tauy" value="1.0" step="0.1" min="0"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
+                                            <input type="number" id="mp-hb-K" value="0.5" step="0.01" min="1e-6"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group" style="grid-column:span 2;"><label>n [-]</label>
+                                            <input type="number" id="mp-hb-n" value="0.5" step="0.01" min="0.01" max="2"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-cross" class="manual-params"
+                                        style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>η₀ (Pa·s)</label>
+                                            <input type="number" id="mp-cr-eta0" value="1.0" step="0.01" min="1e-9"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>η∞ (Pa·s)</label>
+                                            <input type="number" id="mp-cr-etainf" value="0.001" step="0.0001"
+                                                min="1e-9" onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>K (s)</label>
+                                            <input type="number" id="mp-cr-K" value="1.0" step="0.01" min="1e-9"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>m [-]</label>
+                                            <input type="number" id="mp-cr-m" value="0.5" step="0.01" min="0.01"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <div id="manual-params-carreau" class="manual-params"
+                                        style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <div class="input-group"><label>η₀ (Pa·s)</label>
+                                            <input type="number" id="mp-cu-eta0" value="1.0" step="0.01" min="1e-9"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>η∞ (Pa·s)</label>
+                                            <input type="number" id="mp-cu-etainf" value="0.001" step="0.0001"
+                                                min="1e-9" onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>λ (s)</label>
+                                            <input type="number" id="mp-cu-lambda" value="1.0" step="0.01" min="1e-9"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                        <div class="input-group"><label>n [-]</label>
+                                            <input type="number" id="mp-cu-n" value="0.5" step="0.01" min="0.01" max="2"
+                                                onchange="applyManualModel()">
+                                        </div>
+                                    </div>
+                                    <button onclick="applyManualModel()"
+                                        style="width:100%;margin-top:8px;padding:8px;background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;">
+                                        <i data-feather="check"
+                                            style="width:13px;height:13px;vertical-align:middle;"></i> 適用
+                                    </button>
                                 </div>
-                                <div id="manual-params-powerlaw" class="manual-params" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
-                                        <input type="number" id="mp-pl-K" value="1.0" step="0.01" min="1e-6" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>n [-]</label>
-                                        <input type="number" id="mp-pl-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
-                                </div>
-                                <div id="manual-params-bingham" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>τ_y (Pa)</label>
-                                        <input type="number" id="mp-bi-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>η_p (Pa·s)</label>
-                                        <input type="number" id="mp-bi-etap" value="0.01" step="0.001" min="1e-6" onchange="applyManualModel()"></div>
-                                </div>
-                                <div id="manual-params-casson" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>τ_y (Pa)</label>
-                                        <input type="number" id="mp-ca-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>η_p (Pa·s)</label>
-                                        <input type="number" id="mp-ca-etap" value="0.01" step="0.001" min="1e-6" onchange="applyManualModel()"></div>
-                                </div>
-                                <div id="manual-params-hb" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>τ_y (Pa)</label>
-                                        <input type="number" id="mp-hb-tauy" value="1.0" step="0.1" min="0" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>K (Pa·s<sup>n</sup>)</label>
-                                        <input type="number" id="mp-hb-K" value="0.5" step="0.01" min="1e-6" onchange="applyManualModel()"></div>
-                                    <div class="input-group" style="grid-column:span 2;"><label>n [-]</label>
-                                        <input type="number" id="mp-hb-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
-                                </div>
-                                <div id="manual-params-cross" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>η₀ (Pa·s)</label>
-                                        <input type="number" id="mp-cr-eta0" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>η∞ (Pa·s)</label>
-                                        <input type="number" id="mp-cr-etainf" value="0.001" step="0.0001" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>K (s)</label>
-                                        <input type="number" id="mp-cr-K" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>m [-]</label>
-                                        <input type="number" id="mp-cr-m" value="0.5" step="0.01" min="0.01" onchange="applyManualModel()"></div>
-                                </div>
-                                <div id="manual-params-carreau" class="manual-params" style="display:none;grid-template-columns:1fr 1fr;gap:6px;">
-                                    <div class="input-group"><label>η₀ (Pa·s)</label>
-                                        <input type="number" id="mp-cu-eta0" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>η∞ (Pa·s)</label>
-                                        <input type="number" id="mp-cu-etainf" value="0.001" step="0.0001" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>λ (s)</label>
-                                        <input type="number" id="mp-cu-lambda" value="1.0" step="0.01" min="1e-9" onchange="applyManualModel()"></div>
-                                    <div class="input-group"><label>n [-]</label>
-                                        <input type="number" id="mp-cu-n" value="0.5" step="0.01" min="0.01" max="2" onchange="applyManualModel()"></div>
-                                </div>
-                                <button onclick="applyManualModel()" style="width:100%;margin-top:8px;padding:8px;background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;">
-                                    <i data-feather="check" style="width:13px;height:13px;vertical-align:middle;"></i> 適用
+                            </div>
+
+                            <!-- ===== 共通: 流動モデル選択（CSS/CSVどちらのモードでも表示） ===== -->
+                            <div class="input-group full-width">
+                                <label for="rheology-model-select">流動モデル</label>
+                                <select id="rheology-model-select">
+                                    <option value="newtonian" selected>Newtonian（μ = 一定）</option>
+                                </select>
+                            </div>
+
+                            <!-- モデル曲線ボタン -->
+                            <div class="input-group full-width" style="padding:0;">
+                                <button id="btn-show-flow-curve" onclick="openFlowCurveModal()"
+                                    style="width:100%;padding:8px 12px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:background 0.2s;"
+                                    onmouseover="this.style.background='rgba(99,102,241,0.25)'"
+                                    onmouseout="this.style.background='rgba(99,102,241,0.15)'">
+                                    <i data-feather="trending-up" style="width:14px;height:14px;"></i>
+                                    モデル曲線を表示
                                 </button>
                             </div>
-                        </div>
 
-                        <!-- ===== 共通: 流動モデル選択（CSS/CSVどちらのモードでも表示） ===== -->
-                        <div class="input-group full-width">
-                            <label for="rheology-model-select">流動モデル</label>
-                            <select id="rheology-model-select">
-                                <option value="newtonian" selected>Newtonian（μ = 一定）</option>
-                            </select>
-                        </div>
-
-                        <!-- モデル曲線ボタン -->
-                        <div class="input-group full-width" style="padding:0;">
-                            <button id="btn-show-flow-curve" onclick="openFlowCurveModal()"
-                                style="width:100%;padding:8px 12px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:background 0.2s;"
-                                onmouseover="this.style.background='rgba(99,102,241,0.25)'"
-                                onmouseout="this.style.background='rgba(99,102,241,0.15)'">
-                                <i data-feather="trending-up" style="width:14px;height:14px;"></i>
-                                モデル曲線を表示
-                            </button>
-                        </div>
-
-                        <div class="input-group" id="ks-group">
-                            <label for="ks-input">Metzner–Otto定数 k<sub>s</sub> <span
-                                    style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
-                            <input type="number" id="ks-input" value="11.5" step="0.1" min="0.1">
-                        </div>
-                        <div class="input-group full-width" id="mu-eff-container" style="display:none;">
-                            <label>有効粘度 &mu;<sub>eff</sub> (Pa&middot;s)</label>
-                            <div id="mu-eff-display" style="font-size:1.1rem; font-weight:600; color:#38bdf8; padding:6px 10px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.2); border-radius:8px;"></div>
-                        </div>
-                        <div class="input-group full-width" id="cavern-model-group"
-                            style="display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
-                            <label for="cavern-model">キャバーン形状モデル (降伏応力流体)</label>
-                            <select id="cavern-model">
-                                <option value="spherical">球形 (Spherical, Elson)</option>
-                                <option value="cylindrical">円筒形 (Cylindrical)</option>
-                                <option value="torus">トーラス形 (Torus, Elson)</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-width" id="cavern-alpha-group" style="display: none;">
-                            <label for="cavern-alpha">
-                                キャバーン高さ比 α = H<sub>c</sub>/D<sub>c</sub>
-                                <span style="font-size:0.75rem;opacity:0.6;">（通常 0.4〜1.0）</span>
-                            </label>
-                            <input type="number" id="cavern-alpha" value="0.7" step="0.05" min="0.1" max="2.0">
-                        </div>
-                        <div class="input-group full-width" id="pseudo-cavern-group" style="display: none; padding-top: 8px; border-top: 1px dashed rgba(245,158,11,0.3); margin-top: 4px;">
-                            <label style="color: #f59e0b; font-weight: 600; font-size: 0.82rem;">
-                                <i data-feather="zap" style="width:13px;height:13px;vertical-align:middle;"></i>
-                                擬塑性流体 疑似キャバーン設定
-                            </label>
-                            <div class="input-grid" style="margin-top: 6px;">
-                                <div class="input-group">
-                                    <label for="decay-alpha-input">ずり速度減衰係数 α
-                                        <span style="font-size:0.75rem;opacity:0.6;">（通常 1.5〜3.0）</span>
-                                    </label>
-                                    <input type="number" id="decay-alpha-input" value="2.0" step="0.1" min="0.5" max="5.0">
+                            <div class="input-group" id="ks-group">
+                                <label for="ks-input">Metzner–Otto定数 k<sub>s</sub> <span
+                                        style="font-size:0.75rem;opacity:0.6;">[-]</span></label>
+                                <input type="number" id="ks-input" value="11.5" step="0.1" min="0.1">
+                            </div>
+                            <div class="input-group full-width" id="mu-eff-container" style="display:none;">
+                                <label>有効粘度 &mu;<sub>eff</sub> (Pa&middot;s)</label>
+                                <div id="mu-eff-display"
+                                    style="font-size:1.1rem; font-weight:600; color:#38bdf8; padding:6px 10px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.2); border-radius:8px;">
                                 </div>
-                                <div class="input-group">
-                                    <label for="mu-limit-factor-input">流動限界係数（大きいほどキャバーン大）
-                                        <span style="font-size:0.75rem;opacity:0.6;">（2〜100）</span>
-                                    </label>
-                                    <input type="number" id="mu-limit-factor-input" value="20" step="5" min="2" max="500">
+                            </div>
+                            <div class="input-group full-width" id="cavern-model-group"
+                                style="display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
+                                <label for="cavern-model">キャバーン形状モデル (降伏応力流体)</label>
+                                <select id="cavern-model">
+                                    <option value="spherical">球形 (Spherical, Elson)</option>
+                                    <option value="cylindrical">円筒形 (Cylindrical)</option>
+                                    <option value="torus">トーラス形 (Torus, Elson)</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width" id="cavern-alpha-group" style="display: none;">
+                                <label for="cavern-alpha">
+                                    キャバーン高さ比 α = H<sub>c</sub>/D<sub>c</sub>
+                                    <span style="font-size:0.75rem;opacity:0.6;">（通常 0.4〜1.0）</span>
+                                </label>
+                                <input type="number" id="cavern-alpha" value="0.7" step="0.05" min="0.1" max="2.0">
+                            </div>
+                            <div class="input-group full-width" id="pseudo-cavern-group"
+                                style="display: none; padding-top: 8px; border-top: 1px dashed rgba(245,158,11,0.3); margin-top: 4px;">
+                                <label style="color: #f59e0b; font-weight: 600; font-size: 0.82rem;">
+                                    <i data-feather="zap" style="width:13px;height:13px;vertical-align:middle;"></i>
+                                    擬塑性流体 疑似キャバーン設定
+                                </label>
+                                <div class="input-grid" style="margin-top: 6px;">
+                                    <div class="input-group">
+                                        <label for="decay-alpha-input">ずり速度減衰係数 α
+                                            <span style="font-size:0.75rem;opacity:0.6;">（通常 1.5〜3.0）</span>
+                                        </label>
+                                        <input type="number" id="decay-alpha-input" value="2.0" step="0.1" min="0.5"
+                                            max="5.0">
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="mu-limit-factor-input">流動限界係数（大きいほどキャバーン大）
+                                            <span style="font-size:0.75rem;opacity:0.6;">（2〜100）</span>
+                                        </label>
+                                        <input type="number" id="mu-limit-factor-input" value="20" step="5" min="2"
+                                            max="500">
+                                    </div>
+                                    <div id="pseudo-cavern-info"
+                                        style="font-size:0.75rem;font-weight:600;color:#f59e0b;min-height:1em;padding:2px 0;">
+                                    </div>
                                 </div>
-                                <div id="pseudo-cavern-info" style="font-size:0.75rem;font-weight:600;color:#f59e0b;min-height:1em;padding:2px 0;"></div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 </section>
 
@@ -354,348 +431,373 @@
 
                 <!-- Solid-Liquid / Particle Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-solid" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="box"></i> 固液攪拌・粒子データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-solid"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="box"></i> 固液攪拌・粒子データ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-solid">
-                    <div class="input-grid">
-                        <div class="input-group full-width checkbox-group">
-                            <input type="checkbox" id="solid-liquid-active" checked>
-                            <label for="solid-liquid-active">固液系</label>
-                        </div>
-                        <div class="input-group full-width" id="dp-um-container">
-                            <label for="dp-um">粒子径 d<sub>p</sub> (μm)</label>
-                            <input type="number" id="dp-um" value="150" step="1" min="1">
-                        </div>
-                        <div class="input-group" id="rho-S-container">
-                            <label for="rho-S">粒子密度 ρ<sub>s</sub> (kg/m³)</label>
-                            <input type="number" id="rho-S" value="2500" step="10">
-                        </div>
-                        <div class="input-group" id="solid-cp-container">
-                            <label for="solid-cp">固体比熱 Cp<sub>s</sub> (J/(kg·K))</label>
-                            <input type="number" id="solid-cp" value="800" step="1" min="1">
-                        </div>
-                        <div class="input-group" id="solid-k-container">
-                            <label for="solid-k">固体熱伝導度 k<sub>s</sub> (W/(m·K))</label>
-                            <input type="number" id="solid-k" value="1.0" step="0.01" min="0.01">
-                        </div>
-                        <div class="input-group full-width" id="solid-conc-mode-container">
-                            <label for="solid-conc-mode">濃度入力モード</label>
-                            <select id="solid-conc-mode">
-                                <option value="wt-ratio" selected>対液重量比パーセント (X [wt%])</option>
-                                <option value="wt-total">全体重量濃度 (w [wt%])</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-width" id="solid-conc-val-container">
-                            <label for="solid-conc-val" id="solid-conc-label">固体濃度 X (wt% (対液))</label>
-                            <input type="number" id="solid-conc-val" value="1.0" step="0.1" min="0.001">
-                        </div>
-                        <div class="input-group full-width" id="s-factor-mode-container">
-                            <label for="s-factor-mode">S 因子設定</label>
-                            <select id="s-factor-mode">
-                                <option value="auto" selected>自動 preset マッピング</option>
-                                <option value="custom">手動カスタム入力</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-width" id="s-factor-custom-container" style="display:none;">
-                            <label for="s-factor-custom">幾何学的形状因子 S (カスタム)</label>
-                            <input type="number" id="s-factor-custom" value="5.0" step="0.1" min="0.1">
+                        <div class="input-grid">
+                            <div class="input-group full-width checkbox-group">
+                                <input type="checkbox" id="solid-liquid-active" checked>
+                                <label for="solid-liquid-active">固液系</label>
+                            </div>
+                            <div class="input-group full-width" id="dp-um-container">
+                                <label for="dp-um">粒子径 d<sub>p</sub> (μm)</label>
+                                <input type="number" id="dp-um" value="150" step="1" min="1">
+                            </div>
+                            <div class="input-group" id="rho-S-container">
+                                <label for="rho-S">粒子密度 ρ<sub>s</sub> (kg/m³)</label>
+                                <input type="number" id="rho-S" value="2500" step="10">
+                            </div>
+                            <div class="input-group" id="solid-cp-container">
+                                <label for="solid-cp">固体比熱 Cp<sub>s</sub> (J/(kg·K))</label>
+                                <input type="number" id="solid-cp" value="800" step="1" min="1">
+                            </div>
+                            <div class="input-group" id="solid-k-container">
+                                <label for="solid-k">固体熱伝導度 k<sub>s</sub> (W/(m·K))</label>
+                                <input type="number" id="solid-k" value="1.0" step="0.01" min="0.01">
+                            </div>
+                            <div class="input-group full-width" id="solid-conc-mode-container">
+                                <label for="solid-conc-mode">濃度入力モード</label>
+                                <select id="solid-conc-mode">
+                                    <option value="wt-ratio" selected>対液重量比パーセント (X [wt%])</option>
+                                    <option value="wt-total">全体重量濃度 (w [wt%])</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width" id="solid-conc-val-container">
+                                <label for="solid-conc-val" id="solid-conc-label">固体濃度 X (wt% (対液))</label>
+                                <input type="number" id="solid-conc-val" value="1.0" step="0.1" min="0.001">
+                            </div>
+                            <div class="input-group full-width" id="s-factor-mode-container">
+                                <label for="s-factor-mode">S 因子設定</label>
+                                <select id="s-factor-mode">
+                                    <option value="auto" selected>自動 preset マッピング</option>
+                                    <option value="custom">手動カスタム入力</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width" id="s-factor-custom-container" style="display:none;">
+                                <label for="s-factor-custom">幾何学的形状因子 S (カスタム)</label>
+                                <input type="number" id="s-factor-custom" value="5.0" step="0.1" min="0.1">
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <hr class="sidebar-divider" id="sl-eff-divider">
 
                 <!-- Solid-Liquid / Agitator System Effective Properties -->
                 <section class="config-section" id="sl-effective-properties-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-effprop" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="trending-up"></i> 有効物性値 (攪拌系)<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-effprop"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="trending-up"></i> 有効物性値 (固液系)<i data-feather="chevron-down"
+                            class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-effprop">
-                    <div class="input-grid">
-                        <!-- 質量分率 (固液系ONのみ表示) -->
-                        <div class="input-group" id="sl-eff-ws-container">
-                            <label>質量分率 w<sub>s</sub> [-]</label>
-                            <div id="sl-eff-ws"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 容積分率 (固液系ONのみ表示) -->
-                        <div class="input-group" id="sl-eff-phis-container">
-                            <label>容積分率 φ<sub>s</sub> [-]</label>
-                            <div id="sl-eff-phis"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 有効密度 (常時表示) -->
-                        <div class="input-group" id="sl-eff-rho-container">
-                            <label>有効密度 ρ<sub>eff</sub> (kg/m³)</label>
-                            <div id="sl-eff-rho"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 有効粘度 (常時表示) -->
-                        <div class="input-group" id="sl-eff-mu-container">
-                            <label>有効粘度 μ<sub>eff</sub> (Pa·s)</label>
-                            <div id="sl-eff-mu"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 有効比熱 (常時表示) -->
-                        <div class="input-group" id="sl-eff-cp-container">
-                            <label>有効比熱 Cp<sub>eff</sub> (J/(kg·K))</label>
-                            <div id="sl-eff-cp"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 有効熱伝導率 (固液系OFF時表示) -->
-                        <div class="input-group" id="sl-eff-k-single-container" style="display:none;">
-                            <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
-                            <div id="sl-eff-k-single"
-                                style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
-                                --</div>
-                        </div>
-                        <!-- 有効熱伝導率詳細 (固液系ON時表示) -->
-                        <div class="input-group full-width" id="sl-eff-k-details-container">
-                            <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
-                            <div
-                                style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.8rem;">
+                        <div class="input-grid">
+                            <!-- 質量分率 (固液系ONのみ表示) -->
+                            <div class="input-group" id="sl-eff-ws-container">
+                                <label>質量分率 w<sub>s</sub> [-]</label>
+                                <div id="sl-eff-ws"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 容積分率 (固液系ONのみ表示) -->
+                            <div class="input-group" id="sl-eff-phis-container">
+                                <label>容積分率 φ<sub>s</sub> [-]</label>
+                                <div id="sl-eff-phis"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 有効密度 (常時表示) -->
+                            <div class="input-group" id="sl-eff-rho-container">
+                                <label>有効密度 ρ<sub>eff</sub> (kg/m³)</label>
+                                <div id="sl-eff-rho"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 有効粘度 (常時表示) -->
+                            <div class="input-group" id="sl-eff-mu-container">
+                                <label>有効粘度 μ<sub>eff</sub> (Pa·s)</label>
+                                <div id="sl-eff-mu"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 有効比熱 (常時表示) -->
+                            <div class="input-group" id="sl-eff-cp-container">
+                                <label>有効比熱 Cp<sub>eff</sub> (J/(kg·K))</label>
+                                <div id="sl-eff-cp"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 有効熱伝導率 (固液系OFF時表示) -->
+                            <div class="input-group" id="sl-eff-k-single-container" style="display:none;">
+                                <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
+                                <div id="sl-eff-k-single"
+                                    style="padding: 8px 10px; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; min-height: 36px;">
+                                    --</div>
+                            </div>
+                            <!-- 有効熱伝導率詳細 (固液系ON時表示) -->
+                            <div class="input-group full-width" id="sl-eff-k-details-container">
+                                <label>有効熱伝導率 λ<sub>eff</sub> (W/(m·K))</label>
                                 <div
-                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px;">
-                                    <span style="color: var(--text-secondary);">Maxwell下限 (液連続相):</span>
-                                    <span id="sl-eff-k-maxwell-lower"
-                                        style="font-weight: 700; color: var(--accent-color);">--</span>
-                                </div>
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
-                                    <span>Maxwell上限 (固連続相):</span>
-                                    <span id="sl-eff-k-maxwell-upper" style="font-weight: 600;">--</span>
-                                </div>
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
-                                    <span>並列モデル (上限値):</span>
-                                    <span id="sl-eff-k-parallel" style="font-weight: 600;">--</span>
-                                </div>
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
-                                    <span>直列モデル (下限値):</span>
-                                    <span id="sl-eff-k-series" style="font-weight: 600;">--</span>
+                                    style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 6px; font-size: 0.8rem;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px;">
+                                        <span style="color: var(--text-secondary);">Maxwell下限 (液連続相):</span>
+                                        <span id="sl-eff-k-maxwell-lower"
+                                            style="font-weight: 700; color: var(--accent-color);">--</span>
+                                    </div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
+                                        <span>Maxwell上限 (固連続相):</span>
+                                        <span id="sl-eff-k-maxwell-upper" style="font-weight: 600;">--</span>
+                                    </div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; opacity: 0.85;">
+                                        <span>並列モデル (上限値):</span>
+                                        <span id="sl-eff-k-parallel" style="font-weight: 600;">--</span>
+                                    </div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
+                                        <span>直列モデル (下限値):</span>
+                                        <span id="sl-eff-k-series" style="font-weight: 600;">--</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <hr class="sidebar-divider">
 
                 <!-- Vessel Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-vessel" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="database"></i> 攪拌槽データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-vessel"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="database"></i> 攪拌槽データ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-vessel">
-                    <div class="input-grid">
-                        <div class="input-group">
-                            <label for="DT">槽径 D<sub>T</sub> (m)</label>
-                            <input type="number" id="DT" value="0.105" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="H">槽高 H (m)</label>
-                            <input type="number" id="H" value="0.093" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="wall-thickness">槽壁厚み t<sub>w</sub> (m)</label>
-                            <input type="number" id="wall-thickness" value="0.003" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="wall-k">槽壁熱伝導度 k<sub>w</sub> (W/(m·K))</label>
-                            <input type="number" id="wall-k" value="16.3" step="0.1">
-                        </div>
-                        <div class="input-group full-width">
-                            <label for="head-type">鏡板の種類</label>
-                            <select id="head-type">
-                                <option value="flat">平底</option>
-                                <option value="semi-elliptical" selected>半楕円形</option>
-                                <option value="dish">皿型</option>
-                                <option value="hemispherical">全半球形</option>
-                            </select>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label for="DT">槽径 D<sub>T</sub> (m)</label>
+                                <input type="number" id="DT" value="0.105" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="H">槽高 H (m)</label>
+                                <input type="number" id="H" value="0.093" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="wall-thickness">槽壁厚み t<sub>w</sub> (m)</label>
+                                <input type="number" id="wall-thickness" value="0.003" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="wall-k">槽壁熱伝導度 k<sub>w</sub> (W/(m·K))</label>
+                                <input type="number" id="wall-k" value="16.3" step="0.1">
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="head-type">鏡板の種類</label>
+                                <select id="head-type">
+                                    <option value="flat">平底</option>
+                                    <option value="semi-elliptical" selected>半楕円形</option>
+                                    <option value="dish">皿型</option>
+                                    <option value="hemispherical">全半球形</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <!-- Impeller Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-impeller" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="wind"></i> インペラデータ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-impeller"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="wind"></i> インペラデータ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-impeller">
-                    <div class="input-grid">
-                        <div class="input-group full-width">
-                            <label for="impeller-type">種類</label>
-                            <select id="impeller-type">
-                                <option value="pitched-paddle" selected>傾斜パドル</option>
-                                <option value="flat-paddle">平板パドル</option>
-                                <option value="flat-turbine">平板タービン</option>
-                                <option value="propeller">プロペラ</option>
-                                <option value="faudler">ファウドラー</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="np">羽根枚数 n<sub>p</sub> (枚)</label>
-                            <input type="number" id="np" value="4" step="1" min="2">
-                        </div>
-                        <div class="input-group">
-                            <label for="theta">羽根角度 θ (度)</label>
-                            <input type="number" id="theta" value="45" step="0.1" min="0" max="90">
-                        </div>
-                        <div class="input-group">
-                            <label for="d">翼径 d (m)</label>
-                            <input type="number" id="d" value="0.060" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="b">翼幅 b (m)</label>
-                            <input type="number" id="b" value="0.020" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="clearance">クリアランス C (m)</label>
-                            <input type="number" id="clearance" value="0.020" step="0.001">
-                        </div>
-                        <div class="input-group">
-                            <label for="n_stage">翼段数 N<sub>stage</sub></label>
-                            <input type="number" id="n_stage" value="1" step="1" min="1">
-                        </div>
-                        <div id="n-stage-warning"
-                            style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
-                            <i data-feather="alert-triangle"
-                                style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>
-                            液面・クリアランス制限により、実際に液面下に入るインペラ数は <span id="n-stage-active-val"
-                                style="font-weight:bold;"></span> 段として推算・描画しています。
+                        <div class="input-grid">
+                            <div class="input-group full-width">
+                                <label for="impeller-type">種類</label>
+                                <select id="impeller-type">
+                                    <option value="pitched-paddle" selected>傾斜パドル</option>
+                                    <option value="flat-paddle">平板パドル</option>
+                                    <option value="flat-turbine">平板タービン</option>
+                                    <option value="propeller">プロペラ</option>
+                                    <option value="faudler">ファウドラー</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="np">羽根枚数 n<sub>p</sub> (枚)</label>
+                                <input type="number" id="np" value="4" step="1" min="2">
+                            </div>
+                            <div class="input-group">
+                                <label for="theta">羽根角度 θ (度)</label>
+                                <input type="number" id="theta" value="45" step="0.1" min="0" max="90">
+                            </div>
+                            <div class="input-group">
+                                <label for="d">翼径 d (m)</label>
+                                <input type="number" id="d" value="0.060" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="b">翼幅 b (m)</label>
+                                <input type="number" id="b" value="0.020" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="clearance">クリアランス C (m)</label>
+                                <input type="number" id="clearance" value="0.020" step="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label for="n_stage">翼段数 N<sub>stage</sub></label>
+                                <input type="number" id="n_stage" value="1" step="1" min="1">
+                            </div>
+                            <div id="n-stage-warning"
+                                style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
+                                <i data-feather="alert-triangle"
+                                    style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>
+                                液面・クリアランス制限により、実際に液面下に入るインペラ数は <span id="n-stage-active-val"
+                                    style="font-weight:bold;"></span> 段として推算・描画しています。
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <!-- Baffle Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-baffle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="columns"></i> 邪魔板データ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-baffle"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="columns"></i> 邪魔板データ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-baffle">
-                    <div class="input-grid">
-                        <div class="input-group full-width checkbox-group">
-                            <input type="checkbox" id="baffle-active" checked>
-                            <label for="baffle-active">邪魔板あり</label>
-                        </div>
-                        <div class="input-group" id="nB-container">
-                            <label for="nB">邪魔板枚数 n<sub>B</sub></label>
-                            <input type="number" id="nB" value="1" step="1" min="0">
-                        </div>
-                        <div class="input-group" id="Bw-container">
-                            <label for="Bw">邪魔板幅 B<sub>w</sub> (m)</label>
-                            <input type="number" id="Bw" value="0.014" step="0.001">
+                        <div class="input-grid">
+                            <div class="input-group full-width checkbox-group">
+                                <input type="checkbox" id="baffle-active" checked>
+                                <label for="baffle-active">邪魔板あり</label>
+                            </div>
+                            <div class="input-group" id="nB-container">
+                                <label for="nB">邪魔板枚数 n<sub>B</sub></label>
+                                <input type="number" id="nB" value="1" step="1" min="0">
+                            </div>
+                            <div class="input-group" id="Bw-container">
+                                <label for="Bw">邪魔板幅 B<sub>w</sub> (m)</label>
+                                <input type="number" id="Bw" value="0.014" step="0.001">
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
                 <!-- Jacket & Coil Properties -->
                 <section class="config-section">
-                    <h3 class="acc-h3 collapsed" data-target="sec-jacket" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i data-feather="layers"></i> ジャケット・コイルデータ<i data-feather="chevron-down" class="acc-chevron" style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
+                    <h3 class="acc-h3 collapsed" data-target="sec-jacket"
+                        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><i
+                            data-feather="layers"></i> ジャケット・コイルデータ<i data-feather="chevron-down" class="acc-chevron"
+                            style="width:14px;height:14px;transition:transform 0.25s;flex-shrink:0;"></i></h3>
                     <div class="acc-body collapsed" id="sec-jacket">
-                    <div class="input-grid">
-                        <div class="input-group full-width">
-                            <label for="jacket-type">ジャケット形式</label>
-                            <select id="jacket-type">
-                                <option value="flat" selected>平板ジャケット（半径流）</option>
-                                <option value="flat-tangential">平板ジャケット（接線流）</option>
-                                <option value="spiral">渦巻ジャケット（接線流）</option>
-                            </select>
-                        </div>
-                        <div class="input-group" id="jacket-gap-container">
-                            <label for="jacket-gap">ジャケット間隔 s<sub>j</sub> (m)</label>
-                            <input type="number" id="jacket-gap" value="0.010" step="0.001">
-                        </div>
-                        <div class="input-group checkbox-group" style="grid-column: span 1;">
-                            <input type="checkbox" id="coil-active">
-                            <label for="coil-active">コイルあり</label>
-                        </div>
-                        <!-- コイル詳細パラメータ（コイルON時のみ表示） -->
-                        <div id="coil-params"
-                            style="display: none; grid-column: span 2; display: none; flex-direction: column; gap: 8px; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.15); border-radius: 6px; padding: 8px;">
-                            <div
-                                style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; margin-bottom: 2px;">
-                                コイル寸法</div>
-                            <div class="input-grid" style="grid-template-columns: 1fr 1fr; gap: 6px;">
-                                <div class="input-group">
-                                    <label for="coil-outer-dia">コイル外径 d<sub>co</sub> (m)</label>
-                                    <input type="number" id="coil-outer-dia" value="0.010" step="0.001" min="0.005">
-                                </div>
-                                <div class="input-group">
-                                    <label for="coil-inner-dia">コイル内径 d<sub>ci</sub> (m)</label>
-                                    <input type="number" id="coil-inner-dia" value="0.008" step="0.001" min="0.003">
-                                </div>
-                                <div class="input-group">
-                                    <label for="coil-pitch">コイルピッチ p<sub>c</sub> (m)</label>
-                                    <input type="number" id="coil-pitch" value="0.025" step="0.001" min="0.010">
-                                </div>
-                                <div class="input-group">
-                                    <label for="coil-center-dia">コイル中心径 D<sub>c</sub> (m)</label>
-                                    <input type="number" id="coil-center-dia" value="" step="0.01"
-                                        placeholder="空欄=槽径×0.7">
-                                </div>
-                                <div class="input-group" style="grid-column: span 2;">
-                                    <label for="coil-k">コイル熱伝導度 k<sub>c</sub> (W/(m・K))</label>
-                                    <input type="number" id="coil-k" value="16.3" step="0.1" min="0.1">
+                        <div class="input-grid">
+                            <div class="input-group full-width">
+                                <label for="jacket-type">ジャケット形式</label>
+                                <select id="jacket-type">
+                                    <option value="flat" selected>平板ジャケット（半径流）</option>
+                                    <option value="flat-tangential">平板ジャケット（接線流）</option>
+                                    <option value="spiral">渦巻ジャケット（接線流）</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="jacket-gap-container">
+                                <label for="jacket-gap">ジャケット間隔 s<sub>j</sub> (m)</label>
+                                <input type="number" id="jacket-gap" value="0.010" step="0.001">
+                            </div>
+                            <div class="input-group checkbox-group" style="grid-column: span 1;">
+                                <input type="checkbox" id="coil-active">
+                                <label for="coil-active">コイルあり</label>
+                            </div>
+                            <!-- コイル詳細パラメータ（コイルON時のみ表示） -->
+                            <div id="coil-params"
+                                style="display: none; grid-column: span 2; display: none; flex-direction: column; gap: 8px; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.15); border-radius: 6px; padding: 8px;">
+                                <div
+                                    style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; margin-bottom: 2px;">
+                                    コイル寸法</div>
+                                <div class="input-grid" style="grid-template-columns: 1fr 1fr; gap: 6px;">
+                                    <div class="input-group">
+                                        <label for="coil-outer-dia">コイル外径 d<sub>co</sub> (m)</label>
+                                        <input type="number" id="coil-outer-dia" value="0.010" step="0.001" min="0.005">
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="coil-inner-dia">コイル内径 d<sub>ci</sub> (m)</label>
+                                        <input type="number" id="coil-inner-dia" value="0.008" step="0.001" min="0.003">
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="coil-pitch">コイルピッチ p<sub>c</sub> (m)</label>
+                                        <input type="number" id="coil-pitch" value="0.025" step="0.001" min="0.010">
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="coil-center-dia">コイル中心径 D<sub>c</sub> (m)</label>
+                                        <input type="number" id="coil-center-dia" value="" step="0.01"
+                                            placeholder="空欄=槽径×0.7">
+                                    </div>
+                                    <div class="input-group" style="grid-column: span 2;">
+                                        <label for="coil-k">コイル熱伝導度 k<sub>c</sub> (W/(m・K))</label>
+                                        <input type="number" id="coil-k" value="16.3" step="0.1" min="0.1">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- ジャケット側熱媒体パラメータ -->
-                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">ジャケット側熱媒体</span>
-                        </div>
-                        <div class="input-group full-width">
-                            <label for="media-type-j">熱媒体の種類（ジャケット）</label>
-                            <select id="media-type-j">
-                                <option value="water" selected>水 (温水・冷水)</option>
-                                <option value="steam">スチーム</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="media-temp-in-j">入口温度 T<sub>in,j</sub> (°C)</label>
-                            <input type="number" id="media-temp-in-j" value="80" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label for="media-flow-j">質量流量 W<sub>j</sub> (kg/s)</label>
-                            <input type="number" id="media-flow-j" value="0.05" step="0.01">
-                        </div>
+                            <!-- ジャケット側熱媒体パラメータ -->
+                            <div class="input-group full-width"
+                                style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                                <span
+                                    style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">ジャケット側熱媒体</span>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="media-type-j">熱媒体の種類（ジャケット）</label>
+                                <select id="media-type-j">
+                                    <option value="water" selected>水 (温水・冷水)</option>
+                                    <option value="steam">スチーム</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="media-temp-in-j">入口温度 T<sub>in,j</sub> (°C)</label>
+                                <input type="number" id="media-temp-in-j" value="80" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label for="media-flow-j">質量流量 W<sub>j</sub> (kg/s)</label>
+                                <input type="number" id="media-flow-j" value="0.05" step="0.01">
+                            </div>
 
-                        <!-- コイル側熱媒体パラメータ -->
-                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">コイル側熱媒体</span>
-                        </div>
-                        <div class="input-group full-width">
-                            <label for="media-type-c">熱媒体の種類（コイル）</label>
-                            <select id="media-type-c">
-                                <option value="water" selected>水 (温水・冷水)</option>
-                                <option value="steam">スチーム</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="media-temp-in-c">入口温度 T<sub>in,c</sub> (°C)</label>
-                            <input type="number" id="media-temp-in-c" value="80" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label for="media-flow-c">質量流量 W<sub>c</sub> (kg/s)</label>
-                            <input type="number" id="media-flow-c" value="0.05" step="0.01">
-                        </div>
+                            <!-- コイル側熱媒体パラメータ -->
+                            <div class="input-group full-width"
+                                style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                                <span
+                                    style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600;">コイル側熱媒体</span>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="media-type-c">熱媒体の種類（コイル）</label>
+                                <select id="media-type-c">
+                                    <option value="water" selected>水 (温水・冷水)</option>
+                                    <option value="steam">スチーム</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="media-temp-in-c">入口温度 T<sub>in,c</sub> (°C)</label>
+                                <input type="number" id="media-temp-in-c" value="80" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label for="media-flow-c">質量流量 W<sub>c</sub> (kg/s)</label>
+                                <input type="number" id="media-flow-c" value="0.05" step="0.01">
+                            </div>
 
-                        <!-- 共通の伝熱補助パラメータ -->
-                        <div class="input-group full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">伝熱補助パラメータ</span>
-                        </div>
-                        <div class="input-group">
-                            <label for="media-visc-corr">粘度補正項 (通常1.0)</label>
-                            <input type="number" id="media-visc-corr" value="1.0" step="0.01">
-                        </div>
-                        <div class="input-group">
-                            <label for="fouling-hs-m">熱媒体側 汚れ係数 hs<sub>M</sub> (W/m²/K)</label>
-                            <input type="number" id="fouling-hs-m" value="10000" step="100" min="1">
+                            <!-- 共通の伝熱補助パラメータ -->
+                            <div class="input-group full-width"
+                                style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                                <span
+                                    style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">伝熱補助パラメータ</span>
+                            </div>
+                            <div class="input-group">
+                                <label for="media-visc-corr">粘度補正項 (通常1.0)</label>
+                                <input type="number" id="media-visc-corr" value="1.0" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label for="fouling-hs-m">熱媒体側 汚れ係数 hs<sub>M</sub> (W/m²/K)</label>
+                                <input type="number" id="fouling-hs-m" value="10000" step="100" min="1">
+                            </div>
                         </div>
                     </div>
-                                    </div>
                 </section>
 
             </div>
@@ -704,7 +806,8 @@
                 <button id="load-sample-btn" class="btn btn-secondary" style="width:100%;">
                     <i data-feather="database"></i> サンプル読込
                 </button>
-                <span class="badge" style="font-size: 0.65rem; padding: 4px 10px; opacity: 0.8; pointer-events: none; user-select: none;">
+                <span class="badge"
+                    style="font-size: 0.65rem; padding: 4px 10px; opacity: 0.8; pointer-events: none; user-select: none;">
                     &copy; hirabayashi-omu
                 </span>
             </div>
@@ -724,7 +827,7 @@
         </button>
         <main class="main-content">
             <header class="top-nav">
-                <h1>攪拌槽 動力特性解析システム</h1>
+                <h1>攪拌槽特性解析システム</h1>
                 <div class="actions">
                     <a href="formula.html?v=4" class="btn btn-secondary" title="推算式の説明">
                         <i data-feather="book-open"></i><span>推算式の説明</span>
@@ -781,13 +884,16 @@
                     <div id="tab-content-rushton"
                         style="display: flex; flex: 1; gap: 16px; align-items: stretch; min-height: 0; overflow: hidden;">
                         <!-- Left: Rushton Chart & Controls -->
-                        <div style="flex: 2; min-width: 0; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
-                            <div class="chart-container" style="flex: 1; min-height: 0; position: relative; width: 100%; height: 100%;">
+                        <div
+                            style="flex: 2; min-width: 0; background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+                            <div class="chart-container"
+                                style="flex: 1; min-height: 0; position: relative; width: 100%; height: 100%;">
                                 <canvas id="rushtonChart"></canvas>
                             </div>
-                            
+
                             <!-- Controls for Rushton Plot -->
-                            <div id="rushton-controls" class="flex-row" style="gap: 8px; align-items: center; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 4px;">
+                            <div id="rushton-controls" class="flex-row"
+                                style="gap: 8px; align-items: center; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 4px;">
                                 <label style="font-size: 0.75rem; color: var(--text-secondary);">Np表示範囲: </label>
                                 <select id="chart-ymin"
                                     style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.75rem; cursor: pointer;">
@@ -809,22 +915,29 @@
                             </div>
 
                             <!-- Simulation speed controls (synchronized with other tabs) -->
-                            <div style="border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <div
+                                style="border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
                                     <span style="color: var(--text-secondary);">シミュレーション回転数 N:</span>
-                                    <span style="font-weight: 700; color: var(--accent-color);"><span id="rushton-sim-speed-val">300</span> rpm</span>
+                                    <span style="font-weight: 700; color: var(--accent-color);"><span
+                                            id="rushton-sim-speed-val">300</span> rpm</span>
                                 </div>
-                                <input type="range" id="rushton-sim-speed-slider" min="0" max="1200" step="10" value="300"
+                                <input type="range" id="rushton-sim-speed-slider" min="0" max="1200" step="10"
+                                    value="300"
                                     style="width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 6px; border-radius: 3px;">
                                 <div style="display: flex; gap: 6px; margin-top: 2px;">
                                     <button id="btn-rushton-set-njs" class="btn btn-secondary"
                                         style="flex: 1; padding: 6px; font-size: 0.7rem; width: auto; border-radius: 6px;">
-                                        <i data-feather="zap" style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs 完全浮遊限界速度に設定
+                                        <i data-feather="zap"
+                                            style="width: 12px; height: 12px; vertical-align: middle;"></i> Njs
+                                        完全浮遊限界速度に設定
                                     </button>
                                     <div class="checkbox-group"
                                         style="padding: 0 6px; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.02); flex: 1.2; justify-content: center;">
                                         <input type="checkbox" id="rushton-sim-speed-sync" checked>
-                                        <label for="rushton-sim-speed-sync" style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
+                                        <label for="rushton-sim-speed-sync"
+                                            style="font-size: 0.7rem; white-space: nowrap; cursor: pointer;">測定データ同期</label>
                                     </div>
                                 </div>
                             </div>
@@ -873,20 +986,31 @@
                                 <div
                                     style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
                                     <!-- Badge for Particle Sim -->
-                                    <div id="partsim-controls" style="display: none; align-self: flex-start; width: 100%;">
-                                        <div style="display:flex; gap:8px; align-items:center; justify-content: space-between;">
+                                    <div id="partsim-controls"
+                                        style="display: none; align-self: flex-start; width: 100%;">
+                                        <div
+                                            style="display:flex; gap:8px; align-items:center; justify-content: space-between;">
                                             <span class="badge" id="sim-status-badge"
                                                 style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">完全沈降</span>
-                                            <div style="display:flex; gap:8px; align-items:center;">
-                                                <label for="particle-start-mode"
-                                                    style="font-size:0.78rem; color:var(--text-secondary);">開始位置:</label>
-                                                <select id="particle-start-mode"
-                                                    style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
-                                                    <option value="near-impeller">インペラ付近</option>
-                                                    <option value="suspended">浮遊</option>
-                                                    <option value="settled">沈殿</option>
-                                                    <option value="uniform">均一</option>
-                                                </select>
+                                            <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap; justify-content: flex-end;">
+                                                <div style="display:flex; gap:4px; align-items:center;">
+                                                    <label for="sim-view-mode" style="font-size:0.78rem; color:var(--text-secondary);">表示モード:</label>
+                                                    <select id="sim-view-mode" style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
+                                                        <option value="particle">パーティクル</option>
+                                                        <option value="trail">流線 (軌跡)</option>
+                                                    </select>
+                                                </div>
+                                                <div style="display:flex; gap:4px; align-items:center;">
+                                                    <label for="particle-start-mode"
+                                                        style="font-size:0.78rem; color:var(--text-secondary);">開始位置:</label>
+                                                    <select id="particle-start-mode"
+                                                        style="background: var(--bg-tertiary); border: 1px solid var(--card-border); color: var(--text-primary); padding: 4px 8px; border-radius: var(--border-radius-sm); font-size: 0.78rem; cursor: pointer;">
+                                                        <option value="near-impeller">インペラ付近</option>
+                                                        <option value="suspended">浮遊</option>
+                                                        <option value="settled">沈殿</option>
+                                                        <option value="uniform">均一</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -923,9 +1047,11 @@
                                 <div class="inner-tab-headers"
                                     style="display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 6px; margin-bottom: 4px;">
                                     <button class="inner-tab-btn active" id="inner-tab-btn-suspension"
-                                        style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);">粒子浮遊限界</button>
+                                        style="background: none; border: none; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);">完全粒子浮遊限界</button>
                                     <button class="inner-tab-btn" id="inner-tab-btn-flow"
                                         style="background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 4px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">吐出・循環流量</button>
+                                    <button class="inner-tab-btn" id="inner-tab-btn-cavern"
+                                        style="display: none; background: none; border: none; color: var(--text-secondary); border-bottom: 2px solid transparent; padding-bottom: 4px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">キャバーンと死水域</button>
                                 </div>
 
                                 <!-- タブ1: 粒子浮遊限界 (Zwietering Njs) -->
@@ -996,12 +1122,11 @@
                                                 <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
                                                     id="sim-res-Pv-njs">-- W/m³</td>
                                             </tr>
-                                            <tr id="cavern-row"
-                                                style="display: none; background: rgba(245, 158, 11, 0.05); border-top: 1px dashed rgba(245, 158, 11, 0.3);">
-                                                <td><strong style="color: #d97706;">キャバーン径 D<sub>c</sub></strong></td>
-                                                <td style="color: var(--text-muted); font-size: 0.65rem;">降伏流体の流動領域</td>
-                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: #d97706;"
-                                                    id="sim-res-cavern-dc">-- m</td>
+                                            <tr>
+                                                <td><strong>正味 Pm<sub>Njs</sub></strong></td>
+                                                <td style="color: var(--text-muted); font-size: 0.7rem;">単位質量あたり(有効密度)</td>
+                                                <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--success-color);"
+                                                    id="sim-res-Pm-njs">-- W/kg</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1061,6 +1186,23 @@
                                                         style="font-size:0.7rem; color:var(--text-muted);"
                                                         id="flow-res-Nc-njs">(--)</span></td>
                                             </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- タブ3: キャバーンと死水域 -->
+                                <div id="inner-tab-content-cavern" class="results-table-container"
+                                    style="flex-grow: 1; max-height: none; overflow-y: auto; display: none;">
+                                    <table class="results-table" style="font-size: 0.78rem;">
+                                        <thead>
+                                            <tr>
+                                                <th>項目</th>
+                                                <th>定義 / 詳細</th>
+                                                <th style="text-align: right;">計算値</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cavern-results-tbody">
+                                            <!-- JSで動的に追加 -->
                                         </tbody>
                                     </table>
                                 </div>
@@ -1165,8 +1307,7 @@
                             </div>
 
                             <!-- Right: Live Temp Chart & Calc Results -->
-                            <div
-                                style="display: flex; flex-direction: column; justify-content: flex-start; gap: 16px;">
+                            <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 16px;">
                                 <div
                                     style="background: var(--bg-tertiary); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); padding: 12px; flex: none; display: flex; flex-direction: column;">
                                     <h4
@@ -1278,7 +1419,8 @@
 
                     <!-- Tab 4: Experimental Data Sheet -->
                     <div id="tab-content-expsheet" style="display:none; flex-direction:column; gap:12px;">
-                        <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:4px 0 8px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
+                        <div
+                            style="display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:4px 0 8px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
                             <button id="clear-all-blocks-btn" class="btn btn-danger" title="全ブロックを削除">
                                 <i data-feather="trash-2"></i> 全ブロック削除
                             </button>
@@ -1292,99 +1434,147 @@
                     </div>
 
                     <!-- Tab 5: Settings List -->
-                    <div id="tab-content-settings" style="display:none; flex-direction:column; gap:16px; overflow-y:auto; padding:8px;">
-                        <h3 style="font-size:1.1rem; color:var(--text-primary); border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                            <i data-feather="list" style="width:18px;height:18px;color:var(--accent-color);"></i> 現在の設定値一覧
+                    <div id="tab-content-settings"
+                        style="display:none; flex-direction:column; gap:16px; overflow-y:auto; padding:8px;">
+                        <h3
+                            style="font-size:1.1rem; color:var(--text-primary); border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                            <i data-feather="list" style="width:18px;height:18px;color:var(--accent-color);"></i>
+                            現在の設定値一覧
                         </h3>
                         <!-- 攪拌槽の寸法比 表（動的） -->
                         <div style="overflow-x: auto; margin-bottom: 4px;">
-                            <p style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; margin-bottom: 6px; margin-top: 0;">
+                            <p
+                                style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; margin-bottom: 6px; margin-top: 0;">
                                 表　攪拌槽の寸法
                             </p>
-                            <table id="dim-ratio-table" style="width: 100%; border-collapse: collapse; font-size: 0.72rem; color: var(--text-primary); text-align: center;">
+                            <table id="dim-ratio-table"
+                                style="width: 100%; border-collapse: collapse; font-size: 0.72rem; color: var(--text-primary); text-align: center;">
                                 <thead>
-                                    <tr style="background: rgba(6,182,212,0.12); border-bottom: 1px solid rgba(6,182,212,0.3);">
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>d</i>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>C</i>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>b</i>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>B</i><sub>w</sub>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>d</i><sub>co</sub>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>D</i><sub>c</sub>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>p</i><sub>c</sub>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>H</i>/<i>D</i><sub>T</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>n</i><sub>p</sub></th>
-                                        <th style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;"><i>n</i><sub>B</sub></th>
+                                    <tr
+                                        style="background: rgba(6,182,212,0.12); border-bottom: 1px solid rgba(6,182,212,0.3);">
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>d</i>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>C</i>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>b</i>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>B</i><sub>w</sub>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>d</i><sub>co</sub>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>D</i><sub>c</sub>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>p</i><sub>c</sub>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>H</i>/<i>D</i><sub>T</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>n</i><sub>p</sub>
+                                        </th>
+                                        <th
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.2); white-space: nowrap;">
+                                            <i>n</i><sub>B</sub>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="dim-ratio-tbody">
-                                    <tr style="background: rgba(6,182,212,0.04); color: var(--accent-color); font-weight: 600;">
-                                        <td id="dr-d-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-C-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-b-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-Bw-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-dco-DT"  style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-Dc-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-pc-DT"   style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-H-DT"    style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-np"      style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
-                                        <td id="dr-nB"      style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                    <tr
+                                        style="background: rgba(6,182,212,0.04); color: var(--accent-color); font-weight: 600;">
+                                        <td id="dr-d-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-C-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-b-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-Bw-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-dco-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-Dc-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-pc-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-H-DT"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-np"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
+                                        <td id="dr-nB"
+                                            style="padding: 5px 6px; border: 1px solid rgba(6,182,212,0.15);">--</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <script>
-                        (function() {
-                            // Format a ratio as a decimal rounded to 4 sig figs
-                            function fmtRatio(val) {
-                                if (!isFinite(val) || isNaN(val)) return '--';
-                                return parseFloat(val.toPrecision(4)).toString();
-                            }
-                            function updateDimRatioTable() {
-                                const DT  = parseFloat(document.getElementById('DT')?.value) || 0;
-                                if (DT <= 0) return;
-                                const d   = parseFloat(document.getElementById('d')?.value) || 0;
-                                const C   = parseFloat(document.getElementById('clearance')?.value) || 0;
-                                const b   = parseFloat(document.getElementById('b')?.value) || 0;
-                                const Bw  = parseFloat(document.getElementById('Bw')?.value) || 0;
-                                const dco = parseFloat(document.getElementById('coil-outer-dia')?.value) || 0;
-                                const H   = parseFloat(document.getElementById('H')?.value) || 0;
-                                const npv = parseFloat(document.getElementById('np')?.value) || 0;
-                                const nBv = parseFloat(document.getElementById('nB')?.value) || 0;
-                                const pc  = parseFloat(document.getElementById('coil-pitch')?.value) || 0;
-                                // D_c: use input if set, else default DT×0.7
-                                const DcRaw = document.getElementById('coil-center-dia')?.value;
-                                const Dc = (DcRaw && parseFloat(DcRaw) > 0) ? parseFloat(DcRaw) : DT * 0.7;
+                            (function () {
+                                // Format a ratio as a decimal rounded to 4 sig figs
+                                function fmtRatio(val) {
+                                    if (!isFinite(val) || isNaN(val)) return '--';
+                                    return parseFloat(val.toPrecision(4)).toString();
+                                }
+                                function updateDimRatioTable() {
+                                    const DT = parseFloat(document.getElementById('DT')?.value) || 0;
+                                    if (DT <= 0) return;
+                                    const d = parseFloat(document.getElementById('d')?.value) || 0;
+                                    const C = parseFloat(document.getElementById('clearance')?.value) || 0;
+                                    const b = parseFloat(document.getElementById('b')?.value) || 0;
+                                    const Bw = parseFloat(document.getElementById('Bw')?.value) || 0;
+                                    const dco = parseFloat(document.getElementById('coil-outer-dia')?.value) || 0;
+                                    const H = parseFloat(document.getElementById('H')?.value) || 0;
+                                    const npv = parseFloat(document.getElementById('np')?.value) || 0;
+                                    const nBv = parseFloat(document.getElementById('nB')?.value) || 0;
+                                    const pc = parseFloat(document.getElementById('coil-pitch')?.value) || 0;
+                                    // D_c: use input if set, else default DT×0.7
+                                    const DcRaw = document.getElementById('coil-center-dia')?.value;
+                                    const Dc = (DcRaw && parseFloat(DcRaw) > 0) ? parseFloat(DcRaw) : DT * 0.7;
 
-                                document.getElementById('dr-d-DT').textContent   = fmtRatio(d / DT);
-                                document.getElementById('dr-C-DT').textContent   = fmtRatio(C / DT);
-                                document.getElementById('dr-b-DT').textContent   = fmtRatio(b / DT);
-                                document.getElementById('dr-Bw-DT').textContent  = fmtRatio(Bw / DT);
-                                document.getElementById('dr-dco-DT').textContent = dco > 0 ? fmtRatio(dco / DT) : '--';
-                                document.getElementById('dr-Dc-DT').textContent  = fmtRatio(Dc / DT);
-                                document.getElementById('dr-pc-DT').textContent  = pc > 0 ? fmtRatio(pc / DT) : '--';
-                                document.getElementById('dr-H-DT').textContent   = fmtRatio(H / DT);
-                                document.getElementById('dr-np').textContent     = npv > 0 ? npv : '--';
-                                document.getElementById('dr-nB').textContent     = nBv >= 0 ? nBv : '--';
-                            }
+                                    document.getElementById('dr-d-DT').textContent = fmtRatio(d / DT);
+                                    document.getElementById('dr-C-DT').textContent = fmtRatio(C / DT);
+                                    document.getElementById('dr-b-DT').textContent = fmtRatio(b / DT);
+                                    document.getElementById('dr-Bw-DT').textContent = fmtRatio(Bw / DT);
+                                    document.getElementById('dr-dco-DT').textContent = dco > 0 ? fmtRatio(dco / DT) : '--';
+                                    document.getElementById('dr-Dc-DT').textContent = fmtRatio(Dc / DT);
+                                    document.getElementById('dr-pc-DT').textContent = pc > 0 ? fmtRatio(pc / DT) : '--';
+                                    document.getElementById('dr-H-DT').textContent = fmtRatio(H / DT);
+                                    document.getElementById('dr-np').textContent = npv > 0 ? npv : '--';
+                                    document.getElementById('dr-nB').textContent = nBv >= 0 ? nBv : '--';
+                                }
 
-                            // Watch all relevant inputs
-                            const watchIds = ['DT','d','clearance','b','Bw','coil-outer-dia','coil-center-dia','coil-pitch','H','np','nB'];
-                            function attachListeners() {
-                                watchIds.forEach(function(id) {
-                                    const el = document.getElementById(id);
-                                    if (el) el.addEventListener('input', updateDimRatioTable);
-                                });
-                                updateDimRatioTable();
-                            }
-                            // Run after DOM ready
-                            if (document.readyState === 'loading') {
-                                document.addEventListener('DOMContentLoaded', attachListeners);
-                            } else {
-                                attachListeners();
-                            }
-                        })();
+                                // Watch all relevant inputs
+                                const watchIds = ['DT', 'd', 'clearance', 'b', 'Bw', 'coil-outer-dia', 'coil-center-dia', 'coil-pitch', 'H', 'np', 'nB'];
+                                function attachListeners() {
+                                    watchIds.forEach(function (id) {
+                                        const el = document.getElementById(id);
+                                        if (el) el.addEventListener('input', updateDimRatioTable);
+                                    });
+                                    updateDimRatioTable();
+                                }
+                                // Run after DOM ready
+                                if (document.readyState === 'loading') {
+                                    document.addEventListener('DOMContentLoaded', attachListeners);
+                                } else {
+                                    attachListeners();
+                                }
+                            })();
                         </script>
-                        <div id="settings-list-container" style="display:grid; grid-template-columns: 1fr; gap: 16px; align-items: start;">
+                        <div id="settings-list-container"
+                            style="display:grid; grid-template-columns: 1fr; gap: 16px; align-items: start;">
                             <!-- populated by JS -->
                         </div>
                     </div>
@@ -1593,7 +1783,7 @@
         </div>
     </div>
 
-    <script src="app_v4.js?v=20260605_v4"></script>
+    <script src="app_v5.js?v=20260611_v5"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();
@@ -1638,58 +1828,99 @@
     </script>
 
     <!-- ===== Flow Curve Modal ===== -->
-    <div id="flow-curve-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-        <div style="background:#1e2130;border:1px solid rgba(255,255,255,0.12);border-radius:16px;width:min(820px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+    <div id="flow-curve-modal"
+        style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+        <div
+            style="background:#1e2130;border:1px solid rgba(255,255,255,0.12);border-radius:16px;width:min(820px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
                 <div style="font-size:1.05rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px;">
                     <i data-feather="trending-up" style="width:18px;height:18px;color:#818cf8;"></i>
                     レオロジーモデル曲線
                 </div>
-                <button onclick="closeFlowCurveModal()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;padding:6px 10px;font-size:0.85rem;">✕ 閉じる</button>
+                <button onclick="closeFlowCurveModal()"
+                    style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;padding:6px 10px;font-size:0.85rem;">✕
+                    閉じる</button>
             </div>
             <!-- γ range controls -->
-            <div style="display:flex;align-items:center;gap:12px;padding:12px 24px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;color:#9ca3af;">
+            <div
+                style="display:flex;align-items:center;gap:12px;padding:12px 24px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;color:#9ca3af;">
                 <span>せん断速度範囲:</span>
-                <label>最小 <input type="number" id="fc-gamma-min" value="0.01" step="0.01" min="0.001" style="width:70px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;"> s⁻¹</label>
-                <label>最大 <input type="number" id="fc-gamma-max" value="1000" step="10" min="1" style="width:80px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;"> s⁻¹</label>
-                <button onclick="renderFlowCurves()" style="padding:4px 12px;background:rgba(129,140,248,0.15);color:#818cf8;border:1px solid rgba(129,140,248,0.25);border-radius:6px;cursor:pointer;font-size:0.8rem;">更新</button>
+                <label>最小 <input type="number" id="fc-gamma-min" value="0.01" step="0.01" min="0.001"
+                        style="width:70px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;">
+                    s⁻¹</label>
+                <label>最大 <input type="number" id="fc-gamma-max" value="1000" step="10" min="1"
+                        style="width:80px;padding:3px 6px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#f1f5f9;font-size:0.82rem;">
+                    s⁻¹</label>
+                <button onclick="renderFlowCurves()"
+                    style="padding:4px 12px;background:rgba(129,140,248,0.15);color:#818cf8;border:1px solid rgba(129,140,248,0.25);border-radius:6px;cursor:pointer;font-size:0.8rem;">更新</button>
             </div>
             <!-- Charts -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:16px 24px 8px;">
                 <div style="padding:8px;">
-                    <div style="font-size:0.78rem;font-weight:600;color:#818cf8;margin-bottom:6px;text-align:center;">流動曲線（τ vs γ̇）</div>
+                    <div style="font-size:0.78rem;font-weight:600;color:#818cf8;margin-bottom:6px;text-align:center;">
+                        流動曲線（τ vs γ̇）</div>
                     <div style="height:200px;position:relative;"><canvas id="fc-chart-flow"></canvas></div>
                 </div>
                 <div style="padding:8px;">
-                    <div style="font-size:0.78rem;font-weight:600;color:#34d399;margin-bottom:6px;text-align:center;">粘度曲線（μ_a vs γ̇）</div>
+                    <div style="font-size:0.78rem;font-weight:600;color:#34d399;margin-bottom:6px;text-align:center;">
+                        粘度曲線（μ_a vs γ̇）</div>
                     <div style="height:200px;position:relative;"><canvas id="fc-chart-visc"></canvas></div>
                 </div>
             </div>
             <div style="padding:0 24px 16px;">
                 <div id="fc-casson-row" style="display:none;">
-                    <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;margin-bottom:6px;text-align:center;">キャッソンプロット（√τ vs √γ̇）</div>
+                    <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;margin-bottom:6px;text-align:center;">
+                        キャッソンプロット（√τ vs √γ̇）</div>
                     <div style="height:180px;position:relative;"><canvas id="fc-chart-casson"></canvas></div>
                 </div>
             </div>
             <!-- Model info -->
-            <div id="fc-model-info" style="margin:0 24px 20px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;font-size:0.8rem;color:#9ca3af;line-height:1.7;"></div>
+            <div id="fc-model-info"
+                style="margin:0 24px 20px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;font-size:0.8rem;color:#9ca3af;line-height:1.7;">
+            </div>
         </div>
     </div>
 
     <!-- ===== Sidebar & Accordion CSS ===== -->
     <style>
         /* Sidebar collapse */
-        .sidebar.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; padding: 0; }
+        .sidebar.collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            overflow: hidden;
+            padding: 0;
+        }
+
         .sidebar.collapsed .scroll-container,
-        .sidebar.collapsed .sidebar-footer { display: none; }
-        .sidebar.collapsed .sidebar-header { display: none; }
+        .sidebar.collapsed .sidebar-footer {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            display: none;
+        }
 
         /* Accordion body */
-        .acc-body { overflow: hidden; transition: max-height 0.35s ease, opacity 0.3s ease, padding 0.3s ease; max-height: 2000px; opacity: 1; padding-top: 4px; }
-        .acc-body.collapsed { max-height: 0 !important; opacity: 0; padding-top: 0; }
+        .acc-body {
+            overflow: hidden;
+            transition: max-height 0.35s ease, opacity 0.3s ease, padding 0.3s ease;
+            max-height: 2000px;
+            opacity: 1;
+            padding-top: 4px;
+        }
+
+        .acc-body.collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+            padding-top: 0;
+        }
 
         /* Section header */
-        .config-section { margin-bottom: 0 !important; }
+        .config-section {
+            margin-bottom: 0 !important;
+        }
+
         .acc-h3 {
             user-select: none;
             font-size: 0.97rem !important;
@@ -1701,6 +1932,7 @@
             border-radius: 6px;
             transition: background 0.2s;
         }
+
         /* 開いているセクション全体をハイライト */
         .config-section:has(.acc-body:not(.collapsed)) {
             background: rgba(6, 182, 212, 0.05);
@@ -1709,252 +1941,292 @@
             padding: 4px 10px 10px !important;
             margin-bottom: 4px !important;
         }
+
         .config-section:has(.acc-body.collapsed) {
             padding: 0 4px !important;
         }
+
         /* 開いているセクションのh3はシアンをほのかに */
         .config-section:has(.acc-body:not(.collapsed)) .acc-h3 {
             color: #38bdf8 !important;
         }
-        .acc-h3 i[data-feather]:first-child { color: var(--accent-color); width: 15px; height: 15px; margin-right: 7px; flex-shrink: 0; }
-        .acc-h3:hover { opacity: 0.85; }
-        .acc-chevron { transition: transform 0.25s ease; opacity: 0.5; }
-        .acc-h3.collapsed .acc-chevron { transform: rotate(-90deg); }
+
+        .acc-h3 i[data-feather]:first-child {
+            color: var(--accent-color);
+            width: 15px;
+            height: 15px;
+            margin-right: 7px;
+            flex-shrink: 0;
+        }
+
+        .acc-h3:hover {
+            opacity: 0.85;
+        }
+
+        .acc-chevron {
+            transition: transform 0.25s ease;
+            opacity: 0.5;
+        }
+
+        .acc-h3.collapsed .acc-chevron {
+            transform: rotate(-90deg);
+        }
 
         /* Dividers — tight when neighbour is collapsed */
-        .sidebar-divider { margin: 2px 0 !important; opacity: 0.25; }
+        .sidebar-divider {
+            margin: 2px 0 !important;
+            opacity: 0.25;
+        }
 
         /* Outer grouped box tighter */
-        .scroll-container > div[style*="border: 1px solid rgba(6, 182, 212"] { padding: 8px 12px !important; margin-bottom: 8px !important; }
+        .scroll-container>div[style*="border: 1px solid rgba(6, 182, 212"] {
+            padding: 8px 12px !important;
+            margin-bottom: 8px !important;
+        }
 
         /* Rheo tab active */
-        .rheo-tab-active { background: rgba(6,182,212,0.25) !important; color: #38bdf8 !important; font-weight: 600 !important; }
-        .rheo-tab-inactive { background: rgba(255,255,255,0.04) !important; color: var(--text-secondary) !important; }
+        .rheo-tab-active {
+            background: rgba(6, 182, 212, 0.25) !important;
+            color: #38bdf8 !important;
+            font-weight: 600 !important;
+        }
+
+        .rheo-tab-inactive {
+            background: rgba(255, 255, 255, 0.04) !important;
+            color: var(--text-secondary) !important;
+        }
 
         /* Modal flex */
-        #flow-curve-modal.open { display: flex !important; }
+        #flow-curve-modal.open {
+            display: flex !important;
+        }
 
         /* Manual params grid */
-        .manual-params { display: none; }
-        .manual-params.active { display: grid; }
+        .manual-params {
+            display: none;
+        }
+
+        .manual-params.active {
+            display: grid;
+        }
     </style>
 
     <!-- ===== Sidebar, Accordion, Rheology Manual Mode, Flow Curve Modal JS ===== -->
     <script>
-    // ── Sidebar collapse ──────────────────────────────────────────────
-    function _syncSidebarUI() {
-        const sb = document.querySelector('.sidebar');
-        const reopenBtn = document.getElementById('sidebar-reopen-btn');
-        const isCollapsed = sb.classList.contains('collapsed');
-        if (reopenBtn) {
-            reopenBtn.style.display = isCollapsed ? 'flex' : 'none';
-        }
-        feather.replace();
-    }
-    document.getElementById('sidebar-toggle-btn').addEventListener('click', function () {
-        document.querySelector('.sidebar').classList.toggle('collapsed');
-        _syncSidebarUI();
-    });
-    document.getElementById('sidebar-reopen-btn').addEventListener('click', function () {
-        document.querySelector('.sidebar').classList.remove('collapsed');
-        _syncSidebarUI();
-    });
-
-    // ── Accordion ────────────────────────────────────────────────────
-    document.querySelectorAll('.acc-h3').forEach(function (h3) {
-        h3.addEventListener('click', function () {
-            const targetId = h3.dataset.target;
-            const body = document.getElementById(targetId);
-            if (!body) return;
-            const isOpen = !body.classList.contains('collapsed');
-            body.classList.toggle('collapsed', isOpen);
-            h3.classList.toggle('collapsed', isOpen);
-            feather.replace();
-        });
-    });
-
-    // ── Rheology tab switch ──────────────────────────────────────────
-    function switchRheoTab(mode) {
-        const csvPanel    = document.getElementById('rheo-csv-panel');
-        const manualPanel = document.getElementById('rheo-manual-panel');
-        const btnCsv      = document.getElementById('rheo-tab-csv');
-        const btnManual   = document.getElementById('rheo-tab-manual');
-        if (mode === 'csv') {
-            csvPanel.style.display    = '';
-            manualPanel.style.display = 'none';
-            btnCsv.classList.add('rheo-tab-active');    btnCsv.classList.remove('rheo-tab-inactive');
-            btnManual.classList.add('rheo-tab-inactive'); btnManual.classList.remove('rheo-tab-active');
-        } else {
-            csvPanel.style.display    = 'none';
-            manualPanel.style.display = '';
-            btnManual.classList.add('rheo-tab-active');  btnManual.classList.remove('rheo-tab-inactive');
-            btnCsv.classList.add('rheo-tab-inactive');   btnCsv.classList.remove('rheo-tab-active');
-            onManualModelChange();
-        }
-        feather.replace();
-    }
-
-    // ── Manual model param panels ────────────────────────────────────
-    function onManualModelChange() {
-        const model = document.getElementById('manual-model-select').value;
-        document.querySelectorAll('.manual-params').forEach(el => {
-            el.style.display = 'none';
-            el.classList.remove('active');
-        });
-        const panel = document.getElementById('manual-params-' + model);
-        if (panel) { panel.style.display = ''; panel.classList.add('active'); }
-    }
-
-    // ── Apply manual model to rheologyData ──────────────────────────
-    function applyManualModel() {
-        if (typeof rheologyData === 'undefined') return;
-        const model = document.getElementById('manual-model-select').value;
-        const v = id => parseFloat(document.getElementById(id).value) || 0;
-
-        let params = {};
-        switch (model) {
-            case 'newtonian': params = { eta_0: v('mp-newtonian-eta0') }; break;
-            case 'powerlaw':  params = { K: v('mp-pl-K'), n: v('mp-pl-n') }; break;
-            case 'bingham':   params = { tau_y: v('mp-bi-tauy'), eta_p: v('mp-bi-etap') }; break;
-            case 'casson':    params = { tau_y: v('mp-ca-tauy'), eta_p: v('mp-ca-etap') }; break;
-            case 'hb':        params = { tau_y: v('mp-hb-tauy'), K: v('mp-hb-K'), n: v('mp-hb-n') }; break;
-            case 'cross':     params = { eta_0: v('mp-cr-eta0'), eta_inf: v('mp-cr-etainf'), K: v('mp-cr-K'), m: v('mp-cr-m') }; break;
-            case 'carreau':   params = { eta_0: v('mp-cu-eta0'), eta_inf: v('mp-cu-etainf'), lambda: v('mp-cu-lambda'), n: v('mp-cu-n') }; break;
-        }
-
-        const MODEL_NAMES = {
-            newtonian: 'Newtonian', powerlaw: 'Power-Law', bingham: 'Bingham',
-            casson: 'Casson', hb: 'Herschel-Bulkley', cross: 'Cross', carreau: 'Carreau'
-        };
-        const sampleName = '手動入力';
-        const entry = { modelId: model, name: MODEL_NAMES[model], rating: 'good', r2: 1.0, rmse: 0, mae: 0, params };
-        if (model === 'newtonian') entry.params.eta_0 = params.eta_0;
-
-        rheologyData.samples = { [sampleName]: [entry] };
-        rheologyData.activeSample = sampleName;
-        rheologyData.activeModel  = model;
-
-        // Sync the shared model select
-        const sel = document.getElementById('rheology-model-select');
-        if (sel) {
-            const ICONS = { newtonian:'◎',powerlaw:'◎',bingham:'◎',casson:'◎',hb:'◎',cross:'◎',carreau:'◎' };
-            sel.innerHTML = `<option value="${model}" selected>${ICONS[model]} ${MODEL_NAMES[model]}</option>`;
-        }
-
-        if (typeof updateRheologyUI === 'function') updateRheologyUI();
-        if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
-        if (typeof recalculateAll === 'function') recalculateAll();
-        if (typeof showToast === 'function') showToast(`手動入力: ${MODEL_NAMES[model]} モデルを適用しました`, 'success');
-    }
-
-    // ── Flow Curve Modal ─────────────────────────────────────────────
-    let fcChartFlow = null, fcChartVisc = null, fcChartCasson = null;
-
-    function openFlowCurveModal() {
-        document.getElementById('flow-curve-modal').classList.add('open');
-        feather.replace();
-        renderFlowCurves();
-    }
-    function closeFlowCurveModal() {
-        document.getElementById('flow-curve-modal').classList.remove('open');
-    }
-    document.getElementById('flow-curve-modal').addEventListener('click', function (e) {
-        if (e.target === this) closeFlowCurveModal();
-    });
-
-    function _fcCalcMu(model, params, gd) {
-        if (gd <= 0) return null;
-        switch (model) {
-            case 'newtonian': return params.eta_0 ?? params.eta0 ?? 0.001;
-            case 'powerlaw':  return params.K * Math.pow(gd, params.n - 1);
-            case 'bingham':   return params.tau_y / gd + params.eta_p;
-            case 'casson':    { const s = Math.sqrt(params.eta_p) + Math.sqrt(params.tau_y / gd); return s * s; }
-            case 'hb':        return params.tau_y / gd + params.K * Math.pow(gd, params.n - 1);
-            case 'cross':     return params.eta_inf + (params.eta_0 - params.eta_inf) / (1 + Math.pow(params.K * gd, params.m));
-            case 'carreau':   return params.eta_inf + (params.eta_0 - params.eta_inf) * Math.pow(1 + Math.pow(params.lambda * gd, 2), (params.n - 1) / 2);
-            default: return null;
-        }
-    }
-
-    function renderFlowCurves() {
-        if (typeof rheologyData === 'undefined') return;
-        const modelList = rheologyData.samples[rheologyData.activeSample] || [];
-        const activeModelId = rheologyData.activeModel;
-        const modelInfo = modelList.find(r => r.modelId === activeModelId);
-        if (!modelInfo && activeModelId !== 'newtonian') {
-            document.getElementById('fc-model-info').textContent = 'モデルが未設定です。CSVを読み込むか手動入力でモデルを設定してください。';
-            return;
-        }
-        const params = modelInfo ? modelInfo.params : { eta_0: (typeof config !== 'undefined' ? config.mu : 0.001) };
-        const model  = activeModelId;
-
-        const gMin = parseFloat(document.getElementById('fc-gamma-min').value) || 0.01;
-        const gMax = parseFloat(document.getElementById('fc-gamma-max').value) || 1000;
-        const N_PTS = 80;
-        const gammas = Array.from({length: N_PTS}, (_, i) => {
-            const t = i / (N_PTS - 1);
-            return gMin * Math.pow(gMax / gMin, t);
-        });
-
-        const taus = gammas.map(gd => { const mu = _fcCalcMu(model, params, gd); return mu != null ? mu * gd : null; });
-        const mus  = gammas.map(gd => _fcCalcMu(model, params, gd));
-
-        const chartDefaults = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y != null ? ctx.parsed.y.toExponential(3) : '' } } },
-            scales: {
-                x: { type: 'logarithmic', title: { display: true, text: 'せん断速度 γ̇ (s⁻¹)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } },
-                y: { type: 'logarithmic', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } }
+        // ── Sidebar collapse ──────────────────────────────────────────────
+        function _syncSidebarUI() {
+            const sb = document.querySelector('.sidebar');
+            const reopenBtn = document.getElementById('sidebar-reopen-btn');
+            const isCollapsed = sb.classList.contains('collapsed');
+            if (reopenBtn) {
+                reopenBtn.style.display = isCollapsed ? 'flex' : 'none';
             }
-        };
-
-        // Flow curve
-        if (fcChartFlow) fcChartFlow.destroy();
-        fcChartFlow = new Chart(document.getElementById('fc-chart-flow'), {
-            type: 'line',
-            data: { labels: gammas, datasets: [{ data: taus, borderColor: '#818cf8', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
-            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: 'せん断応力 τ (Pa)', color: '#6b7280', font: { size: 9 } } } } }
+            feather.replace();
+        }
+        document.getElementById('sidebar-toggle-btn').addEventListener('click', function () {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            _syncSidebarUI();
+        });
+        document.getElementById('sidebar-reopen-btn').addEventListener('click', function () {
+            document.querySelector('.sidebar').classList.remove('collapsed');
+            _syncSidebarUI();
         });
 
-        // Viscosity curve
-        if (fcChartVisc) fcChartVisc.destroy();
-        fcChartVisc = new Chart(document.getElementById('fc-chart-visc'), {
-            type: 'line',
-            data: { labels: gammas, datasets: [{ data: mus, borderColor: '#34d399', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
-            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: '見かけ粘度 μ_a (Pa·s)', color: '#6b7280', font: { size: 9 } } } } }
-        });
-
-        // Casson plot (√τ vs √γ̇) — shown for Bingham, Casson, HB
-        const cassonRow = document.getElementById('fc-casson-row');
-        const showCasson = ['bingham', 'casson', 'hb'].includes(model);
-        cassonRow.style.display = showCasson ? 'block' : 'none';
-        if (showCasson) {
-            const sqrtGammas = gammas.map(g => Math.sqrt(g));
-            const sqrtTaus   = taus.map(t => t != null ? Math.sqrt(Math.max(0, t)) : null);
-            if (fcChartCasson) fcChartCasson.destroy();
-            fcChartCasson = new Chart(document.getElementById('fc-chart-casson'), {
-                type: 'line',
-                data: { labels: sqrtGammas, datasets: [{ data: sqrtTaus, borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { type: 'linear', title: { display: true, text: '√γ̇ (s⁻¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } },
-                        y: { type: 'linear', title: { display: true, text: '√τ (Pa¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } }
-                    }
-                }
+        // ── Accordion ────────────────────────────────────────────────────
+        document.querySelectorAll('.acc-h3').forEach(function (h3) {
+            h3.addEventListener('click', function () {
+                const targetId = h3.dataset.target;
+                const body = document.getElementById(targetId);
+                if (!body) return;
+                const isOpen = !body.classList.contains('collapsed');
+                body.classList.toggle('collapsed', isOpen);
+                h3.classList.toggle('collapsed', isOpen);
+                feather.replace();
             });
+        });
+
+        // ── Rheology tab switch ──────────────────────────────────────────
+        function switchRheoTab(mode) {
+            const csvPanel = document.getElementById('rheo-csv-panel');
+            const manualPanel = document.getElementById('rheo-manual-panel');
+            const btnCsv = document.getElementById('rheo-tab-csv');
+            const btnManual = document.getElementById('rheo-tab-manual');
+            if (mode === 'csv') {
+                csvPanel.style.display = '';
+                manualPanel.style.display = 'none';
+                btnCsv.classList.add('rheo-tab-active'); btnCsv.classList.remove('rheo-tab-inactive');
+                btnManual.classList.add('rheo-tab-inactive'); btnManual.classList.remove('rheo-tab-active');
+            } else {
+                csvPanel.style.display = 'none';
+                manualPanel.style.display = '';
+                btnManual.classList.add('rheo-tab-active'); btnManual.classList.remove('rheo-tab-inactive');
+                btnCsv.classList.add('rheo-tab-inactive'); btnCsv.classList.remove('rheo-tab-active');
+                onManualModelChange();
+            }
+            feather.replace();
         }
 
-        // Model info text
-        const MODEL_LABELS = { newtonian:'Newtonian', powerlaw:'Power-Law', bingham:'Bingham', casson:'Casson', hb:'Herschel-Bulkley', cross:'Cross', carreau:'Carreau' };
-        let infoStr = `モデル: ${MODEL_LABELS[model] || model} | `;
-        infoStr += Object.entries(params).map(([k, v]) => `${k} = ${Number(v).toPrecision(4)}`).join(' | ');
-        document.getElementById('fc-model-info').textContent = infoStr;
-    }
+        // ── Manual model param panels ────────────────────────────────────
+        function onManualModelChange() {
+            const model = document.getElementById('manual-model-select').value;
+            document.querySelectorAll('.manual-params').forEach(el => {
+                el.style.display = 'none';
+                el.classList.remove('active');
+            });
+            const panel = document.getElementById('manual-params-' + model);
+            if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+        }
 
-    // init manual params display
-    onManualModelChange();
+        // ── Apply manual model to rheologyData ──────────────────────────
+        function applyManualModel() {
+            if (typeof rheologyData === 'undefined') return;
+            const model = document.getElementById('manual-model-select').value;
+            const v = id => parseFloat(document.getElementById(id).value) || 0;
+
+            let params = {};
+            switch (model) {
+                case 'newtonian': params = { eta_0: v('mp-newtonian-eta0') }; break;
+                case 'powerlaw': params = { K: v('mp-pl-K'), n: v('mp-pl-n') }; break;
+                case 'bingham': params = { tau_y: v('mp-bi-tauy'), eta_p: v('mp-bi-etap') }; break;
+                case 'casson': params = { tau_y: v('mp-ca-tauy'), eta_p: v('mp-ca-etap') }; break;
+                case 'hb': params = { tau_y: v('mp-hb-tauy'), K: v('mp-hb-K'), n: v('mp-hb-n') }; break;
+                case 'cross': params = { eta_0: v('mp-cr-eta0'), eta_inf: v('mp-cr-etainf'), K: v('mp-cr-K'), m: v('mp-cr-m') }; break;
+                case 'carreau': params = { eta_0: v('mp-cu-eta0'), eta_inf: v('mp-cu-etainf'), lambda: v('mp-cu-lambda'), n: v('mp-cu-n') }; break;
+            }
+
+            const MODEL_NAMES = {
+                newtonian: 'Newtonian', powerlaw: 'Power-Law', bingham: 'Bingham',
+                casson: 'Casson', hb: 'Herschel-Bulkley', cross: 'Cross', carreau: 'Carreau'
+            };
+            const sampleName = '手動入力';
+            const entry = { modelId: model, name: MODEL_NAMES[model], rating: 'good', r2: 1.0, rmse: 0, mae: 0, params };
+            if (model === 'newtonian') entry.params.eta_0 = params.eta_0;
+
+            rheologyData.samples = { [sampleName]: [entry] };
+            rheologyData.activeSample = sampleName;
+            rheologyData.activeModel = model;
+
+            // Sync the shared model select
+            const sel = document.getElementById('rheology-model-select');
+            if (sel) {
+                const ICONS = { newtonian: '◎', powerlaw: '◎', bingham: '◎', casson: '◎', hb: '◎', cross: '◎', carreau: '◎' };
+                sel.innerHTML = `<option value="${model}" selected>${ICONS[model]} ${MODEL_NAMES[model]}</option>`;
+            }
+
+            if (typeof updateRheologyUI === 'function') updateRheologyUI();
+            if (typeof updateMuEffDisplay === 'function') updateMuEffDisplay();
+            if (typeof recalculateAll === 'function') recalculateAll();
+            if (typeof showToast === 'function') showToast(`手動入力: ${MODEL_NAMES[model]} モデルを適用しました`, 'success');
+        }
+
+        // ── Flow Curve Modal ─────────────────────────────────────────────
+        let fcChartFlow = null, fcChartVisc = null, fcChartCasson = null;
+
+        function openFlowCurveModal() {
+            document.getElementById('flow-curve-modal').classList.add('open');
+            feather.replace();
+            renderFlowCurves();
+        }
+        function closeFlowCurveModal() {
+            document.getElementById('flow-curve-modal').classList.remove('open');
+        }
+        document.getElementById('flow-curve-modal').addEventListener('click', function (e) {
+            if (e.target === this) closeFlowCurveModal();
+        });
+
+        function _fcCalcMu(model, params, gd) {
+            if (gd <= 0) return null;
+            switch (model) {
+                case 'newtonian': return params.eta_0 ?? params.eta0 ?? 0.001;
+                case 'powerlaw': return params.K * Math.pow(gd, params.n - 1);
+                case 'bingham': return params.tau_y / gd + params.eta_p;
+                case 'casson': { const s = Math.sqrt(params.eta_p) + Math.sqrt(params.tau_y / gd); return s * s; }
+                case 'hb': return params.tau_y / gd + params.K * Math.pow(gd, params.n - 1);
+                case 'cross': return params.eta_inf + (params.eta_0 - params.eta_inf) / (1 + Math.pow(params.K * gd, params.m));
+                case 'carreau': return params.eta_inf + (params.eta_0 - params.eta_inf) * Math.pow(1 + Math.pow(params.lambda * gd, 2), (params.n - 1) / 2);
+                default: return null;
+            }
+        }
+
+        function renderFlowCurves() {
+            if (typeof rheologyData === 'undefined') return;
+            const modelList = rheologyData.samples[rheologyData.activeSample] || [];
+            const activeModelId = rheologyData.activeModel;
+            const modelInfo = modelList.find(r => r.modelId === activeModelId);
+            if (!modelInfo && activeModelId !== 'newtonian') {
+                document.getElementById('fc-model-info').textContent = 'モデルが未設定です。CSVを読み込むか手動入力でモデルを設定してください。';
+                return;
+            }
+            const params = modelInfo ? modelInfo.params : { eta_0: (typeof config !== 'undefined' ? config.mu : 0.001) };
+            const model = activeModelId;
+
+            const gMin = parseFloat(document.getElementById('fc-gamma-min').value) || 0.01;
+            const gMax = parseFloat(document.getElementById('fc-gamma-max').value) || 1000;
+            const N_PTS = 80;
+            const gammas = Array.from({ length: N_PTS }, (_, i) => {
+                const t = i / (N_PTS - 1);
+                return gMin * Math.pow(gMax / gMin, t);
+            });
+
+            const taus = gammas.map(gd => { const mu = _fcCalcMu(model, params, gd); return mu != null ? mu * gd : null; });
+            const mus = gammas.map(gd => _fcCalcMu(model, params, gd));
+
+            const chartDefaults = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y != null ? ctx.parsed.y.toExponential(3) : '' } } },
+                scales: {
+                    x: { type: 'logarithmic', title: { display: true, text: 'せん断速度 γ̇ (s⁻¹)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } },
+                    y: { type: 'logarithmic', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 }, maxTicksLimit: 6 } }
+                }
+            };
+
+            // Flow curve
+            if (fcChartFlow) fcChartFlow.destroy();
+            fcChartFlow = new Chart(document.getElementById('fc-chart-flow'), {
+                type: 'line',
+                data: { labels: gammas, datasets: [{ data: taus, borderColor: '#818cf8', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+                options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: 'せん断応力 τ (Pa)', color: '#6b7280', font: { size: 9 } } } } }
+            });
+
+            // Viscosity curve
+            if (fcChartVisc) fcChartVisc.destroy();
+            fcChartVisc = new Chart(document.getElementById('fc-chart-visc'), {
+                type: 'line',
+                data: { labels: gammas, datasets: [{ data: mus, borderColor: '#34d399', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+                options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: '見かけ粘度 μ_a (Pa·s)', color: '#6b7280', font: { size: 9 } } } } }
+            });
+
+            // Casson plot (√τ vs √γ̇) — shown for Bingham, Casson, HB
+            const cassonRow = document.getElementById('fc-casson-row');
+            const showCasson = ['bingham', 'casson', 'hb'].includes(model);
+            cassonRow.style.display = showCasson ? 'block' : 'none';
+            if (showCasson) {
+                const sqrtGammas = gammas.map(g => Math.sqrt(g));
+                const sqrtTaus = taus.map(t => t != null ? Math.sqrt(Math.max(0, t)) : null);
+                if (fcChartCasson) fcChartCasson.destroy();
+                fcChartCasson = new Chart(document.getElementById('fc-chart-casson'), {
+                    type: 'line',
+                    data: { labels: sqrtGammas, datasets: [{ data: sqrtTaus, borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { type: 'linear', title: { display: true, text: '√γ̇ (s⁻¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } },
+                            y: { type: 'linear', title: { display: true, text: '√τ (Pa¹/²)', color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', font: { size: 8 } } }
+                        }
+                    }
+                });
+            }
+
+            // Model info text
+            const MODEL_LABELS = { newtonian: 'Newtonian', powerlaw: 'Power-Law', bingham: 'Bingham', casson: 'Casson', hb: 'Herschel-Bulkley', cross: 'Cross', carreau: 'Carreau' };
+            let infoStr = `モデル: ${MODEL_LABELS[model] || model} | `;
+            infoStr += Object.entries(params).map(([k, v]) => `${k} = ${Number(v).toPrecision(4)}`).join(' | ');
+            document.getElementById('fc-model-info').textContent = infoStr;
+        }
+
+        // init manual params display
+        onManualModelChange();
     </script>
 
 </body>

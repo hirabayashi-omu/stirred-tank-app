@@ -9,7 +9,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>攪拌槽 3D模式図＆寸法仕様可視化</title>
+    <title>攪拌槽 構造可視化</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -270,11 +270,22 @@
     <header>
         <div class="header-logo">
             <i data-feather="box"></i>
-            <span>AgitatorSim: 槽寸法・形状模式図 (3D)</span>
+            <span>攪拌槽構造模式図 (3D)</span>
         </div>
-        <div id="sync-status" class="sync-badge">
-            <i data-feather="refresh-cw" style="width:14px;height:14px;animation:spin 2s linear infinite;"></i>
-            <span>メイン画面とリアルタイム同期中</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button id="cavern-toggle-btn" onclick="toggleCavern()"
+                style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;
+                       padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:600;
+                       display:flex;align-items:center;gap:6px;transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(245,158,11,0.25)'"
+                onmouseout="this.style.background='rgba(245,158,11,0.12)'">
+                <i data-feather="eye" id="cavern-toggle-icon" style="width:14px;height:14px;"></i>
+                <span id="cavern-toggle-label">キャバーン 表示</span>
+            </button>
+            <div id="sync-status" class="sync-badge">
+                <i data-feather="refresh-cw" style="width:14px;height:14px;animation:spin 2s linear infinite;"></i>
+                <span>メイン画面とリアルタイム同期中</span>
+            </div>
         </div>
     </header>
 
@@ -374,6 +385,28 @@
         let expBlocks = [], rheologyData = null;
         let animId = null, impAngle = 0, lastFrameT = null;
         let lastSavedStateJSON = localStorage.getItem('agitator_current_state');
+        let showCavern = true;
+
+        function toggleCavern() {
+            showCavern = !showCavern;
+            const btn = document.getElementById('cavern-toggle-btn');
+            const icon = document.getElementById('cavern-toggle-icon');
+            const label = document.getElementById('cavern-toggle-label');
+            if (showCavern) {
+                btn.style.background = 'rgba(245,158,11,0.12)';
+                btn.style.borderColor = 'rgba(245,158,11,0.4)';
+                btn.style.color = '#f59e0b';
+                label.textContent = 'キャバーン 表示';
+                icon.setAttribute('data-feather', 'eye');
+            } else {
+                btn.style.background = 'rgba(107,114,128,0.12)';
+                btn.style.borderColor = 'rgba(107,114,128,0.3)';
+                btn.style.color = '#6b7280';
+                label.textContent = 'キャバーン 非表示';
+                icon.setAttribute('data-feather', 'eye-off');
+            }
+            feather.replace();
+        }
 
         const headTypeMap = { flat: '平底', 'semi-elliptical': '半楕円形(2:1)', dish: '皿型', hemispherical: '全半球形' };
         const impellerMap = { 'pitched-paddle': '傾斜パドル', 'flat-paddle': '平板パドル', 'flat-turbine': '平板タービン(Rushton)', 'propeller': 'プロペラ', 'faudler': 'ファウドラー' };
@@ -714,7 +747,7 @@
             lastFrameT = now;
 
             stages_z.forEach(zI => {
-                if (config.cavern_Dc && config.cavern_Dc > 0) {
+                if (showCavern && config.cavern_Dc && config.cavern_Dc > 0) {
                     const rCav = (config.cavern_Dc / 2) * scl;
                     const alpha = config.cavernAlpha ?? 0.7;
                     ctx2.save();
@@ -758,7 +791,7 @@
                         // 小半径 r = Dc/2（断面直径の半分）[px]
                         const r_tor = Math.max((config.cavern_Dc / 2) * scl, 2);
 
-                        const nPhi   = 72;
+                        const nPhi = 72;
                         const nTheta = 36;
 
                         ctx2.save();
