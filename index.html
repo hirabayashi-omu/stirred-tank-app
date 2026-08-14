@@ -649,6 +649,10 @@
                                 <label for="n_stage">翼段数 N<sub>stage</sub></label>
                                 <input type="number" id="n_stage" value="1" step="1" min="1">
                             </div>
+                            <div class="input-group" id="group-stage-gap" style="display: none;">
+                                <label for="stage-gap">段間距離 ΔC (m)</label>
+                                <input type="number" id="stage-gap" value="0.060" step="0.001" min="0">
+                            </div>
                             <div id="n-stage-warning"
                                 style="display:none; grid-column: span 2; font-size: 0.72rem; color: #f59e0b; margin-top: 4px; line-height: 1.3;">
                                 <i data-feather="alert-triangle"
@@ -1557,7 +1561,7 @@
                                 }
 
                                 // Watch all relevant inputs
-                                const watchIds = ['DT', 'd', 'clearance', 'b', 'Bw', 'coil-outer-dia', 'coil-center-dia', 'coil-pitch', 'H', 'np', 'nB'];
+                                const watchIds = ['DT', 'd', 'clearance', 'stage-gap', 'b', 'Bw', 'coil-outer-dia', 'coil-center-dia', 'coil-pitch', 'H', 'np', 'nB'];
                                 function attachListeners() {
                                     watchIds.forEach(function (id) {
                                         const el = document.getElementById(id);
@@ -1640,7 +1644,7 @@
                             <div>
                                 ・槽内径 DT: <span id="pdf-val-dt"></span> m<br>
                                 ・液深 H: <span id="pdf-val-h"></span> m (底: <span id="pdf-val-head"></span>)<br>
-                                ・翼段数: <span id="pdf-val-stages"></span> 段
+                                ・翼段数: <span id="pdf-val-stages"></span> 段<span id="pdf-val-stage-gap-row" style="display:none;"> (段間: <span id="pdf-val-stage-gap"></span> m)</span>
                             </div>
                             <div>
                                 ・インペラ種: <span id="pdf-val-impeller"></span><br>
@@ -1804,6 +1808,7 @@
                 clearance: config.clearance,
                 b: config.b,
                 n_stage: config.n_stage,
+                stage_gap: config.stage_gap,
                 headType: config.headType,
                 impellerType: config.impellerType,
                 baffleActive: config.baffleActive,

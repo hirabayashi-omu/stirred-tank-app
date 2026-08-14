@@ -21,6 +21,7 @@ let config = {
     b: 0.020,
     clearance: 0.020,
     n_stage: 1,
+    stage_gap: 0.060,
     baffleActive: true,
     nB: 1,
     Bw: 0.014,
@@ -116,7 +117,7 @@ const DEFAULT_SCALE_PRESETS = [
             DT: 0.060, H: 0.065, headType: 'semi-elliptical',
             wallThickness: 0.002, wallK: 16.3,
             impellerType: 'pitched-paddle', np: 4, theta: 45,
-            d: 0.036, b: 0.012, clearance: 0.012, n_stage: 1,
+            d: 0.036, b: 0.012, clearance: 0.012, n_stage: 1, stage_gap: 0.036,
             baffleActive: true, nB: 1, Bw: 0.008,
             jacketType: 'flat', jacketGap: 0.006,
             coilActive: false, coilOuterDia: 0.006, coilInnerDia: 0.004,
@@ -140,7 +141,7 @@ const DEFAULT_SCALE_PRESETS = [
             DT: 0.105, H: 0.093, headType: 'semi-elliptical',
             wallThickness: 0.003, wallK: 16.3,
             impellerType: 'pitched-paddle', np: 4, theta: 45,
-            d: 0.060, b: 0.020, clearance: 0.020, n_stage: 1,
+            d: 0.060, b: 0.020, clearance: 0.020, n_stage: 1, stage_gap: 0.060,
             baffleActive: true, nB: 1, Bw: 0.014,
             jacketType: 'flat', jacketGap: 0.010,
             coilActive: false, coilOuterDia: 0.010, coilInnerDia: 0.008,
@@ -164,7 +165,7 @@ const DEFAULT_SCALE_PRESETS = [
             DT: 0.240, H: 0.260, headType: 'semi-elliptical',
             wallThickness: 0.004, wallK: 16.3,
             impellerType: 'pitched-paddle', np: 4, theta: 45,
-            d: 0.144, b: 0.048, clearance: 0.048, n_stage: 1,
+            d: 0.144, b: 0.048, clearance: 0.048, n_stage: 1, stage_gap: 0.144,
             baffleActive: true, nB: 4, Bw: 0.024,
             jacketType: 'flat', jacketGap: 0.012,
             coilActive: false, coilOuterDia: 0.019, coilInnerDia: 0.015,
@@ -188,7 +189,7 @@ const DEFAULT_SCALE_PRESETS = [
             DT: 0.500, H: 0.520, headType: 'semi-elliptical',
             wallThickness: 0.006, wallK: 16.3,
             impellerType: 'pitched-paddle', np: 4, theta: 45,
-            d: 0.300, b: 0.100, clearance: 0.100, n_stage: 1,
+            d: 0.300, b: 0.100, clearance: 0.100, n_stage: 1, stage_gap: 0.300,
             baffleActive: true, nB: 4, Bw: 0.050,
             jacketType: 'flat', jacketGap: 0.015,
             coilActive: false, coilOuterDia: 0.038, coilInnerDia: 0.030,
@@ -212,7 +213,7 @@ const DEFAULT_SCALE_PRESETS = [
             DT: 1.100, H: 1.150, headType: 'semi-elliptical',
             wallThickness: 0.010, wallK: 16.3,
             impellerType: 'pitched-paddle', np: 4, theta: 45,
-            d: 0.660, b: 0.220, clearance: 0.220, n_stage: 2,
+            d: 0.660, b: 0.220, clearance: 0.220, n_stage: 2, stage_gap: 0.660,
             baffleActive: true, nB: 4, Bw: 0.110,
             jacketType: 'flat', jacketGap: 0.020,
             coilActive: false, coilOuterDia: 0.076, coilInnerDia: 0.062,
@@ -380,6 +381,8 @@ function initInputs() {
     _set('b', config.b);
     _set('clearance', config.clearance);
     _set('n_stage', config.n_stage);
+    _set('stage-gap', config.stage_gap ?? (config.d || 0.060));
+    updateStageGapVisibility();
     _chk('baffle-active', config.baffleActive);
     _set('nB', config.nB);
     _set('Bw', config.Bw);
@@ -473,13 +476,14 @@ function initEventListeners() {
     const inputs = [
         'g', 'rho', 'mu', 'V-act', 'DT', 'H', 'head-type',
         'impeller-type', 'np', 'theta', 'd', 'b', 'clearance',
-        'n_stage', 'nB', 'Bw'
+        'n_stage', 'stage-gap', 'nB', 'Bw'
     ];
 
     const getPropName = (id) => {
         if (id === 'head-type') return 'headType';
         if (id === 'impeller-type') return 'impellerType';
         if (id === 'V-act') return 'V_act';
+        if (id === 'stage-gap') return 'stage_gap';
         return id;
     };
 
@@ -498,6 +502,7 @@ function initEventListeners() {
                 val = parsed;
             }
             config[getPropName(id)] = val;
+            if (id === 'n_stage') updateStageGapVisibility();
 
             // インペラ種類変更時にks値を自動セット
             if (id === 'impeller-type') {
@@ -1367,37 +1372,41 @@ function getLiquidVolume() {
 
 // Calculate the actual number of stages that physically fit in the vessel geometry
 // and respect the clearance and the minimum stage gap (1.3 * b)
+
+function updateStageGapVisibility() {
+    const el = document.getElementById('group-stage-gap');
+    if (!el) return;
+    const n = parseInt(config.n_stage) || 1;
+    el.style.display = (n >= 2) ? 'block' : 'none';
+}
+
 function getActiveStages() {
     const H = config.H; // 円筒部高さ
-    const { clearance, b, n_stage } = config;
-    // クリアランスは鏡板最深部から → 有効な円筒部内の高さ = H - (clearance - hb_m) だが
-    // 簡略化: インペラは円筒部内に収まる前提で計算
-    const max_stages = Math.max(1, Math.floor((H - b) / (1.3 * b)) + 1);
-    return Math.min(parseInt(n_stage) || 1, max_stages);
+    const { clearance, b, n_stage, stage_gap, d } = config;
+    const gap_m = (stage_gap !== undefined && stage_gap !== null && !isNaN(stage_gap)) ? parseFloat(stage_gap) : (d || 0.060);
+    const n_req = parseInt(n_stage) || 1;
+    if (n_req <= 1) return 1;
+    const max_stages = gap_m > 0 ? Math.max(1, Math.floor((H - clearance - b / 2) / gap_m) + 1) : n_req;
+    return Math.min(n_req, Math.max(1, max_stages));
 }
 
 
 function getImpellerStagePositions(coords) {
-    const { clearance, b, H } = config;
+    const { clearance, b, stage_gap, d } = config;
     const n_stages = getActiveStages();
     const scale = coords.scale;
     const clearance_px = clearance * scale;
     const b_px = b * scale;
+    const gap_m = (stage_gap !== undefined && stage_gap !== null && !isNaN(stage_gap)) ? parseFloat(stage_gap) : (d || 0.060);
+    const gap_px = gap_m * scale;
 
-    // 最下段: 鏡板最深部 + clearance + b/2
+    // 最下段 (1段目): 鏡板最深部 + clearance + b/2
     const y_bottom_impeller = coords.y_deepest - clearance_px - b_px / 2;
 
     const positions = [];
-    if (n_stages === 1) {
-        positions.push(y_bottom_impeller);
-    } else {
-        // 最上段: 鏡板最深部 から config.H 分上 - b/2
-        // = diagram.htmlの zBot + zDesignTop - b/2 に相当
-        const y_top_impeller = coords.y_deepest - H * scale - b_px / 2;
-        const gap_px = (y_bottom_impeller - y_top_impeller) / (n_stages - 1);
-        for (let i = 0; i < n_stages; i++) {
-            positions.push(y_bottom_impeller - i * gap_px);
-        }
+    for (let i = 0; i < n_stages; i++) {
+        // i段目 (0: 1段目, 1: 2段目... 上に向かうのでY座標を減算)
+        positions.push(y_bottom_impeller - i * gap_px);
     }
     return positions;
 }
@@ -3747,10 +3756,11 @@ function drawVesselForPDF() {
     // RULE: The physical impeller geometry is based on the design stage count.
     //       Only the liquid level changes with V_act; the shaft and stage spacing remain fixed.
     const n_stages = parseInt(config.n_stage) || 1;
-    const stage_gap = b_px * 1.3;
+    const gap_m = (config.stage_gap !== undefined && config.stage_gap !== null && !isNaN(config.stage_gap)) ? parseFloat(config.stage_gap) : (config.d || 0.060);
+    const stage_gap_px = gap_m * scale;
     let stages_y = [];
     for (let i = 0; i < n_stages; i++) {
-        stages_y.push(y_bottom_impeller - (i * stage_gap));
+        stages_y.push(y_bottom_impeller - (i * stage_gap_px));
     }
 
     stages_y.forEach(y_imp => {
@@ -3970,7 +3980,18 @@ function generatePDFReport() {
     document.getElementById('pdf-val-theta').textContent = config.theta;
     document.getElementById('pdf-val-d').textContent = config.d.toFixed(3);
     document.getElementById('pdf-val-b').textContent = config.b.toFixed(3);
-    document.getElementById('pdf-val-stages').textContent = getActiveStages();
+    const n_stages_active = getActiveStages();
+    document.getElementById('pdf-val-stages').textContent = n_stages_active;
+    const stageGapRow = document.getElementById('pdf-val-stage-gap-row');
+    const stageGapVal = document.getElementById('pdf-val-stage-gap');
+    if (stageGapRow && stageGapVal) {
+        if (n_stages_active > 1) {
+            stageGapRow.style.display = 'inline';
+            stageGapVal.textContent = (config.stage_gap ?? config.d ?? 0.060).toFixed(3);
+        } else {
+            stageGapRow.style.display = 'none';
+        }
+    }
 
     document.getElementById('pdf-val-baffle').textContent = config.baffleActive ? 'あり' : 'なし';
     document.getElementById('pdf-val-nb').textContent = config.nB;
@@ -7100,6 +7121,8 @@ function updateSettingsListTab() {
             cols: [
                 [
                     { label: '攪拌翼', val: config.impellerType, unit: '' },
+                    { label: '翼段数 N_stage', val: config.n_stage, unit: '段' },
+                    ...(parseInt(config.n_stage) > 1 ? [{ label: '段間距離 ΔC (1段目基準)', val: (config.stage_gap ?? config.d ?? 0.060), unit: 'm' }] : []),
                     { label: '攪拌速度 n', val: config.simSpeed, unit: 'rpm' },
 
                     ...(config.baffleActive ? [
@@ -8476,13 +8499,9 @@ function calculateHeatTransfer() {
 
     // 各段の物理的高さ C_i の総和 sum_C
     let sum_C = 0;
-    if (n_stages === 1) {
-        sum_C = C1;
-    } else {
-        const gap = (C_top - C1) / (n_stages - 1);
-        for (let i = 0; i < n_stages; i++) {
-            sum_C += C1 + i * gap;
-        }
+    const gap_m = (config.stage_gap !== undefined && config.stage_gap !== null && !isNaN(config.stage_gap)) ? parseFloat(config.stage_gap) : (config.d || 0.060);
+    for (let i = 0; i < n_stages; i++) {
+        sum_C += C1 + i * gap_m;
     }
     const sum_b = n_stages * b;
     const np_val = config.np || 2;
